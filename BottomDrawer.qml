@@ -1,15 +1,14 @@
 import QtQuick 2.3
 import "StyleSheet.js" as Style
 
-Rectangle {
-    id: theTopDrawer
-    color: Style.bgRed
-    clip: true
+Item {
+    id: theBottomDrawer
 
-    readonly property int iExpandedHeight: 600
-    readonly property int iClosedHeight: 50
 
-    width: 480 // Default
+    readonly property int iClosedHeight: 50;
+    readonly property int iExpandedHeight: 700;
+
+    width: 480 // default
     height: iClosedHeight
 
     property bool isExpanded: false
@@ -31,36 +30,59 @@ Rectangle {
     }
 
     Rectangle {
+        id: bottomBG
+        color: Style.bgRed
+        anchors.fill: parent
+
+        NumberAnimation on opacity {
+            id: anim_Transparent
+            from: 1.0
+            to: 0.5
+            loops: 1
+            running: false
+        }
+
+        NumberAnimation on opacity {
+            id: anim_Opaque
+            from: 0.5
+            to: 1.0
+            loops: 1
+            running: false
+        }
+    }
+
+    Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         height: 5
         color:  Style.accentColor
     }
 
     Image {
         id: img_Expander
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.right: parent.right
-        anchors.bottomMargin: 10
+        anchors.topMargin: 10
         anchors.rightMargin: 10
         width: 35
         height: 35
         source: "Images/Chevron Down-50.png"
+        rotation: 180
 
         RotationAnimation on rotation {
             id: anim_Open
             loops: 1
-            from: 0
-            to: 180
+            from: 180
+            to: 0
             running: false
         }
 
         RotationAnimation on rotation {
             id: anim_Close
             loops: 1
-            from: 180
-            to: 0
+            from: 0
+            to: 180
             running: false
         }
 
@@ -68,9 +90,8 @@ Rectangle {
             anchors.fill: parent
 
             onPressed: {
-                if (!theTopDrawer.isExpanded) {
+                if (!theBottomDrawer.isExpanded) {
                     anim_Open.start()
-
                 }
                 else {
                     anim_Close.start()
@@ -78,21 +99,21 @@ Rectangle {
             }
 
             onReleased: {
-                if (!theTopDrawer.isExpanded) {
+                if (!theBottomDrawer.isExpanded) {
                     anim_Expand.start()
-
+                    anim_Transparent.start()
                 }
                 else {
                     anim_Contract.start()
+                    anim_Opaque.start()
                 }
 
-                theTopDrawer.isExpanded = !theTopDrawer.isExpanded
+                theBottomDrawer.isExpanded = !theBottomDrawer.isExpanded
             }
 
             onCanceled: {
-                if (theTopDrawer.isExpanded) {
+                if (theBottomDrawer.isExpanded) {
                     anim_Open.start()
-
                 }
                 else {
                     anim_Close.start()
@@ -101,14 +122,5 @@ Rectangle {
         }
     }
 
-    Item {
-        id: hideableContent
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.topMargin: iClosedHeight
-
-
-    }
 }
 

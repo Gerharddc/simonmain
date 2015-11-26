@@ -5,5 +5,7 @@
         <file>Images/Chevron Down-50.png</file>
         <file>MainScreen.qml</file>
         <file>TopDrawerLogic.js</file>
+        <file>BottomDrawer.qml</file>
+        <file>StyleSheet.js</file>
     </qresource>
 </RCC>

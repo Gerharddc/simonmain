@@ -1,4 +1,5 @@
 import QtQuick 2.3
+import "StyleSheet.js" as Style
 
 Rectangle {
     visible: true
@@ -7,10 +8,16 @@ Rectangle {
     color: "black"
 
     TopDrawer {
-        id: topDrawer1
-        x: 543
-        y: 242
-        color: "#670a0a"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        z: 100;
+    }
+
+    BottomDrawer {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
 
