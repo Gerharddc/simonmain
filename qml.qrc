@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>TopDrawer.qml</file>
+        <file>Images/Chevron Down-50.png</file>
+        <file>MainScreen.qml</file>
+        <file>TopDrawerLogic.js</file>
+    </qresource>
+</RCC>
