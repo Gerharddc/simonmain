@@ -72,5 +72,13 @@ Rectangle {
 
         onClicked: progressBar1.value += 10
     }
+
+    Slider {
+        id: slider1
+        x: 37
+        y: 70
+        width: 274
+        height: 63
+    }
 }
 

@@ -34,7 +34,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 7
         width: growRect.width = (mainRect.width - 14) / total * value
-        color: Style.textColor
+        color: Style.barColor
 
         Behavior on width {
             PropertyAnimation {}
