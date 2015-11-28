@@ -1,17 +1,19 @@
 import QtQuick 2.3
+import QtQuick.Layouts 1.2
 import "StyleSheet.js" as Style
+import "BottomDrawerLogic.js" as Logic
 
 Item {
     id: theBottomDrawer
-
-
+    
     readonly property int iClosedHeight: 50;
     readonly property int iExpandedHeight: 700;
 
+    property bool isExpanded: false
+    property BottomTab currentTab: modelTab
+
     width: 480 // default
     height: iClosedHeight
-
-    property bool isExpanded: false
 
     NumberAnimation on height {
         id: anim_Expand
@@ -31,27 +33,28 @@ Item {
 
     Rectangle {
         id: bottomBG
-        color: Style.bgRed
+        color: currentTab.tabColor
         anchors.fill: parent
+    }
 
-        NumberAnimation on opacity {
-            id: anim_Transparent
-            from: 1.0
-            to: 0.5
-            loops: 1
-            running: false
-        }
+    NumberAnimation on opacity {
+        id: anim_Transparent
+        from: 1.0
+        to: 0.5
+        loops: 1
+        running: false
+    }
 
-        NumberAnimation on opacity {
-            id: anim_Opaque
-            from: 0.5
-            to: 1.0
-            loops: 1
-            running: false
-        }
+    NumberAnimation on opacity {
+        id: anim_Opaque
+        from: 0.5
+        to: 1.0
+        loops: 1
+        running: false
     }
 
     Rectangle {
+        id: rect_Chrome
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
@@ -122,5 +125,43 @@ Item {
         }
     }
 
+    RowLayout {
+        anchors.left:parent.left
+        anchors.right: img_Expander.left
+        anchors.top: rect_Chrome.bottom
+        anchors.rightMargin: 10
+        height: iClosedHeight - 10
+        spacing: 0
+
+        BottomTab {
+            id: modelTab
+            tabColor: 'blue'
+            tabText: 'Model'
+            enabledTab: currentTab
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onTabClicked: Logic.enableTab(theBottomDrawer, modelTab)
+        }
+
+        BottomTab {
+            id: sliceTab
+            tabColor: 'green'
+            tabText: 'Slice'
+            enabledTab: currentTab
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onTabClicked: Logic.enableTab(theBottomDrawer, sliceTab)
+        }
+
+        BottomTab {
+            id: printTab
+            tabColor: 'orange'
+            tabText: 'Print'
+            enabledTab: currentTab
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onTabClicked: Logic.enableTab(theBottomDrawer, printTab)
+        }
+    }
 }
 

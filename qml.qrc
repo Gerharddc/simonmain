@@ -7,5 +7,11 @@
         <file>TopDrawerLogic.js</file>
         <file>BottomDrawer.qml</file>
         <file>StyleSheet.js</file>
+        <file>BottomTab.qml</file>
+        <file>BottomDrawerLogic.js</file>
+    </qresource>
+    <qresource prefix="/Controls">
+        <file>Button.qml</file>
+        <file>ModeButton.qml</file>
     </qresource>
 </RCC>
