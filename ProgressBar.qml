@@ -15,6 +15,13 @@ Rectangle {
     property real value: 50;
 
     onValueChanged: {
+        if (value > total) {
+            value = total
+        }
+        else if (value < 0) {
+            value = 0
+        }
+
         growRect.width = (mainRect.width - 14) / total * value
     }
 
@@ -32,6 +39,12 @@ Rectangle {
         Behavior on width {
             PropertyAnimation {}
         }
+    }
+
+    Text {
+        text: (value / total * 100) + '%'
+        font.family: 'Nevis'
+        anchors.centerIn: parent
     }
 }
 
