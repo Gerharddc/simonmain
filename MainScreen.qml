@@ -5,7 +5,7 @@ Rectangle {
     visible: true
     width: 480
     height: 800
-    color: "black"
+    color: Style.bgMain
 
     TopDrawer {
         anchors.left: parent.left

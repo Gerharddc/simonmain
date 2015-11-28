@@ -7,7 +7,7 @@ Item {
     id: theBottomDrawer
     
     readonly property int iClosedHeight: 50;
-    readonly property int iExpandedHeight: 700;
+    readonly property int iExpandedHeight: (800 - iClosedHeight + 5);
 
     property bool isExpanded: false
     property BottomTab currentTab: modelTab
@@ -33,7 +33,7 @@ Item {
 
     Rectangle {
         id: bottomBG
-        color: currentTab.tabColor
+        color: Style.overlayGrey
         anchors.fill: parent
     }
 
@@ -130,12 +130,11 @@ Item {
         anchors.right: img_Expander.left
         anchors.top: rect_Chrome.bottom
         anchors.rightMargin: 10
-        height: iClosedHeight - 10
+        height: iClosedHeight - 5
         spacing: 0
 
         BottomTab {
             id: modelTab
-            tabColor: 'blue'
             tabText: 'Model'
             enabledTab: currentTab
             Layout.fillWidth: true
@@ -145,7 +144,6 @@ Item {
 
         BottomTab {
             id: sliceTab
-            tabColor: 'green'
             tabText: 'Slice'
             enabledTab: currentTab
             Layout.fillWidth: true
@@ -155,7 +153,6 @@ Item {
 
         BottomTab {
             id: printTab
-            tabColor: 'orange'
             tabText: 'Print'
             enabledTab: currentTab
             Layout.fillWidth: true

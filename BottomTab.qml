@@ -1,16 +1,16 @@
 import QtQuick 2.3
+import 'StyleSheet.js' as Style
 
 Rectangle {
     id: tabRect
 
     property alias tabText: tabTextBlock.text
-    property color tabColor
     property Item enabledTab
     property bool tabEnabled: (enabledTab == tabRect)
 
     signal tabClicked()
 
-    color: tabEnabled ? 'transparent' : tabColor
+    color: mouseArea.pressed ? Style.pressedRed : (tabEnabled ? Style.bgRed : 'transparent')
 
     Text {
         id: tabTextBlock

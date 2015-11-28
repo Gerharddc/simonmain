@@ -6,7 +6,7 @@ Rectangle {
     color: Style.bgRed
     clip: true
 
-    readonly property int iExpandedHeight: 600
+    readonly property int iExpandedHeight: 400
     readonly property int iClosedHeight: 50
 
     width: 480 // Default
