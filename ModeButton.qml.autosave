@@ -1,6 +1,0 @@
-import QtQuick 2.3
-
-Item {
-    property type name: value
-}
-

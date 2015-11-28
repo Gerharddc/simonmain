@@ -12,6 +12,9 @@
     </qresource>
     <qresource prefix="/Controls">
         <file>Button.qml</file>
-        <file>ModeButton.qml</file>
+        <file>DropTextBox.qml</file>
+        <file>ProgressBar.qml</file>
+        <file>Slider.qml</file>
+        <file>TextBox.qml</file>
     </qresource>
 </RCC>

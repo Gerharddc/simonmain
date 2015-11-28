@@ -16,6 +16,7 @@ Rectangle {
         id: tabTextBlock
         anchors.centerIn: parent
         text: 'Model'
+        font.family: 'Nevis'
     }
 
     MouseArea {
