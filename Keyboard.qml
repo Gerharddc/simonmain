@@ -10,30 +10,80 @@ Rectangle {
     width: 480
     height: 350
 
-    color: 'black'
+    color: "#80000000"
 
     readonly property int maxRows: 10
-    readonly property int columnCount: 4
+    readonly property int columnCount: 5
     readonly property int keySpacing: 3
-    readonly property int buttonWidth: ((keysColumn.width) / maxRows) - keySpacing //keysColumn.width / maxColumns
-    readonly property int buttonHeight: ((keysColumn.height) / columnCount) - keySpacing //(keysColumn.height / columnCount)
+    readonly property int buttonWidth: ((keysColumn.width) / maxRows) - keySpacing
+    readonly property int buttonHeight: ((keysColumn.height) / columnCount) - keySpacing
+    property bool shifted: false
 
     Component {
         id: keyDelegate
 
         Button {
-            text: key
-            width: buttonWidth
+            id: _btn
+            text: shifted ? key.toUpperCase() : key
+            width: widthMulti ? buttonWidth * widthMulti : buttonWidth
             height: buttonHeight
             fontSize: 20
+            onClicked: {
+                functionIds[functionId](_btn)
+            }
         }
     }
 
-    readonly property var rowIds: [firstRowModel, secondRowModel, thirdRowModel, fourthRowModel]
+    readonly property var rowIds: [numRowModel, firstRowModel, secondRowModel, thirdRowModel, fourthRowModel]
+
+    function charPressed(btn) {
+        // TODO: generate event
+        console.log(btn.text)
+    }
+
+    function shiftPressed(btn) {
+        shifted = !shifted
+    }
+
+    function hidePressed(btn) {
+        // TODO: implement hiding
+    }
+
+    function spacePressed(btn) {
+        // TODO: generate space event
+    }
+
+    function enterPressed(btn) {
+        // TODO: generate enter event
+    }
+
+    function leftPressed(btn) {
+        // TODO:generate right arrow event
+    }
+
+    function rightPressed(btn) {
+        // TODO:generate right arrow event
+    }
+
+    readonly property var functionIds: [charPressed, shiftPressed, hidePressed, spacePressed, enterPressed, leftPressed, rightPressed]
+
+    ListModel {
+        id: numRowModel
+        ListElement { key: "1"; functionId: 0; widthMulti: 1 }
+        ListElement { key: "2" }
+        ListElement { key: "3" }
+        ListElement { key: "4" }
+        ListElement { key: "5" }
+        ListElement { key: "6" }
+        ListElement { key: "7" }
+        ListElement { key: "8" }
+        ListElement { key: "9" }
+        ListElement { key: "0" }
+    }
 
     ListModel {
         id: firstRowModel
-        ListElement { key: "q" }
+        ListElement { key: "q"; functionId: 0; widthMulti: 1 }
         ListElement { key: "w" }
         ListElement { key: "e" }
         ListElement { key: "r" }
@@ -47,7 +97,7 @@ Rectangle {
 
     ListModel {
         id: secondRowModel
-        ListElement { key: "a" }
+        ListElement { key: "a"; functionId: 0; widthMulti: 1 }
         ListElement { key: "s" }
         ListElement { key: "d" }
         ListElement { key: "f" }
@@ -60,6 +110,7 @@ Rectangle {
 
     ListModel {
         id: thirdRowModel
+        ListElement { key: "Shift"; functionId: 1; widthMulti: 2 }
         ListElement { key: "z" }
         ListElement { key: "x" }
         ListElement { key: "c" }
@@ -72,10 +123,12 @@ Rectangle {
 
     ListModel {
         id: fourthRowModel
-        ListElement { key: "Sft" }
-        ListElement { key: "Spc" }
-        ListElement { key: "Lft" }
-        ListElement { key: "Rht" }
+        ListElement { key: "Hide"; functionId: 2; widthMulti: 1.75 }
+        ListElement { key: "."; functionId: 6; widthMulti: 0.75 }
+        ListElement { key: "<"; functionId: 5; widthMulti: 0.75 }
+        ListElement { key: "Space"; functionId: 3; widthMulti: 4 }
+        ListElement { key: ">"; functionId: 6; widthMulti: 0.75 }
+        ListElement { key: "Enter"; functionId: 4; widthMulti: 2 }
     }
 
     Component {
@@ -98,6 +151,7 @@ Rectangle {
         ListElement { rowId: 1 }
         ListElement { rowId: 2 }
         ListElement { rowId: 3 }
+        ListElement { rowId: 4 }
     }
 
     Rectangle {
