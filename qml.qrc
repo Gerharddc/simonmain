@@ -9,6 +9,7 @@
         <file>StyleSheet.js</file>
         <file>BottomTab.qml</file>
         <file>BottomDrawerLogic.js</file>
+        <file>Keyboard.qml</file>
     </qresource>
     <qresource prefix="/Controls">
         <file>Button.qml</file>

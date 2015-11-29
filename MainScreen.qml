@@ -21,6 +21,11 @@ Rectangle {
         anchors.bottom: parent.bottom
     }
 
+    Keyboard {
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+    }
+
     TextBox {
         x: 121
         y: 195

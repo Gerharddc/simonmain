@@ -12,10 +12,11 @@ Rectangle {
     height: 50
 
     property alias text: _text.text
+    property alias fontSize: _text.font.pixelSize
 
     signal clicked()
     signal pressed()
-    signal cnaceled()
+    signal canceled()
     signal released()
 
     Text {
