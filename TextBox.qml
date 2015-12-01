@@ -21,6 +21,15 @@ Rectangle {
         font.pixelSize: 16
         color: Style.textColor
         clip: true
+
+        onFocusChanged: {
+            if (focus) {
+                keyboard.requestOpen()
+            }
+            else {
+                keyboard.requestClose()
+            }
+        }
     }
 }
 

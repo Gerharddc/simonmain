@@ -3,31 +3,42 @@ import 'StyleSheet.js' as Style
 import "qrc:/Controls"
 
 Rectangle {
-    id: keyboardRect
-    z: 100
-
-    // Default
-    width: 480
-    height: 350
-
-    color: "#80000000"
-
     readonly property int maxRows: 10
     readonly property int columnCount: 5
     readonly property int keySpacing: 3
     readonly property int buttonWidth: ((keysColumn.width) / maxRows) - keySpacing
     readonly property int buttonHeight: ((keysColumn.height) / columnCount) - keySpacing
     property bool shifted: false
-    //property bool open: keyboard.open
 
-    /*onOpenChanged: {
-        if (open) {
-            console.log('opened')
-        }
-        else {
-            console.log('closed')
-        }
-    }*/
+    z: 100
+    width: 480 //default
+    height: keyboard.open ? keyboard.keyboardHeight : 0
+    opacity: keyboard.open ? 1 : 0.5
+    visible: (height != 0)
+    clip: true
+
+    anchors.left: parent.left
+    anchors.right: parent.right
+
+    color: "#80000000"
+
+    Behavior on height {
+        PropertyAnimation { duration: 500 }
+    }
+
+    Behavior on opacity {
+        PropertyAnimation { duration: 500 }
+    }
+
+    Rectangle {
+        id: rectTop
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 5
+        color: Style.accentColor
+        z: 101
+    }
 
     Component {
         id: keyDelegate
@@ -55,7 +66,7 @@ Rectangle {
     }
 
     function hidePressed(btn) {
-        // TODO: implement hiding
+        keyboard.forceClose()
     }
 
     function spacePressed(btn) {
@@ -74,7 +85,11 @@ Rectangle {
         keyboard.pressRight()
     }
 
-    readonly property var functionIds: [charPressed, shiftPressed, hidePressed, spacePressed, enterPressed, leftPressed, rightPressed]
+    function backspacePressed(btn) {
+        keyboard.pressBackspace()
+    }
+
+    readonly property var functionIds: [charPressed, shiftPressed, hidePressed, spacePressed, enterPressed, leftPressed, rightPressed, backspacePressed]
 
     ListModel {
         id: numRowModel
@@ -119,7 +134,7 @@ Rectangle {
 
     ListModel {
         id: thirdRowModel
-        ListElement { key: "Shift"; functionId: 1; widthMulti: 2 }
+        ListElement { key: "⇑"; functionId: 1; widthMulti: 1 }
         ListElement { key: "z" }
         ListElement { key: "x" }
         ListElement { key: "c" }
@@ -128,16 +143,17 @@ Rectangle {
         ListElement { key: "n" }
         ListElement { key: "n" }
         ListElement { key: "m" }
+        ListElement { key: "⇐"; functionId: 7 }
     }
 
     ListModel {
         id: fourthRowModel
-        ListElement { key: "Hide"; functionId: 2; widthMulti: 1.75 }
+        ListElement { key: "⬇"; functionId: 2; widthMulti: 1 }
         ListElement { key: "."; widthMulti: 0.75 }
-        ListElement { key: "<"; functionId: 5; widthMulti: 0.75 }
-        ListElement { key: "Space"; functionId: 3; widthMulti: 4 }
-        ListElement { key: ">"; functionId: 6; widthMulti: 0.75 }
-        ListElement { key: "Enter"; functionId: 4; widthMulti: 2 }
+        ListElement { key: "◀"; functionId: 5; widthMulti: 1 }
+        ListElement { key: "Space"; functionId: 3; widthMulti: 4.35 }
+        ListElement { key: "▶"; functionId: 6; widthMulti: 1 }
+        ListElement { key: "⏎"; functionId: 4; widthMulti: 1.75 }
     }
 
     Component {
@@ -163,24 +179,14 @@ Rectangle {
         ListElement { rowId: 4 }
     }
 
-    Rectangle {
-        id: rectTop
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 5
-        color: Style.accentColor
-    }
-
     Column {
         id: keysColumn
         spacing: keySpacing
-        anchors.top: rectTop.bottom
+        height: keyboard.keyboardHeight - (5 * keySpacing) // 5 seems to be the magic number (not sure if because column count)
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: keySpacing
-        anchors.topMargin: 2 * keySpacing // We need to compensate for the extra spacing caused at the bottom by the column
 
         Repeater {
             model: alphabetSetModel
@@ -188,4 +194,3 @@ Rectangle {
         }
     }
 }
-
