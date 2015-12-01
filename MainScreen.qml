@@ -27,7 +27,7 @@ Rectangle {
     }
 
     Item {
-        visible: true
+        visible: false
 
         TextBox {
             x: 121

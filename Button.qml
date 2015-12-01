@@ -13,6 +13,7 @@ Rectangle {
 
     property alias text: _text.text
     property alias fontSize: _text.font.pixelSize
+    property alias isPressed: _mouseArea.pressed
 
     signal clicked()
     signal pressed()
@@ -28,6 +29,7 @@ Rectangle {
     }
 
     MouseArea {
+        id: _mouseArea
         anchors.fill: parent
 
         onClicked: {

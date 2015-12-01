@@ -24,7 +24,7 @@ Item {
         color: Style.overlayGrey
         anchors.fill: parent
 
-        opacity: isExpanded ? 0.5 : 1
+        opacity: isExpanded ? (bottomPages.hideInactives ? 0.2 : 0.5) : 1
 
         Behavior on opacity {
             PropertyAnimation {}
@@ -73,6 +73,7 @@ Item {
 
     RowLayout {
         id: tabBar
+        z: 10
 
         anchors.left:parent.left
         anchors.right: img_Expander.left
@@ -85,7 +86,6 @@ Item {
             id: modelTab
             tabText: 'Model'
             tabNum: 0
-            activeNum: activeTabNum
             Layout.fillWidth: true
             Layout.fillHeight: true
             onTabClicked: enableTab(modelTab)
@@ -95,7 +95,6 @@ Item {
             id: sliceTab
             tabText: 'Slice'
             tabNum: 1
-            activeNum: activeTabNum
             Layout.fillWidth: true
             Layout.fillHeight: true
             onTabClicked: enableTab(sliceTab)
@@ -105,18 +104,35 @@ Item {
             id: printTab
             tabText: 'Print'
             tabNum: 2
-            activeNum: activeTabNum
             Layout.fillWidth: true
             Layout.fillHeight: true
             onTabClicked: enableTab(printTab)
         }
     }
 
+    Rectangle {
+        id: tabSlider
+        anchors.top: tabBar.top
+        anchors.bottom: tabBar.bottom
+        width: modelTab.width
+        anchors.left: tabBar.left
+        anchors.leftMargin: activeTabNum * modelTab.width
+        color: Style.bgRed
+        z: 5
+        opacity: bottomPages.hideInactives ? 0.5 : 1
+
+        Behavior on anchors.leftMargin {
+            PropertyAnimation {}
+        }
+    }
+
     BottomPages {
+        id: bottomPages
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: (iExpandedHeight - tabBar.height)
+        visible: isExpanded
 
         pageNum: activeTabNum
 
