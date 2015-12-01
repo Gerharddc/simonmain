@@ -18,6 +18,16 @@ Rectangle {
     readonly property int buttonWidth: ((keysColumn.width) / maxRows) - keySpacing
     readonly property int buttonHeight: ((keysColumn.height) / columnCount) - keySpacing
     property bool shifted: false
+    //property bool open: keyboard.open
+
+    /*onOpenChanged: {
+        if (open) {
+            console.log('opened')
+        }
+        else {
+            console.log('closed')
+        }
+    }*/
 
     Component {
         id: keyDelegate
@@ -37,8 +47,7 @@ Rectangle {
     readonly property var rowIds: [numRowModel, firstRowModel, secondRowModel, thirdRowModel, fourthRowModel]
 
     function charPressed(btn) {
-        // TODO: generate event
-        console.log(btn.text)
+        keyboard.pressKey(btn.text)
     }
 
     function shiftPressed(btn) {
@@ -50,19 +59,19 @@ Rectangle {
     }
 
     function spacePressed(btn) {
-        // TODO: generate space event
+        keyboard.pressSpace()
     }
 
     function enterPressed(btn) {
-        // TODO: generate enter event
+        keyboard.pressEnter()
     }
 
     function leftPressed(btn) {
-        // TODO:generate right arrow event
+        keyboard.pressLeft()
     }
 
     function rightPressed(btn) {
-        // TODO:generate right arrow event
+        keyboard.pressRight()
     }
 
     readonly property var functionIds: [charPressed, shiftPressed, hidePressed, spacePressed, enterPressed, leftPressed, rightPressed]
@@ -124,7 +133,7 @@ Rectangle {
     ListModel {
         id: fourthRowModel
         ListElement { key: "Hide"; functionId: 2; widthMulti: 1.75 }
-        ListElement { key: "."; functionId: 6; widthMulti: 0.75 }
+        ListElement { key: "."; widthMulti: 0.75 }
         ListElement { key: "<"; functionId: 5; widthMulti: 0.75 }
         ListElement { key: "Space"; functionId: 3; widthMulti: 4 }
         ListElement { key: ">"; functionId: 6; widthMulti: 0.75 }
