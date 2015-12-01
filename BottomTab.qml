@@ -5,8 +5,9 @@ Rectangle {
     id: tabRect
 
     property alias tabText: tabTextBlock.text
-    property Item enabledTab
-    property bool tabEnabled: (enabledTab == tabRect)
+    property int tabNum: 0
+    property int activeNum: 0
+    property bool tabEnabled: (activeNum == tabNum)
 
     signal tabClicked()
 

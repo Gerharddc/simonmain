@@ -4,12 +4,11 @@
         <file>TopDrawer.qml</file>
         <file>Images/Chevron Down-50.png</file>
         <file>MainScreen.qml</file>
-        <file>TopDrawerLogic.js</file>
         <file>BottomDrawer.qml</file>
         <file>StyleSheet.js</file>
         <file>BottomTab.qml</file>
-        <file>BottomDrawerLogic.js</file>
         <file>Keyboard.qml</file>
+        <file>BottomPages.qml</file>
     </qresource>
     <qresource prefix="/Controls">
         <file>Button.qml</file>

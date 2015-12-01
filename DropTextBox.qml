@@ -46,26 +46,14 @@ Rectangle {
         anchors.top: parent.top
         anchors.right: rightRect.left
         anchors.rightMargin: -2
-        height: dropper.height
+        height: isExpanded ? iExpandedHeight : dropper.height
         color: Style.bgRed
         border.width: 2
         border.color: Style.accentColor
         z: -10
 
-        NumberAnimation on height {
-            id: anim_Expand
-            from: dropper.height
-            to: iExpandedHeight
-            loops: 1
-            running: false
-        }
-
-        NumberAnimation on height {
-            id: anim_Contract
-            from: iExpandedHeight
-            to: dropper.height
-            loops: 1
-            running: false
+        Behavior on height {
+            PropertyAnimation {}
         }
 
         ListModel {
@@ -142,55 +130,18 @@ Rectangle {
             anchors.fill: parent
             anchors.margins: 5
 
-            RotationAnimation on rotation {
-                id: anim_Open
-                loops: 1
-                from: 0
-                to: 180
-                running: false
-            }
+            rotation: isExpanded ? (flipMouse.pressed ? 0 : 180) : (flipMouse.pressed ? 180 : 0)
 
-            RotationAnimation on rotation {
-                id: anim_Close
-                loops: 1
-                from: 180
-                to: 0
-                running: false
+            Behavior on rotation {
+                PropertyAnimation {}
             }
 
             MouseArea {
+                id: flipMouse
                 anchors.fill: parent
 
-                onPressed: {
-                    if (!dropper.isExpanded) {
-                        anim_Open.start()
-
-                    }
-                    else {
-                        anim_Close.start()
-                    }
-                }
-
-                onReleased: {
-                    if (!dropper.isExpanded) {
-                        anim_Expand.start()
-
-                    }
-                    else {
-                        anim_Contract.start()
-                    }
-
+                onClicked: {
                     dropper.isExpanded = !dropper.isExpanded
-                }
-
-                onCanceled: {
-                    if (dropper.isExpanded) {
-                        anim_Open.start()
-
-                    }
-                    else {
-                        anim_Close.start()
-                    }
                 }
             }
         }

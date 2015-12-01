@@ -26,64 +26,66 @@ Rectangle {
         anchors.bottom: parent.bottom
     }
 
-    TextBox {
-        x: 121
-        y: 195
-        width: 200
-        //height: 50
-    }
+    Item {
+        visible: true
 
-    DropTextBox {
-        id: textBox1
-        x: 121
-        y: 269
-        width: 212
-        //height: 59
-        options: ListModel {
-            ListElement { option: "Jan" }
-            ListElement { option: "Koos" }
-            ListElement { option: "Piet" }
+        TextBox {
+            x: 121
+            y: 195
+            width: 200
         }
-    }
 
-    ProgressBar {
-        id: progressBar1
-        x: 100
-        y: 498
-        width: 293
-        height: 50
-    }
-
-    Button {
-        id: button1
-        x: 46
-        y: 604
-        width: 147
-        height: 59
-        text: "Klein"
-
-        onClicked: {
-            progressBar1.value -= 10
+        DropTextBox {
+            id: textBox1
+            x: 121
+            y: 269
+            width: 212
+            options: ListModel {
+                ListElement { option: "Jan" }
+                ListElement { option: "Koos" }
+                ListElement { option: "Piet" }
+            }
         }
-    }
 
-    Button {
-        id: button2
-        x: 246
-        y: 604
-        width: 147
-        height: 59
-        text: "Groot"
+        ProgressBar {
+            id: progressBar1
+            x: 100
+            y: 498
+            width: 293
+            height: 50
+        }
 
-        onClicked: progressBar1.value += 10
-    }
+        Button {
+            id: button1
+            x: 46
+            y: 604
+            width: 147
+            height: 59
+            text: "Klein"
 
-    Slider {
-        id: slider1
-        x: 37
-        y: 70
-        width: 274
-        height: 63
+            onClicked: {
+                progressBar1.value -= 10
+            }
+        }
+
+        Button {
+            id: button2
+            x: 246
+            y: 604
+            width: 147
+            height: 59
+            text: "Groot"
+
+            onClicked: progressBar1.value += 10
+        }
+
+        Slider {
+            id: slider1
+            x: 37
+            y: 70
+            width: 274
+            height: 63
+        }
     }
 }
 
