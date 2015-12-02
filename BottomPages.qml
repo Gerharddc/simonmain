@@ -1,4 +1,4 @@
-import QtQuick 2.3
+import QtQuick 2.5
 import "qrc:/Controls"
 
 Item {
@@ -36,6 +36,13 @@ Item {
             anchors.left: parent.left
             width: pageWidth
 
+            TextBox {
+                x: 100
+                y: 100
+                width: 300
+                height: 40
+            }
+
             Button {
                 id: but
                 width: 300
@@ -51,7 +58,7 @@ Item {
                 }
             }
 
-            Button {
+            /*Button {
                 id: but2
                 anchors.left: but.left
                 anchors.right: but.right
@@ -67,6 +74,20 @@ Item {
                     property: "hideInactives"
                     value: but2.isPressed
                 }
+            }*/
+
+            TextBox {
+                x: 100
+                y: 500
+                width: 300
+                height: 40
+            }
+
+            TextBox {
+                x: 100
+                y: 450
+                width: 300
+                height: 40
             }
         }
 

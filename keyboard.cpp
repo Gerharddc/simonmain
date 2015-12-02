@@ -2,18 +2,20 @@
 
 #include <QKeyEvent>
 #include <QCoreApplication>
-#include <QQuickItem>
 #include <QGuiApplication>
 #include <QKeySequence>
+#include <QtGlobal>
 
 #ifdef QT_DEBUG
 #include <QDebug>
+//#define VERBOS_KEYBOARD
 #endif
 
-QObject *Keyboard::m_receiver = NULL;
 bool Keyboard::m_open  = false;
-int Keyboard::openRequests = 0;
 Keyboard *Keyboard::singleton = NULL;
+int Keyboard::m_uiOffset = 0;
+QQuickItem *Keyboard::qmlKeyboard;
+QQuickItem *Keyboard::focusedItem = NULL;
 
 Keyboard::Keyboard(QObject *parent) : QObject(parent)
 {
@@ -33,11 +35,6 @@ void Keyboard::setOpen(bool a)
 bool Keyboard::open()
 {
     return m_open;
-}
-
-void Keyboard::setReciever(QObject *receiver)
-{
-    m_receiver = receiver;
 }
 
 void Keyboard::emitKey(int key, QString keyText)
@@ -60,7 +57,7 @@ void Keyboard::emitKey(int key, QString keyText)
 
 void Keyboard::pressKey(QString c)
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Pressing key: " << c[0];
     #endif
 
@@ -69,7 +66,7 @@ void Keyboard::pressKey(QString c)
 
 void Keyboard::pressRight()
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Pressing right";
     #endif
 
@@ -78,7 +75,7 @@ void Keyboard::pressRight()
 
 void Keyboard::pressLeft()
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Pressing left";
     #endif
 
@@ -87,7 +84,7 @@ void Keyboard::pressLeft()
 
 void Keyboard::pressEnter()
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Pressing enter";
     #endif
 
@@ -96,7 +93,7 @@ void Keyboard::pressEnter()
 
 void Keyboard::pressSpace()
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Pressing space";
     #endif
 
@@ -105,45 +102,82 @@ void Keyboard::pressSpace()
 
 void Keyboard::pressBackspace()
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Pressing backspace";
     #endif
 
     emitKey(Qt::Key_Backspace, " "); //With " " the word Space is entered
 }
 
-void Keyboard::requestOpen()
+void Keyboard::requestOpen(QQuickItem *item)
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Requested open";
     #endif
 
-    openRequests++;
+    focusedItem = item;
+
+    if (qmlKeyboard != NULL)
+    {
+        // The ui offset differs depending on if the keyboard is open or not
+        QPointF newPos = item->mapToItem(qmlKeyboard, QPointF(0, item->height()));
+        int newOffset = 0;
+
+        if (m_open)
+        {
+            newOffset = m_uiOffset + newPos.y() + 5;
+            if (newOffset < 0)
+                newOffset = 0;
+        }
+        else
+        {
+            newOffset = newPos.y() + m_keyboardHeight;
+            if (newOffset > 0)
+                newOffset += 5;
+            else newOffset = 0;
+        }
+
+        if (newOffset != m_uiOffset)
+        {
+            m_uiOffset = newOffset;
+            emit singleton->uiOffsetChanged();
+        }
+    }
 
     setOpen(true);
 }
 
-void Keyboard::requestClose()
+void Keyboard::requestClose(QQuickItem *item)
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Requested close";
     #endif
 
-    openRequests--;
+    if (focusedItem == item)
+    {
+        setOpen(false);
+        focusedItem = NULL;
 
-    setOpen(openRequests > 0);
+        m_uiOffset = 0;
+        emit singleton->uiOffsetChanged();
+    }
 }
 
 void Keyboard::forceClose()
 {
-    #ifdef QT_DEBUG
+    #ifdef VERBOS_KEYBOARD
     qDebug() << "Requested force close";
     #endif
 
-    // TODO: maybe there is a safer way
-    openRequests = 1;
-    qobject_cast<QQuickItem*>(QGuiApplication::focusObject())->setFocus(false);
+    qobject_cast<QQuickItem*>(QGuiApplication::focusObject())->setFocus(false); // Working directly with the focusedItem does not work for some reason
+    setOpen(false); // This is jsut redundancy as the previous statement should cause it anyway if the textbox is set uo correctly
+
+    m_uiOffset = 0;
+    emit singleton->uiOffsetChanged();
 }
 
-
+void Keyboard::setQmlKeyboard(QQuickItem *item)
+{
+    qmlKeyboard = item;
+}
 

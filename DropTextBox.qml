@@ -1,4 +1,4 @@
-import QtQuick 2.3
+import QtQuick 2.5
 import "qrc:/StyleSheet.js" as Style
 
 Rectangle {
@@ -32,10 +32,10 @@ Rectangle {
 
         onFocusChanged: {
             if (focus) {
-                keyboard.requestOpen()
+                keyboard.requestOpen(dropper)
             }
             else {
-                keyboard.requestClose()
+                keyboard.requestClose(dropper)
             }
         }
     }

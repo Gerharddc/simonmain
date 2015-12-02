@@ -1,7 +1,8 @@
-import QtQuick 2.3
+import QtQuick 2.5
 import "qrc:/StyleSheet.js" as Style
 
 Rectangle {
+    id: textRect
     color: Style.bgRed
     border.color: Style.accentColor
     border.width: 2
@@ -24,10 +25,11 @@ Rectangle {
 
         onFocusChanged: {
             if (focus) {
-                keyboard.requestOpen()
+                //keyboard.setUiOffset(parent)
+                keyboard.requestOpen(textRect)
             }
             else {
-                keyboard.requestClose()
+                keyboard.requestClose(textRect)
             }
         }
     }

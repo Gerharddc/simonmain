@@ -2,6 +2,7 @@
 #define KEYBOARD_H
 
 #include <QObject>
+#include <QQuickItem>
 
 class Keyboard : public QObject
 {
@@ -9,14 +10,15 @@ class Keyboard : public QObject
 
 private:
     static bool m_open;
-    static int openRequests;
-    static QObject *m_receiver;
     static void emitKey(int key, QString keyText = NULL);
     static Keyboard *singleton;
+    static int m_uiOffset;
+    static QQuickItem *qmlKeyboard;
+    const static int m_keyboardHeight = 350;
+    static QQuickItem *focusedItem;
 
 public:
     explicit Keyboard(QObject *parent = 0);
-    static void setReciever(QObject *receiver);
 
     Q_INVOKABLE static void pressKey(QString c);
     Q_INVOKABLE static void pressRight();
@@ -25,20 +27,26 @@ public:
     Q_INVOKABLE static void pressSpace();
     Q_INVOKABLE static void pressBackspace();
 
-    Q_INVOKABLE static void requestOpen();
-    Q_INVOKABLE static void requestClose();
+    Q_INVOKABLE static void requestOpen(QQuickItem *item);
+    Q_INVOKABLE static void requestClose(QQuickItem *item);
     Q_INVOKABLE static void forceClose();
+
+    static void setQmlKeyboard(QQuickItem *item);
 
     Q_PROPERTY(bool open READ open WRITE setOpen NOTIFY openChanged)
     static void setOpen(bool a);
     static bool open();
 
     Q_PROPERTY(int keyboardHeight READ keyboardHeight NOTIFY keyboardHeightChanged)
-    static int keyboardHeight() { return 350; }
+    static int keyboardHeight() { return m_keyboardHeight; }
+
+    Q_PROPERTY(int uiOffset READ uiOffset NOTIFY uiOffsetChanged)
+    static int uiOffset() { return m_uiOffset; }
 
 signals:
    void openChanged();
    void keyboardHeightChanged();
+   void uiOffsetChanged();
 
 public slots:
 };

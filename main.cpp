@@ -2,6 +2,8 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 
+#include <QQuickItem>
+
 #include "keyboard.h"
 
 int main(int argc, char *argv[])
@@ -15,7 +17,9 @@ int main(int argc, char *argv[])
 
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
 
-    Keyboard::setReciever(&engine);
+    QObject *root = engine.rootObjects()[0];
+    QObject *qmlKeyboard = root->findChild<QObject*>("keyboard");
+    Keyboard::setQmlKeyboard(qobject_cast<QQuickItem*>(qmlKeyboard));
 
     return app.exec();
 }
