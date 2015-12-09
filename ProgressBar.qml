@@ -1,7 +1,7 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "qrc:/StyleSheet.js" as Style
 
-Rectangle {
+DimmableControl {
     id: mainRect
     color: Style.bgRed
     border.color: Style.accentColor

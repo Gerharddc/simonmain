@@ -1,6 +1,5 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import 'StyleSheet.js' as Style
-import "qrc:/Controls"
 
 Rectangle {
     readonly property int maxRows: 10
@@ -43,7 +42,7 @@ Rectangle {
     Component {
         id: keyDelegate
 
-        Button {
+        KeyboardButton {
             id: _btn
             text: shifted ? key.toUpperCase() : key
             width: widthMulti ? buttonWidth * widthMulti : buttonWidth

@@ -1,7 +1,7 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "qrc:/StyleSheet.js" as Style
 
-Rectangle {
+DimmableControl {
     id: dropper
     color: Style.bgRed
     border.color: Style.accentColor
@@ -18,6 +18,10 @@ Rectangle {
     width: 200
     height: fontSize + 20
 
+    property bool buttonActive: false
+    isActive: _textInput.focus || isExpanded || buttonActive
+    focus: flipMouse.pressed || isExpanded
+
     TextInput {
         id: _textInput
         anchors.left: parent.left
@@ -29,10 +33,12 @@ Rectangle {
         color: Style.textColor
         font.pixelSize: fontSize
         clip: true
+        z: 50
 
         onFocusChanged: {
             if (focus) {
                 keyboard.requestOpen(dropper)
+                isExpanded = false // We dont want the keyboard open with the dropdown menu
             }
             else {
                 keyboard.requestClose(dropper)
@@ -92,10 +98,16 @@ Rectangle {
                     onReleased: {
                         optionRect.color = 'transparent'
                         _textInput.text = option
+                        buttonActive = false
                     }
 
                     onCanceled: {
                         optionRect.color = 'transparent'
+                        buttonActive = false
+                    }
+
+                    onPressAndHold: {
+                        buttonActive = true
                     }
                 }
             }
@@ -142,6 +154,18 @@ Rectangle {
 
                 onClicked: {
                     dropper.isExpanded = !dropper.isExpanded
+                }
+
+                onReleased: {
+                    buttonActive = false
+                }
+
+                onCanceled: {
+                    buttonActive = false
+                }
+
+                onPressAndHold: {
+                    buttonActive = true
                 }
             }
         }

@@ -1,7 +1,7 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "qrc:/StyleSheet.js" as Style
 
-Rectangle {
+DimmableControl {
     id: textRect
     color: Style.bgRed
     border.color: Style.accentColor
@@ -14,6 +14,8 @@ Rectangle {
     width: 200
     height: fontSize + 20
 
+    isActive: _textInput.focus
+
     TextInput {
         id: _textInput
         anchors.fill: parent
@@ -25,7 +27,6 @@ Rectangle {
 
         onFocusChanged: {
             if (focus) {
-                //keyboard.setUiOffset(parent)
                 keyboard.requestOpen(textRect)
             }
             else {

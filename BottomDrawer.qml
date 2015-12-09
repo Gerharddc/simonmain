@@ -1,6 +1,6 @@
-import QtQuick 2.5
-import QtQuick.Layouts 1.2
+import QtQuick 2.3
 import "StyleSheet.js" as Style
+import "DimmLogic.js" as DimmLogic
 
 Item {
     id: theBottomDrawer
@@ -24,7 +24,7 @@ Item {
         color: Style.overlayGrey
         anchors.fill: parent
 
-        opacity: isExpanded ? (bottomPages.hideInactives ? 0.2 : 0.5) : 1
+        opacity: isExpanded ? (DimmLogic.bindable.dimmInactives ? 0.2 : 0.5) : 1
 
         Behavior on opacity {
             PropertyAnimation {}
@@ -71,7 +71,7 @@ Item {
         activeTabNum = tabRef.tabNum
     }
 
-    RowLayout {
+    Row {
         id: tabBar
         z: 10
 
@@ -86,8 +86,8 @@ Item {
             id: modelTab
             tabText: 'Model'
             tabNum: 0
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            height: parent.height
+            width: parent.width / 3
             onTabClicked: enableTab(modelTab)
         }
 
@@ -95,8 +95,8 @@ Item {
             id: sliceTab
             tabText: 'Slice'
             tabNum: 1
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            height: parent.height
+            width: parent.width / 3
             onTabClicked: enableTab(sliceTab)
         }
 
@@ -104,8 +104,8 @@ Item {
             id: printTab
             tabText: 'Print'
             tabNum: 2
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            height: parent.height
+            width: parent.width / 3
             onTabClicked: enableTab(printTab)
         }
     }
@@ -119,7 +119,7 @@ Item {
         anchors.leftMargin: activeTabNum * modelTab.width
         color: Style.bgRed
         z: 5
-        opacity: bottomPages.hideInactives ? 0.5 : 1
+        opacity: DimmLogic.hideInactives ? 0.5 : 1
 
         Behavior on anchors.leftMargin {
             PropertyAnimation {}

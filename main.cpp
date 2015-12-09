@@ -1,8 +1,10 @@
 #include <QGuiApplication>
-#include <QQmlApplicationEngine>
+#include <QQuickView>
 #include <QQmlContext>
-
+#include <QFontDatabase>
 #include <QQuickItem>
+
+#include <QDebug>
 
 #include "keyboard.h"
 
@@ -10,16 +12,22 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    QQmlApplicationEngine engine;
+    QFontDatabase database;
+    qDebug() << "Re: " << database.addApplicationFont(":/nevis.ttf");
+    qDebug() << "Re: " << database.addApplicationFont(":/Roboto-Regular.ttf");
+
+    QQuickView view;
 
     Keyboard keyboard;
-    engine.rootContext()->setContextProperty("keyboard", &keyboard);
+    view.rootContext()->setContextProperty("keyboard", &keyboard);
 
-    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    view.setSource(QUrl(QStringLiteral("qrc:/main.qml")));
 
-    QObject *root = engine.rootObjects()[0];
+    QObject *root = view.rootObject();//engine.rootObjects()[0];
     QObject *qmlKeyboard = root->findChild<QObject*>("keyboard");
     Keyboard::setQmlKeyboard(qobject_cast<QQuickItem*>(qmlKeyboard));
+
+    view.show();
 
     return app.exec();
 }

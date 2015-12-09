@@ -1,7 +1,7 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "qrc:/StyleSheet.js" as Style
 
-Rectangle {
+DimmableControl {
     id: mainRect
     color: Style.bgRed
     border.color: Style.accentColor
@@ -15,6 +15,9 @@ Rectangle {
     property int value: 0;
     property int snapInterval: 15
     property int snapThreshold: 10
+
+    isActive: _mouseArea.pressed
+    focus: _mouseArea.pressed
 
     onValueChanged: {
         if (value > total) {

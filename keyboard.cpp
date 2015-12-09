@@ -39,6 +39,8 @@ bool Keyboard::open()
 
 void Keyboard::emitKey(int key, QString keyText)
 {
+    //QObject *ding = QGuiApplication::focusObject();
+    //qDebug() << ding->objectName();
     QQuickItem* receiver = qobject_cast<QQuickItem*>(QGuiApplication::focusObject());
 
     if(!receiver) {

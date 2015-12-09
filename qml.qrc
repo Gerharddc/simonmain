@@ -9,6 +9,10 @@
         <file>BottomTab.qml</file>
         <file>Keyboard.qml</file>
         <file>BottomPages.qml</file>
+        <file>DimmLogic.js</file>
+        <file>KeyboardButton.qml</file>
+        <file>nevis.ttf</file>
+        <file>Roboto-Regular.ttf</file>
     </qresource>
     <qresource prefix="/Controls">
         <file>Button.qml</file>
@@ -16,5 +20,6 @@
         <file>ProgressBar.qml</file>
         <file>Slider.qml</file>
         <file>TextBox.qml</file>
+        <file>DimmableControl.qml</file>
     </qresource>
 </RCC>

@@ -1,8 +1,9 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "StyleSheet.js" as Style
 import "qrc:/Controls"
 
 Rectangle {
+    id: rootRect
     visible: true
     width: 480
     height: 800

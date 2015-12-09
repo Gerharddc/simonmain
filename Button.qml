@@ -1,7 +1,7 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "qrc:/StyleSheet.js" as Style
 
-Rectangle {
+DimmableControl {
     id: rectMain
     color: Style.bgRed
     border.color: Style.accentColor
@@ -19,6 +19,8 @@ Rectangle {
     signal pressed()
     signal canceled()
     signal released()
+
+    focus: _mouseArea.pressed
 
     Text {
         id: _text
@@ -44,11 +46,17 @@ Rectangle {
         onCanceled: {
             rectMain.canceled()
             rectMain.color = Style.bgRed
+            isActive = false
         }
 
         onReleased: {
             rectMain.released()
             rectMain.color = Style.bgRed
+            isActive = false
+        }
+
+        onPressAndHold: {
+            isActive = true
         }
     }
 }

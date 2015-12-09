@@ -1,5 +1,6 @@
-import QtQuick 2.5
+import QtQuick 2.3
 import "qrc:/Controls"
+import "DimmLogic.js" as DimmLogic
 
 Item {
     id: bottomPages
@@ -7,9 +8,6 @@ Item {
 
     property alias pageWidth: referencePage.width
     property int pageHeight: referencePage.height
-
-    property real inactiveOpacity: 0.2
-    property bool hideInactives: false
 
     Item {
         id: referencePage
@@ -37,10 +35,12 @@ Item {
             width: pageWidth
 
             TextBox {
+                id: text1
                 x: 100
                 y: 100
                 width: 300
                 height: 40
+                isDimmable: true
             }
 
             Button {
@@ -49,45 +49,30 @@ Item {
                 height: 70
                 text: "een"
                 anchors.centerIn: parent
-                opacity: (hideInactives && !isPressed) ? inactiveOpacity : 1
-
-                Binding {
-                    target: bottomPages
-                    property: "hideInactives"
-                    value: but.isPressed
-                }
+                isDimmable: true
             }
 
-            /*Button {
-                id: but2
-                anchors.left: but.left
-                anchors.right: but.right
-                anchors.top: but.bottom
-                anchors.topMargin: 5
-                width: but.width
-                height: but.height
-                text: "een2"
-                opacity: (hideInactives && !isPressed) ? inactiveOpacity : 1
-
-                Binding {
-                    target: bottomPages
-                    property: "hideInactives"
-                    value: but2.isPressed
-                }
-            }*/
-
-            TextBox {
+            DropTextBox {
+                id: text2
                 x: 100
                 y: 500
                 width: 300
                 height: 40
+                isDimmable: true
+                options: ListModel {
+                                ListElement { option: "Jan" }
+                                ListElement { option: "Koos" }
+                                ListElement { option: "Piet" }
+                            }
             }
 
             TextBox {
+                id: text3
                 x: 100
                 y: 450
                 width: 300
                 height: 40
+                isDimmable: true
             }
         }
 
@@ -98,11 +83,28 @@ Item {
             anchors.left: modelPage.right
             width: pageWidth
 
+            Slider {
+                x: 100
+                y: 100
+                width: 300
+                height: 40
+                isDimmable: true
+            }
+
             Button {
                 width: 300
                 height: 70
                 text: "twee"
                 anchors.centerIn: parent
+                isDimmable: true
+            }
+
+            ProgressBar {
+                x: 100
+                y: 450
+                width: 300
+                height: 40
+                isDimmable: true
             }
         }
 
