@@ -1,5 +1,5 @@
 import QtQuick 2.3
-import 'StyleSheet.js' as Style
+import 'qrc:/StyleSheet.js' as Style
 
 Rectangle {
     readonly property int maxRows: 10
@@ -51,6 +51,7 @@ Rectangle {
             onClicked: {
                 functionIds[functionId](_btn)
             }
+            imgSource: image
         }
     }
 
@@ -92,67 +93,67 @@ Rectangle {
 
     ListModel {
         id: numRowModel
-        ListElement { key: "1"; functionId: 0; widthMulti: 1 }
-        ListElement { key: "2" }
-        ListElement { key: "3" }
-        ListElement { key: "4" }
-        ListElement { key: "5" }
-        ListElement { key: "6" }
-        ListElement { key: "7" }
-        ListElement { key: "8" }
-        ListElement { key: "9" }
-        ListElement { key: "0" }
+        ListElement { key: "1"; functionId: 0; widthMulti: 1; image: "null" }
+        ListElement { key: "2"; image: "null"  }
+        ListElement { key: "3"; image: "null"  }
+        ListElement { key: "4"; image: "null"  }
+        ListElement { key: "5"; image: "null"  }
+        ListElement { key: "6"; image: "null"  }
+        ListElement { key: "7"; image: "null"  }
+        ListElement { key: "8"; image: "null"  }
+        ListElement { key: "9"; image: "null"  }
+        ListElement { key: "0"; image: "null"  }
     }
 
     ListModel {
         id: firstRowModel
-        ListElement { key: "q"; functionId: 0; widthMulti: 1 }
-        ListElement { key: "w" }
-        ListElement { key: "e" }
-        ListElement { key: "r" }
-        ListElement { key: "t" }
-        ListElement { key: "y" }
-        ListElement { key: "u" }
-        ListElement { key: "i" }
-        ListElement { key: "o" }
-        ListElement { key: "p" }
+        ListElement { key: "q"; functionId: 0; widthMulti: 1; image: "null" }
+        ListElement { key: "w"; image: "null"  }
+        ListElement { key: "e"; image: "null"  }
+        ListElement { key: "r"; image: "null"  }
+        ListElement { key: "t"; image: "null"  }
+        ListElement { key: "y"; image: "null"  }
+        ListElement { key: "u"; image: "null"  }
+        ListElement { key: "i"; image: "null"  }
+        ListElement { key: "o"; image: "null"  }
+        ListElement { key: "p"; image: "null"  }
     }
 
     ListModel {
         id: secondRowModel
-        ListElement { key: "a"; functionId: 0; widthMulti: 1 }
-        ListElement { key: "s" }
-        ListElement { key: "d" }
-        ListElement { key: "f" }
-        ListElement { key: "g" }
-        ListElement { key: "h" }
-        ListElement { key: "j" }
-        ListElement { key: "k" }
-        ListElement { key: "l" }
+        ListElement { key: "a"; functionId: 0; widthMulti: 1; image: "null" }
+        ListElement { key: "s"; image: "null"  }
+        ListElement { key: "d"; image: "null"  }
+        ListElement { key: "f"; image: "null"  }
+        ListElement { key: "g"; image: "null"  }
+        ListElement { key: "h"; image: "null"  }
+        ListElement { key: "j"; image: "null"  }
+        ListElement { key: "k"; image: "null"  }
+        ListElement { key: "l"; image: "null"  }
     }
 
     ListModel {
         id: thirdRowModel
-        ListElement { key: "⇑"; functionId: 1; widthMulti: 1 }
-        ListElement { key: "z" }
-        ListElement { key: "x" }
-        ListElement { key: "c" }
-        ListElement { key: "v" }
-        ListElement { key: "b" }
-        ListElement { key: "n" }
-        ListElement { key: "n" }
-        ListElement { key: "m" }
-        ListElement { key: "⇐"; functionId: 7 }
+        ListElement { key: "⇑"; functionId: 1; widthMulti: 1; image: "Shift Key.png" }
+        ListElement { key: "z"; image: "null"  }
+        ListElement { key: "x"; image: "null"  }
+        ListElement { key: "c"; image: "null"  }
+        ListElement { key: "v"; image: "null"  }
+        ListElement { key: "b"; image: "null"  }
+        ListElement { key: "n"; image: "null"  }
+        ListElement { key: "n"; image: "null"  }
+        ListElement { key: "m"; image: "null"  }
+        ListElement { key: "⇐"; functionId: 7; image: "Backspace Key.png"  }
     }
 
     ListModel {
         id: fourthRowModel
-        ListElement { key: "⬇"; functionId: 2; widthMulti: 1 }
-        ListElement { key: "."; widthMulti: 0.75 }
-        ListElement { key: "◀"; functionId: 5; widthMulti: 1 }
-        ListElement { key: "Space"; functionId: 3; widthMulti: 4.35 }
-        ListElement { key: "▶"; functionId: 6; widthMulti: 1 }
-        ListElement { key: "⏎"; functionId: 4; widthMulti: 1.75 }
+        ListElement { key: "⬇"; functionId: 2; widthMulti: 1; image: "Close Key.png" }
+        ListElement { key: "."; widthMulti: 0.75; image: "null"  }
+        ListElement { key: "◀"; functionId: 5; widthMulti: 1; image: "Left Key.png"  }
+        ListElement { key: "Space"; functionId: 3; widthMulti: 4.35; image: "null"  }
+        ListElement { key: "▶"; functionId: 6; widthMulti: 1; image: "Right Key.png"  }
+        ListElement { key: "⏎"; functionId: 4; widthMulti: 1.75; image: "Enter Key.png"  }
     }
 
     Component {

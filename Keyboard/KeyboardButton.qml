@@ -16,16 +16,26 @@ Rectangle {
 
     property alias text: _text.text
     property alias fontSize: _text.font.pixelSize
+    property string imgSource: ""
 
     signal clicked()
 
     Text {
         id: _text
         anchors.centerIn: parent
-        font.family: "Roboto"
+        font.family: "Nevis"
         color: Style.textColor
         text: 'Button'
-        font.pixelSize: 20
+        font.pixelSize: 25
+        visible: (imgSource == "null")
+    }
+
+    Image {
+        id: _img
+        anchors.fill: parent
+        source: (imgSource != "null") ? imgSource : ""
+        visible: (imgSource != "null")
+        fillMode: Image.PreserveAspectFit
     }
 
     MouseArea {

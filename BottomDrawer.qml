@@ -7,8 +7,9 @@ Item {
     z: 10
     clip: true
     
-    readonly property int iClosedHeight: 50;
-    readonly property int iExpandedHeight: (800 - iClosedHeight + 5);
+    readonly property int iClosedHeight: 70
+    readonly property int iExpandedHeight: (800 - iClosedHeight + 5)
+    readonly property int closeDuration: 500
 
     property bool isExpanded: false
 
@@ -16,7 +17,15 @@ Item {
     height: isExpanded ? iExpandedHeight : iClosedHeight
 
     Behavior on height {
-        PropertyAnimation {}
+        PropertyAnimation
+        {
+            duration: closeDuration
+        }
+    }
+
+    onIsExpandedChanged: {
+        if (!isExpanded)
+            keyboard.forceClose()
     }
 
     Rectangle {
@@ -44,10 +53,10 @@ Item {
         id: img_Expander
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.topMargin: 10
-        anchors.rightMargin: 10
-        width: 35
-        height: 35
+        anchors.topMargin: 15
+        anchors.rightMargin: 15
+        width: 50
+        height: 50
         source: "Images/Chevron Down-50.png"
         rotation: isExpanded ? (flipMouse.pressed ? 180 : 0) : (flipMouse.pressed ? 0 : 180)
 
@@ -57,7 +66,8 @@ Item {
 
         MouseArea {
             id: flipMouse
-            anchors.fill: parent
+            width: parent.width + 10
+            height: parent.width + 10
 
             onClicked: {
                 theBottomDrawer.isExpanded = !theBottomDrawer.isExpanded
@@ -132,7 +142,15 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: (iExpandedHeight - tabBar.height)
-        visible: isExpanded
+        visible: (opacity == 0) ? false : true //isExpanded
+        opacity: isExpanded ? 1 : 0
+
+        Behavior on opacity {
+            PropertyAnimation
+            {
+                duration: closeDuration
+            }
+        }
 
         pageNum: activeTabNum
 

@@ -13,17 +13,22 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
     QFontDatabase database;
-    qDebug() << "Re: " << database.addApplicationFont(":/nevis.ttf");
-    qDebug() << "Re: " << database.addApplicationFont(":/Roboto-Regular.ttf");
+    database.addApplicationFont(":/nevis.ttf");
 
     QQuickView view;
 
     Keyboard keyboard;
     view.rootContext()->setContextProperty("keyboard", &keyboard);
 
-    view.setSource(QUrl(QStringLiteral("qrc:/main.qml")));
+#ifdef ROTATE_SCREEN
+#define ROOTQML "qrc:/Rotated.qml"
+#else
+#define ROOTQML "qrc:/MainScreen.qml"
+#endif
 
-    QObject *root = view.rootObject();//engine.rootObjects()[0];
+    view.setSource(QUrl(QStringLiteral(ROOTQML)));
+
+    QObject *root = view.rootObject();
     QObject *qmlKeyboard = root->findChild<QObject*>("keyboard");
     Keyboard::setQmlKeyboard(qobject_cast<QQuickItem*>(qmlKeyboard));
 

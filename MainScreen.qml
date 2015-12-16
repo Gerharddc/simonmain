@@ -1,6 +1,7 @@
 import QtQuick 2.3
 import "StyleSheet.js" as Style
 import "qrc:/Controls"
+import "qrc:/Keyboard"
 
 Rectangle {
     id: rootRect

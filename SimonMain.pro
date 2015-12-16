@@ -17,3 +17,4 @@ include(deployment.pri)
 HEADERS += \
     keyboard.h
 
+CONFIG(ROTATE_SCREEN):DEFINES += ROTATE_SCREEN

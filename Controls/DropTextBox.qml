@@ -85,6 +85,7 @@ DimmableControl {
                     text: option;
                     font.pixelSize: fontSize
                     color: Style.textColor
+                    font.family: 'Nevis'
                 }
 
                 MouseArea {

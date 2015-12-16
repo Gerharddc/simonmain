@@ -1,25 +1,32 @@
 <RCC>
     <qresource prefix="/">
-        <file>main.qml</file>
+        <file>Rotated.qml</file>
         <file>TopDrawer.qml</file>
         <file>Images/Chevron Down-50.png</file>
         <file>MainScreen.qml</file>
         <file>BottomDrawer.qml</file>
         <file>StyleSheet.js</file>
         <file>BottomTab.qml</file>
-        <file>Keyboard.qml</file>
         <file>BottomPages.qml</file>
         <file>DimmLogic.js</file>
-        <file>KeyboardButton.qml</file>
         <file>nevis.ttf</file>
-        <file>Roboto-Regular.ttf</file>
     </qresource>
     <qresource prefix="/Controls">
-        <file>Button.qml</file>
-        <file>DropTextBox.qml</file>
-        <file>ProgressBar.qml</file>
-        <file>Slider.qml</file>
-        <file>TextBox.qml</file>
-        <file>DimmableControl.qml</file>
+        <file alias="Button.qml">Controls/Button.qml</file>
+        <file alias="DimmableControl.qml">Controls/DimmableControl.qml</file>
+        <file alias="DropTextBox.qml">Controls/DropTextBox.qml</file>
+        <file alias="ProgressBar.qml">Controls/ProgressBar.qml</file>
+        <file alias="Slider.qml">Controls/Slider.qml</file>
+        <file alias="TextBox.qml">Controls/TextBox.qml</file>
+    </qresource>
+    <qresource prefix="/Keyboard">
+        <file alias="KeyboardButton.qml">Keyboard/KeyboardButton.qml</file>
+        <file alias="Keyboard.qml">Keyboard/Keyboard.qml</file>
+        <file alias="Enter Key.png">Keyboard/Enter Key.png</file>
+        <file alias="Backspace Key.png">Keyboard/Backspace Key.png</file>
+        <file alias="Shift Key.png">Keyboard/Shift Key.png</file>
+        <file alias="Close Key.png">Keyboard/Close Key.png</file>
+        <file alias="Left Key.png">Keyboard/Left Key.png</file>
+        <file alias="Right Key.png">Keyboard/Right Key.png</file>
     </qresource>
 </RCC>

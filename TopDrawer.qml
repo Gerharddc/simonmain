@@ -7,7 +7,7 @@ Rectangle {
     clip: true
 
     readonly property int iExpandedHeight: 400
-    readonly property int iClosedHeight: 50
+    readonly property int iClosedHeight: 70
 
     width: 480 // Default
     height: isExpanded ? iExpandedHeight : iClosedHeight
@@ -15,7 +15,7 @@ Rectangle {
     property bool isExpanded: false
 
     Behavior on height {
-        PropertyAnimation {}
+        PropertyAnimation { duration: 400; }
     }
 
     Rectangle {
@@ -30,10 +30,10 @@ Rectangle {
         id: img_Expander
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.bottomMargin: 10
-        anchors.rightMargin: 10
-        width: 35
-        height: 35
+        anchors.bottomMargin: 15
+        anchors.rightMargin: 15
+        width: 50
+        height: 50
         source: "Images/Chevron Down-50.png"
         rotation: isExpanded ? (flipMouse.pressed ? 0 : 180) : (flipMouse.pressed ? 180 : 0)
 
@@ -43,7 +43,9 @@ Rectangle {
 
         MouseArea {
             id: flipMouse
-            anchors.fill: parent
+            anchors.centerIn: parent
+            width: parent.width + 10
+            height: parent.width + 10
 
             onClicked: {
                 theTopDrawer.isExpanded = !theTopDrawer.isExpanded

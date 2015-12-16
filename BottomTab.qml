@@ -17,6 +17,7 @@ Rectangle {
         anchors.centerIn: parent
         text: 'Model'
         font.family: 'Nevis'
+        font.pixelSize: 20
     }
 
     MouseArea {

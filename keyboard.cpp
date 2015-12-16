@@ -171,7 +171,11 @@ void Keyboard::forceClose()
     qDebug() << "Requested force close";
     #endif
 
-    qobject_cast<QQuickItem*>(QGuiApplication::focusObject())->setFocus(false); // Working directly with the focusedItem does not work for some reason
+    // Working directly with the focusedItem does not work for some reason
+    QQuickItem* focusee = qobject_cast<QQuickItem*>(QGuiApplication::focusObject());
+    if (focusee)
+        focusee->setFocus(false);
+
     setOpen(false); // This is jsut redundancy as the previous statement should cause it anyway if the textbox is set uo correctly
 
     m_uiOffset = 0;
