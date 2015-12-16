@@ -7,7 +7,7 @@ DimmableControl {
     border.color: Style.accentColor
     border.width: 2
 
-    property int fontSize: 16
+    property int fontSize: 20
     property alias text: _textInput.text
     property bool isExpanded: false
     property int iExpandedHeight: 150
@@ -16,19 +16,35 @@ DimmableControl {
 
     // Default
     width: 200
-    height: fontSize + 20
+    height: fontSize + 30
 
     property bool buttonActive: false
     isActive: _textInput.focus || isExpanded || buttonActive
     focus: flipMouse.pressed || isExpanded
 
+    onIsActiveChanged: {
+        if (!isActive)
+            isExpanded = false
+    }
+
+    MouseArea {
+        anchors.left: parent.left
+        anchors.right: rightRect.left
+        anchors.bottom: parent.bottom
+        anchors.top: parent.top
+        z: 10
+
+        onClicked: {
+            _textInput.focus = true
+        }
+    }
+
     TextInput {
         id: _textInput
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: parent.width - rightRect.width - 20
-        anchors.margins: 10
+        anchors.verticalCenter: parent.verticalCenter
+        x: 15
+        width: parent.width - rightRect.width - 30
+        anchors.margins: 15
         font.family: 'Nevis'
         color: Style.textColor
         font.pixelSize: fontSize

@@ -9,7 +9,7 @@ DimmableControl {
 
     // Default
     width: 100
-    height: 50
+    height: 60
 
     property alias text: _text.text
     property alias fontSize: _text.font.pixelSize
@@ -28,6 +28,7 @@ DimmableControl {
         font.family: 'Nevis'
         color: Style.textColor
         text: 'Button'
+        font.pixelSize: 20
     }
 
     MouseArea {

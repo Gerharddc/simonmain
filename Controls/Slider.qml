@@ -9,7 +9,7 @@ DimmableControl {
 
     // Default
     width: 100
-    height: 50
+    height: 60
 
     property int total: 360;
     property int value: 0;
@@ -75,6 +75,7 @@ DimmableControl {
         text: value + '/' + total
         font.family: 'Nevis'
         anchors.centerIn: parent
+        font.pixelSize: 20
     }
 }
 

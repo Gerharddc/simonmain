@@ -12,7 +12,7 @@ DimmableControl {
 
     // Default
     width: 200
-    height: fontSize + 20
+    height: fontSize + 30
 
     isActive: _textInput.focus
 
@@ -24,10 +24,11 @@ DimmableControl {
 
         TextInput {
             id: _textInput
-            anchors.fill: parent
-            anchors.margins: 10
+            width: parent.width - 30
+            anchors.verticalCenter: parent.verticalCenter
+            x: 15
             font.family: 'Nevis'
-            font.pixelSize: 16
+            font.pixelSize: 20
             color: Style.textColor
             clip: true
 

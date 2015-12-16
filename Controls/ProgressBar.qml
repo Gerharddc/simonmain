@@ -9,7 +9,7 @@ DimmableControl {
 
     // Default
     width: 100
-    height: 50
+    height: 60
 
     property real total: 100;
     property real value: 50;
@@ -45,6 +45,7 @@ DimmableControl {
         text: (value / total * 100) + '%'
         font.family: 'Nevis'
         anchors.centerIn: parent
+        font.pixelSize: 20
     }
 }
 

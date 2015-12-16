@@ -34,45 +34,38 @@ Item {
             anchors.left: parent.left
             width: pageWidth
 
-            TextBox {
-                id: text1
-                x: 100
-                y: 100
-                width: 300
-                height: 40
-                isDimmable: true
-            }
+            Flickable {
+                anchors.fill: parent
+                contentWidth: width
+                contentHeight: height + 100
+                clip: true
 
-            Button {
-                id: but
-                width: 300
-                height: 70
-                text: "een"
-                anchors.centerIn: parent
-                isDimmable: true
-            }
+                TextBox {
+                    x: 100
+                    y: 100
+                    width: 200
+                    isDimmable: true
+                }
 
-            DropTextBox {
-                id: text2
-                x: 100
-                y: 500
-                width: 300
-                height: 40
-                isDimmable: true
-                options: ListModel {
-                                ListElement { option: "Jan" }
-                                ListElement { option: "Koos" }
-                                ListElement { option: "Piet" }
-                            }
-            }
+                Button {
+                    width: 200
+                    text: "een"
+                    x: 100
+                    y: 200
+                    isDimmable: true
+                }
 
-            TextBox {
-                id: text3
-                x: 100
-                y: 450
-                width: 300
-                height: 40
-                isDimmable: true
+                DropTextBox {
+                    x: 100
+                    y: 300
+                    width: 250
+                    isDimmable: true
+                    options: ListModel {
+                                    ListElement { option: "Jan" }
+                                    ListElement { option: "Koos" }
+                                    ListElement { option: "Piet" }
+                                }
+                }
             }
         }
 
@@ -87,13 +80,11 @@ Item {
                 x: 100
                 y: 100
                 width: 300
-                height: 40
                 isDimmable: true
             }
 
             Button {
                 width: 300
-                height: 70
                 text: "twee"
                 anchors.centerIn: parent
                 isDimmable: true
@@ -103,7 +94,6 @@ Item {
                 x: 100
                 y: 450
                 width: 300
-                height: 40
                 isDimmable: true
             }
         }
@@ -117,7 +107,6 @@ Item {
 
             Button {
                 width: 300
-                height: 70
                 text: "drie"
                 anchors.centerIn: parent
             }
