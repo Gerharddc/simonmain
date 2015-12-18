@@ -37,7 +37,8 @@ Item {
             Flickable {
                 anchors.fill: parent
                 contentWidth: width
-                contentHeight: height + 100
+                //contentHeight: height + 100
+                contentHeight: childrenRect.height
                 clip: true
 
                 TextBox {
@@ -61,9 +62,11 @@ Item {
                     width: 250
                     isDimmable: true
                     options: ListModel {
-                                    ListElement { option: "Jan" }
-                                    ListElement { option: "Koos" }
-                                    ListElement { option: "Piet" }
+                                    ListElement { option: "Een" }
+                                    ListElement { option: "Twee" }
+                                    ListElement { option: "Drie" }
+                                    ListElement { option: "Vier" }
+                                    ListElement { option: "Vyf" }
                                 }
                 }
             }

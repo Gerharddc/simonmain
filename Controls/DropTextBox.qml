@@ -8,12 +8,14 @@ DimmableControl {
     border.color: Style.accentColor
     border.width: 2
 
+    property alias options: optionListView.model
+
     property int fontSize: 20
     property alias text: _textInput.text
     property bool isExpanded: false
-    property int iExpandedHeight: 150
-
-    property alias options: optionListView.model
+    property int visibleCount: 4
+    property int heightExtra: 15
+    property int iExpandedHeight:  visibleCount * (fontSize + heightExtra) + rightRect.height + 10
 
     // Default
     width: 200
@@ -23,15 +25,15 @@ DimmableControl {
     isActive: _textInput.focus || isExpanded || buttonActive
     focus: flipMouse.pressed || isExpanded
 
-    // We
-    function forceInactive(activeObject) {
+    // We need to check if another item becomes active because if this object is expanded it
+    // will still think that it is active even if another object has become active
+    function checkInactive(activeObject) {
         if (activeObject != dropper)
             isExpanded = false
     }
 
     Component.onCompleted: {
-        // TODO: connect signal om te check vi close van menu
-        DimmLogic.registerFocusHandler(dropper.forceInactive)
+        DimmLogic.registerFocusHandler(dropper.checkInactive)
     }
 
     MouseArea {
@@ -87,11 +89,11 @@ DimmableControl {
 
         ListModel {
             id: optionModel
-            ListElement { option: "Alice" }
-            ListElement { option: "Bob" }
-            ListElement { option: "Jane" }
-            ListElement { option: "Harry" }
-            ListElement { option: "Wendy" }
+            ListElement { option: "One" }
+            ListElement { option: "Two" }
+            ListElement { option: "Three" }
+            ListElement { option: "Four" }
+            ListElement { option: "Five" }
         }
 
         Component {
@@ -99,12 +101,13 @@ DimmableControl {
 
             Rectangle {
                 id: optionRect
-                height: fontSize + 8
+                height: fontSize + heightExtra
                 width: parent.width
                 color: 'transparent'
 
                 Text {
-                    anchors.fill: parent
+                    anchors.centerIn: parent
+                    width: parent.width - 15
                     text: option;
                     font.pixelSize: fontSize
                     color: Style.textColor
