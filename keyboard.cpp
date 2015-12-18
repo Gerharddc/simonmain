@@ -16,9 +16,14 @@ Keyboard *Keyboard::singleton = NULL;
 int Keyboard::m_uiOffset = 0;
 QQuickItem *Keyboard::qmlKeyboard;
 QQuickItem *Keyboard::focusedItem = NULL;
+bool Keyboard::m_shifted = false;
 
 Keyboard::Keyboard(QObject *parent) : QObject(parent)
 {
+    // Any previous class should be deleted because this is a singleton
+    if (singleton != NULL)
+        delete singleton;
+
     singleton = this;
 }
 
@@ -32,6 +37,16 @@ void Keyboard::setOpen(bool a)
     }
 }
 
+void Keyboard::setShifted(bool a)
+{
+    if (a != m_shifted) {
+        m_shifted = a;
+
+        if (singleton != NULL)
+            emit singleton->shiftedChanged();
+    }
+}
+
 bool Keyboard::open()
 {
     return m_open;
@@ -39,8 +54,6 @@ bool Keyboard::open()
 
 void Keyboard::emitKey(int key, QString keyText)
 {
-    //QObject *ding = QGuiApplication::focusObject();
-    //qDebug() << ding->objectName();
     QQuickItem* receiver = qobject_cast<QQuickItem*>(QGuiApplication::focusObject());
 
     if(!receiver) {
@@ -55,6 +68,8 @@ void Keyboard::emitKey(int key, QString keyText)
     QKeyEvent* releaseEvent = new QKeyEvent(QEvent::KeyRelease, key, Qt::NoModifier);
     QCoreApplication::sendEvent(receiver, pressEvent);
     QCoreApplication::sendEvent(receiver, releaseEvent);
+
+    setShifted(false);
 }
 
 void Keyboard::pressKey(QString c)
@@ -109,6 +124,15 @@ void Keyboard::pressBackspace()
     #endif
 
     emitKey(Qt::Key_Backspace, " "); //With " " the word Space is entered
+}
+
+void Keyboard::pressShift()
+{
+#ifdef VERBOS_KEYBOARD
+    qDebug() << "Pressing shift";
+#endif
+
+    setShifted(!shifted());
 }
 
 void Keyboard::requestOpen(QQuickItem *item)

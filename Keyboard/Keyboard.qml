@@ -7,7 +7,6 @@ Rectangle {
     readonly property int keySpacing: 3
     readonly property int buttonWidth: ((keysColumn.width) / maxRows) - keySpacing
     readonly property int buttonHeight: ((keysColumn.height) / columnCount) - keySpacing
-    property bool shifted: false
 
     z: 100
     width: 480 //default
@@ -44,7 +43,7 @@ Rectangle {
 
         KeyboardButton {
             id: _btn
-            text: shifted ? key.toUpperCase() : key
+            text: keyboard.shifted ? key.toUpperCase() : key
             width: widthMulti ? buttonWidth * widthMulti : buttonWidth
             height: buttonHeight
             fontSize: 20
@@ -62,7 +61,7 @@ Rectangle {
     }
 
     function shiftPressed(btn) {
-        shifted = !shifted
+        keyboard.pressShift()
     }
 
     function hidePressed(btn) {

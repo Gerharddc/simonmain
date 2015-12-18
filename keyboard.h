@@ -16,6 +16,7 @@ private:
     static QQuickItem *qmlKeyboard;
     const static int m_keyboardHeight = 350;
     static QQuickItem *focusedItem;
+    static bool m_shifted;
 
 public:
     explicit Keyboard(QObject *parent = 0);
@@ -26,6 +27,7 @@ public:
     Q_INVOKABLE static void pressEnter();
     Q_INVOKABLE static void pressSpace();
     Q_INVOKABLE static void pressBackspace();
+    Q_INVOKABLE static void pressShift();
 
     Q_INVOKABLE static void requestOpen(QQuickItem *item);
     Q_INVOKABLE static void requestClose(QQuickItem *item);
@@ -43,10 +45,15 @@ public:
     Q_PROPERTY(int uiOffset READ uiOffset NOTIFY uiOffsetChanged)
     static int uiOffset() { return m_uiOffset; }
 
+    Q_PROPERTY(bool shifted READ shifted WRITE setShifted NOTIFY shiftedChanged)
+    static bool shifted() { return m_shifted; }
+    static void setShifted(bool a);
+
 signals:
    void openChanged();
    void keyboardHeightChanged();
    void uiOffsetChanged();
+   void shiftedChanged();
 
 public slots:
 };

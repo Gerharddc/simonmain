@@ -8,11 +8,13 @@ var bindable = Qt.createQmlObject(
             "import QtQuick 2.3\n" +
             "QtObject {\n" +
             "   property bool dimmInactives: false\n" +
+            "   signal focusItemChanged(Item focusItem)" +
             "}", Qt.application, 'binadbleObject')
 
 function respondItemActive(item) {
     if (item.isActive) {
         activeItem = item
+        bindable.focusItemChanged(activeItem)
         bindable.dimmInactives = true
     }
     else {
@@ -21,5 +23,9 @@ function respondItemActive(item) {
             activeItem = null
         }
     }
+}
+
+function registerFocusHandler(handler) {
+    bindable.focusItemChanged.connect(handler)
 }
 

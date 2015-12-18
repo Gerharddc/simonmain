@@ -1,5 +1,6 @@
 import QtQuick 2.3
 import "qrc:/StyleSheet.js" as Style
+import "qrc:/DimmLogic.js" as DimmLogic
 
 DimmableControl {
     id: dropper
@@ -22,9 +23,15 @@ DimmableControl {
     isActive: _textInput.focus || isExpanded || buttonActive
     focus: flipMouse.pressed || isExpanded
 
-    onIsActiveChanged: {
-        if (!isActive)
+    // We
+    function forceInactive(activeObject) {
+        if (activeObject != dropper)
             isExpanded = false
+    }
+
+    Component.onCompleted: {
+        // TODO: connect signal om te check vi close van menu
+        DimmLogic.registerFocusHandler(dropper.forceInactive)
     }
 
     MouseArea {

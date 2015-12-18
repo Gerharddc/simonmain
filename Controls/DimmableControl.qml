@@ -8,6 +8,10 @@ Rectangle {
 
     opacity: (isDimmable && DimmLogic.bindable.dimmInactives && !isActive) ? DimmLogic.inactiveOpacity : 1
 
+    Behavior on opacity {
+        PropertyAnimation {}
+    }
+
     onIsActiveChanged: {
         DimmLogic.respondItemActive(dimmable)
     }
