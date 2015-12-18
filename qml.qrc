@@ -28,7 +28,10 @@
     </qresource>
     <qresource prefix="/Bottom">
         <file alias="BottomTab.qml">Bottom/BottomTab.qml</file>
-        <file alias="BottomPages.qml">Bottom/BottomPages.qml</file>
         <file alias="BottomDrawer.qml">Bottom/BottomDrawer.qml</file>
+        <file alias="BottomPage.qml">Bottom/BottomPage.qml</file>
+        <file alias="ModelPage.qml">Bottom/ModelPage.qml</file>
+        <file alias="SlicePage.qml">Bottom/SlicePage.qml</file>
+        <file alias="PrintPage.qml">Bottom/PrintPage.qml</file>
     </qresource>
 </RCC>

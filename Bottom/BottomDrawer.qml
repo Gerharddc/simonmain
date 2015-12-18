@@ -136,13 +136,13 @@ Item {
         }
     }
 
-    BottomPages {
+    Item {
         id: bottomPages
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: (iExpandedHeight - tabBar.height)
-        visible: (opacity == 0) ? false : true //isExpanded
+        visible: (opacity == 0) ? false : true
         opacity: isExpanded ? 1 : 0
 
         Behavior on opacity {
@@ -152,8 +152,37 @@ Item {
             }
         }
 
-        pageNum: activeTabNum
+        Item {
+            id: pageContainer
 
+            width: 3 * parent.width
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.leftMargin: -(activeTabNum * parent.width)
+
+            Behavior on anchors.leftMargin {
+                PropertyAnimation {}
+            }
+
+            ModelPage {
+                id: modelPage
+                width: bottomPages.width
+                anchors.left: parent.left
+            }
+
+            SlicePage {
+                id: slicePage
+                width: bottomPages.width
+                anchors.left: modelPage.right
+            }
+
+            PrintPage {
+                id: printPage
+                width: bottomPages.width
+                anchors.left: slicePage.right
+            }
+        }
     }
 }
 
