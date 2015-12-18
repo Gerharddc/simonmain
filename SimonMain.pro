@@ -4,7 +4,7 @@ QT += qml quick
 CONFIG += c++11
 
 SOURCES += main.cpp \
-    keyboard.cpp
+    Keyboard/keyboard.cpp
 
 RESOURCES += qml.qrc
 
@@ -15,6 +15,6 @@ QML_IMPORT_PATH =
 include(deployment.pri)
 
 HEADERS += \
-    keyboard.h
+    Keyboard/keyboard.h
 
 CONFIG(ROTATE_SCREEN):DEFINES += ROTATE_SCREEN

@@ -6,7 +6,7 @@
 
 #include <QDebug>
 
-#include "keyboard.h"
+#include "Keyboard/keyboard.h"
 
 int main(int argc, char *argv[])
 {

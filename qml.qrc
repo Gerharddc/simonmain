@@ -4,10 +4,7 @@
         <file>TopDrawer.qml</file>
         <file>Images/Chevron Down-50.png</file>
         <file>MainScreen.qml</file>
-        <file>BottomDrawer.qml</file>
         <file>StyleSheet.js</file>
-        <file>BottomTab.qml</file>
-        <file>BottomPages.qml</file>
         <file>DimmLogic.js</file>
         <file>nevis.ttf</file>
     </qresource>
@@ -28,5 +25,10 @@
         <file alias="Close Key.png">Keyboard/Close Key.png</file>
         <file alias="Left Key.png">Keyboard/Left Key.png</file>
         <file alias="Right Key.png">Keyboard/Right Key.png</file>
+    </qresource>
+    <qresource prefix="/Bottom">
+        <file alias="BottomTab.qml">Bottom/BottomTab.qml</file>
+        <file alias="BottomPages.qml">Bottom/BottomPages.qml</file>
+        <file alias="BottomDrawer.qml">Bottom/BottomDrawer.qml</file>
     </qresource>
 </RCC>

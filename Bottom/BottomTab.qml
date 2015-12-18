@@ -1,5 +1,5 @@
 import QtQuick 2.3
-import 'StyleSheet.js' as Style
+import 'qrc:/StyleSheet.js' as Style
 
 Rectangle {
     id: tabRect

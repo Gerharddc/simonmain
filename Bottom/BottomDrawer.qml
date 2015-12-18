@@ -1,6 +1,6 @@
 import QtQuick 2.3
-import "StyleSheet.js" as Style
-import "DimmLogic.js" as DimmLogic
+import "qrc:/StyleSheet.js" as Style
+import "qrc:/DimmLogic.js" as DimmLogic
 
 Item {
     id: theBottomDrawer
@@ -57,7 +57,7 @@ Item {
         anchors.rightMargin: 15
         width: 50
         height: 50
-        source: "Images/Chevron Down-50.png"
+        source: "qrc:/Images/Chevron Down-50.png"
         rotation: isExpanded ? (flipMouse.pressed ? 180 : 0) : (flipMouse.pressed ? 0 : 180)
 
         Behavior on rotation {

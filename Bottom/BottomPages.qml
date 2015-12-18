@@ -1,6 +1,6 @@
 import QtQuick 2.3
 import "qrc:/Controls"
-import "DimmLogic.js" as DimmLogic
+import "qrc:/DimmLogic.js" as DimmLogic
 
 Item {
     id: bottomPages
