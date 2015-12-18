@@ -126,6 +126,7 @@ DimmableControl {
                         optionRect.color = 'transparent'
                         _textInput.text = option
                         buttonActive = false
+                        dropper.isExpanded = false
                     }
 
                     onCanceled: {

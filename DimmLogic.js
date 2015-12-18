@@ -29,3 +29,11 @@ function registerFocusHandler(handler) {
     bindable.focusItemChanged.connect(handler)
 }
 
+// The object is merely a dummy object to steal the focus
+function forceNoActive(object) {
+    object.forceActiveFocus()
+    activeItem = null
+    bindable.dimmInactives = false
+    bindable.focusItemChanged(object)
+}
+

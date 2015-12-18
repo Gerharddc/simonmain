@@ -81,6 +81,10 @@ Item {
         activeTabNum = tabRef.tabNum
     }
 
+    onActiveTabNumChanged: {
+        DimmLogic.forceNoActive(theBottomDrawer)
+    }
+
     Row {
         id: tabBar
         z: 10

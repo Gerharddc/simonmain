@@ -22,6 +22,13 @@ DimmableControl {
 
     focus: _mouseArea.pressed
 
+    // For some reason this binding has to be made the long way in order to stick
+    Binding {
+        target: rectMain
+        property: "isActive"
+        value: rectMain.focus
+    }
+
     Text {
         id: _text
         anchors.centerIn: parent
@@ -53,11 +60,6 @@ DimmableControl {
         onReleased: {
             rectMain.released()
             rectMain.color = Style.bgRed
-            isActive = false
-        }
-
-        onPressAndHold: {
-            isActive = true
         }
     }
 }
