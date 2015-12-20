@@ -133,7 +133,7 @@ Item {
         anchors.leftMargin: activeTabNum * modelTab.width
         color: Style.bgRed
         z: 5
-        opacity: DimmLogic.hideInactives ? 0.5 : 1
+        //opacity: DimmLogic.hideInactives ? 0.5 : 1
 
         Behavior on anchors.leftMargin {
             PropertyAnimation {}

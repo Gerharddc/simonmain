@@ -13,6 +13,7 @@ Rectangle {
     color: Style.bgMain
 
     TopDrawer {
+        id: topDrawer
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
@@ -20,6 +21,7 @@ Rectangle {
     }
 
     BottomDrawer {
+        id: bottomDrawer
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -37,14 +39,13 @@ Rectangle {
         anchors.bottom: parent.bottom
     }
 
-    Rectangle {
-        color: 'pink'
-        width: 200
-        height: 200
-        anchors.centerIn: parent
-
-        Renderer {
-            anchors.fill: parent
+    Renderer {
+        width: parent.width
+        height: parent.height - bottomDrawer.iClosedHeight - topDrawer.iClosedHeight
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: bottomDrawer.isExpanded ? 0 : bottomDrawer.iClosedHeight
+        Behavior on anchors.bottomMargin {
+            PropertyAnimation {}
         }
     }
 }

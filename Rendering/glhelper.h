@@ -14,7 +14,6 @@
 #include <QFile>
 #include <QString>
 #include <QTextStream>
-#include <QResource>
 #else
 #include <fstream>
 #endif
@@ -24,8 +23,7 @@ namespace GLHelper
     std::string ReadEntireFile(const std::string &path)
     {
 #ifdef QT_APPLICATION
-        QResource r(":/" + QString::fromStdString(path));
-        QFile f(r.absoluteFilePath());
+        QFile f(":/" + QString::fromStdString(path));
         if (!f.open(QFile::ReadOnly))
             throw std::runtime_error("Could not open file: " + path);
 

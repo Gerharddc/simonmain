@@ -5,8 +5,6 @@
 #include <QQuickItem>
 
 #include "Keyboard/keyboard.h"
-//#include "Rendering/glhelper.h"
-//#include "Rendering/loadedgl.h"
 #include "Rendering/fborenderer.h"
 
 int main(int argc, char *argv[])

@@ -1,3 +1,5 @@
+#ifndef GLES
+
 #include "loadedgl.h"
 #include <QOpenGLFunctions>
 #include <QOpenGLContext>
@@ -152,3 +154,5 @@ void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, cons
     ThrowInactive();
     glFuncs->glUniformMatrix4fv(location, count, transpose, value);
 }
+
+#endif //GLES
