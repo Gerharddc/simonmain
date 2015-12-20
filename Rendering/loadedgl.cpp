@@ -5,12 +5,12 @@
 
 QOpenGLFunctions *glFuncs = NULL;
 
-void ActivateGL()
+void LoadedGL::ActivateGL()
 {
     glFuncs = QOpenGLContext::currentContext()->functions();
 }
 
-void DeactivateGL()
+void LoadedGL::DeactivateGL()
 {
     glFuncs = NULL;
 }
@@ -91,4 +91,64 @@ void glGetProgramInfoLog(GLuint program, GLsizei bufsize, GLsizei *length, char 
 {
     ThrowInactive();
     glFuncs->glGetProgramInfoLog(program, bufsize, length, infoLog);
+}
+
+void glDeleteBuffers(GLsizei n, const GLuint *buffers)
+{
+    ThrowInactive();
+    glFuncs->glDeleteBuffers(n, buffers);
+}
+
+GLint glGetAttribLocation(GLuint program, const char *name)
+{
+    ThrowInactive();
+    return glFuncs->glGetAttribLocation(program, name);
+}
+
+GLint glGetUniformLocation(GLuint program, const char *name)
+{
+    ThrowInactive();
+    return glFuncs->glGetUniformLocation(program, name);
+}
+
+void glGenBuffers(GLsizei n, GLuint *buffers)
+{
+    ThrowInactive();
+    glFuncs->glGenBuffers(n, buffers);
+}
+
+void glBindBuffer(GLenum target, GLuint buffer)
+{
+    ThrowInactive();
+    glFuncs->glBindBuffer(target, buffer);
+}
+
+void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage)
+{
+    ThrowInactive();
+    glFuncs->glBufferData(target, size, data, usage);
+}
+
+void glUseProgram(GLuint program)
+{
+    ThrowInactive();
+    glFuncs->glUseProgram(program);
+}
+
+void glEnableVertexAttribArray(GLuint index)
+{
+    ThrowInactive();
+    glFuncs->glEnableVertexAttribArray(index);
+}
+
+void glVertexAttribPointer(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *ptr)
+{
+    ThrowInactive();
+    glFuncs->glVertexAttribPointer(indx, size, type, normalized, stride, ptr);
+}
+
+void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)
+{
+    ThrowInactive();
+    glFuncs->glUniformMatrix4fv(location, count, transpose, value);
 }

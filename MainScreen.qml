@@ -3,6 +3,7 @@ import "StyleSheet.js" as Style
 import "qrc:/Controls"
 import "qrc:/Keyboard"
 import "qrc:/Bottom"
+import FBORenderer 1.0
 
 Rectangle {
     id: rootRect
@@ -34,6 +35,17 @@ Rectangle {
         objectName: "keyboard"
         anchors.left: parent.left
         anchors.bottom: parent.bottom
+    }
+
+    Rectangle {
+        color: 'pink'
+        width: 200
+        height: 200
+        anchors.centerIn: parent
+
+        Renderer {
+            anchors.fill: parent
+        }
     }
 }
 

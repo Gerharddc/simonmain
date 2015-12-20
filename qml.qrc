@@ -34,4 +34,8 @@
         <file alias="SlicePage.qml">Bottom/SlicePage.qml</file>
         <file alias="PrintPage.qml">Bottom/PrintPage.qml</file>
     </qresource>
+    <qresource prefix="/GL">
+        <file alias="cube.fsh">GL/cube.fsh</file>
+        <file alias="cube.vsh">GL/cube.vsh</file>
+    </qresource>
 </RCC>

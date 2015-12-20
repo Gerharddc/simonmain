@@ -5,12 +5,15 @@
 #include <QQuickItem>
 
 #include "Keyboard/keyboard.h"
-#include "Rendering/glhelper.h"
+//#include "Rendering/glhelper.h"
 //#include "Rendering/loadedgl.h"
+#include "Rendering/fborenderer.h"
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 
     QFontDatabase database;
     database.addApplicationFont(":/nevis.ttf");

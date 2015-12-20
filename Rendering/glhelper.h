@@ -3,33 +3,31 @@
 
 #ifdef GLES
 #include <GLES2/gl2.h>
-#else
-//#include <GL/gl.h>
-//#include <GL/glext.h>
+#elif defined(QT_APPLICATION)
 #include "loadedgl.h"
 #endif
 
 #include <exception>
+#include <string>
 
 #ifdef QT_APPLICATION
 #include <QFile>
 #include <QString>
 #include <QTextStream>
-#define String QString
+#include <QResource>
 #else
 #include <fstream>
-#include <string>
-#define String std::string
 #endif
 
 namespace GLHelper
 {
-    std::string ReadEntireFile(const String &path)
+    std::string ReadEntireFile(const std::string &path)
     {
 #ifdef QT_APPLICATION
-        QFile f(path);
+        QResource r(":/" + QString::fromStdString(path));
+        QFile f(r.absoluteFilePath());
         if (!f.open(QFile::ReadOnly))
-            throw std::runtime_error("Could not open file: " + path.toStdString());
+            throw std::runtime_error("Could not open file: " + path);
 
         QTextStream in(&f);
         return in.readAll().toStdString();
@@ -124,7 +122,7 @@ namespace GLHelper
         return program;
     }
 
-    GLuint CompileProgramFromFile(const String &vsFile, const String &fsFile)
+    GLuint CompileProgramFromFile(const std::string &vsFile, const std::string &fsFile)
     {
         std::string vs = ReadEntireFile(vsFile);
         std::string fs = ReadEntireFile(fsFile);
