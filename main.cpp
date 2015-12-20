@@ -4,9 +4,9 @@
 #include <QFontDatabase>
 #include <QQuickItem>
 
-#include <QDebug>
-
 #include "Keyboard/keyboard.h"
+#include "Rendering/glhelper.h"
+//#include "Rendering/loadedgl.h"
 
 int main(int argc, char *argv[])
 {

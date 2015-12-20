@@ -1,10 +1,11 @@
 TEMPLATE = app
 
-QT += qml quick
+QT += qml quick gui
 CONFIG += c++11
 
 SOURCES += main.cpp \
-    Keyboard/keyboard.cpp
+    Keyboard/keyboard.cpp \
+    Rendering/loadedgl.cpp
 
 RESOURCES += qml.qrc
 
@@ -15,6 +16,10 @@ QML_IMPORT_PATH =
 include(deployment.pri)
 
 HEADERS += \
-    Keyboard/keyboard.h
+    Keyboard/keyboard.h \
+    Rendering/glhelper.h \
+    Rendering/loadedgl.h
 
-CONFIG(ROTATE_SCREEN):DEFINES += ROTATE_SCREEN
+CONFIG(SIMON):DEFINES += ROTATE_SCREEN
+CONFIG(SIMON):DEFINES += GLES
+DEFINES += QT_APPLICATION
