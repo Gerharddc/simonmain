@@ -7,7 +7,7 @@
 #include "loadedgl.h"
 #endif
 
-#include <exception>
+#include <stdexcept>
 #include <string>
 
 #ifdef QT_APPLICATION
@@ -28,7 +28,9 @@ namespace GLHelper
             throw std::runtime_error("Could not open file: " + path);
 
         QTextStream in(&f);
-        return in.readAll().toStdString();
+        std::string alltext = in.readAll().toStdString();
+        f.close();
+        return alltext;
 #else
         std::ifstream in(path, std::ios::in);
 

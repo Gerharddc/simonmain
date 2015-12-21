@@ -11,20 +11,9 @@
 //#define VERBOS_KEYBOARD
 #endif
 
-bool Keyboard::m_open  = false;
-Keyboard *Keyboard::singleton = NULL;
-int Keyboard::m_uiOffset = 0;
-QQuickItem *Keyboard::qmlKeyboard;
-QQuickItem *Keyboard::focusedItem = NULL;
-bool Keyboard::m_shifted = false;
-
 Keyboard::Keyboard(QObject *parent) : QObject(parent)
 {
-    // Any previous class should be deleted because this is a singleton
-    if (singleton != NULL)
-        delete singleton;
 
-    singleton = this;
 }
 
 void Keyboard::setOpen(bool a)
@@ -32,8 +21,7 @@ void Keyboard::setOpen(bool a)
     if (a != m_open) {
         m_open = a;
 
-        if (singleton != NULL)
-            emit singleton->openChanged();
+        emit openChanged();
     }
 }
 
@@ -42,8 +30,7 @@ void Keyboard::setShifted(bool a)
     if (a != m_shifted) {
         m_shifted = a;
 
-        if (singleton != NULL)
-            emit singleton->shiftedChanged();
+        emit shiftedChanged();
     }
 }
 
@@ -166,7 +153,7 @@ void Keyboard::requestOpen(QQuickItem *item)
         if (newOffset != m_uiOffset)
         {
             m_uiOffset = newOffset;
-            emit singleton->uiOffsetChanged();
+            emit uiOffsetChanged();
         }
     }
 
@@ -185,7 +172,7 @@ void Keyboard::requestClose(QQuickItem *item)
         focusedItem = NULL;
 
         m_uiOffset = 0;
-        emit singleton->uiOffsetChanged();
+        emit uiOffsetChanged();
     }
 }
 
@@ -203,7 +190,7 @@ void Keyboard::forceClose()
     setOpen(false); // This is jsut redundancy as the previous statement should cause it anyway if the textbox is set uo correctly
 
     m_uiOffset = 0;
-    emit singleton->uiOffsetChanged();
+    emit uiOffsetChanged();
 }
 
 void Keyboard::setQmlKeyboard(QQuickItem *item)

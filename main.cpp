@@ -7,6 +7,8 @@
 #include "Keyboard/keyboard.h"
 #include "Rendering/fborenderer.h"
 
+#include "Rendering/structures.h"
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -31,7 +33,7 @@ int main(int argc, char *argv[])
 
     QObject *root = view.rootObject();
     QObject *qmlKeyboard = root->findChild<QObject*>("keyboard");
-    Keyboard::setQmlKeyboard(qobject_cast<QQuickItem*>(qmlKeyboard));
+    keyboard.setQmlKeyboard(qobject_cast<QQuickItem*>(qmlKeyboard));
 
     view.show();
 

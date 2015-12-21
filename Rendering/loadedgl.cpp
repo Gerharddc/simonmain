@@ -3,7 +3,7 @@
 #include "loadedgl.h"
 #include <QOpenGLFunctions>
 #include <QOpenGLContext>
-#include <exception>
+#include <stdexcept>
 
 QOpenGLFunctions *glFuncs = NULL;
 

@@ -7,7 +7,8 @@ SOURCES += main.cpp \
     Keyboard/keyboard.cpp \
     Rendering/loadedgl.cpp \
     Rendering/fborenderer.cpp \
-    Rendering/stlrenderer.cpp
+    Rendering/stlrenderer.cpp \
+    Rendering/stlimporting.cpp
 
 RESOURCES += qml.qrc
 
@@ -23,7 +24,10 @@ HEADERS += \
     Rendering/loadedgl.h \
     Rendering/fborenderer.h \
     Rendering/stlrenderer.h \
-    Rendering/mathhelper.h
+    Rendering/mathhelper.h \
+    Rendering/structures.h \
+    Misc/strings.h \
+    Rendering/stlimporting.h
 
 CONFIG(SIMON):DEFINES += ROTATE_SCREEN
 CONFIG(SIMON):DEFINES += GLES
