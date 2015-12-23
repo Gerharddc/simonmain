@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <ios>
+#include <math.h>
 
 #include "Misc/strings.h"
 
@@ -43,18 +44,114 @@ inline Mesh* ImportBinary(std::ifstream &is, int trigCount)
         ReadVec3(is, buf, (*mesh)[i].C);
 
         // Skip past the empty two bytes at the end
-        is.seekg(is.tellg() + 2);
+        is.seekg((std::size_t)is.tellg() + 2);
     }
 
     is.close();
+
+    return mesh;
 }
 
-inline Mesh* ImportASCII(const char* path)
-{
-    //std::ifstream is(path, std::ifstream::te)
+// This is a rough (hopefully safe) estimation of the amount of bytes that an ASCII facet
+// defination can take up and is used to calculate an overly large buffer
+const uint minSize = 100;
 
+void ReadVec3(std::string &line, std::size_t &lastPos, Vec3 &vec)
+{
+    veccomp* comps [3] = { &vec.x, &vec.y, &vec.z };
+
+    // This cuurently assumes the line is properly formatted (unsafe)
+    for (uint8_t i = 0; i < 3; i++)
+    {
+        lastPos = line.find(' ', lastPos);
+        std::size_t nextPos = line.find(' ', lastPos);
+        if (nextPos == std::string::npos)
+            nextPos = line.length() + 1;
+        (*comps[i]) = std::stof(line.substr(lastPos + 1, nextPos - 1));
+    }
+}
+
+inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
+{
+    Mesh* mesh;
+    std::ifstream is(path);
+
+    if (is)
+    {
+        // Allocate a temporary array
+        Triangle temp[fileSize / minSize];
+
+        std::string line;
+        int i = 0;
+
+        bool valid = true;
+
+        while (valid && std::getline(is, line))
+        {
+            if (line.find("facet") != std::string::npos)
+            {
+                std::size_t normalPos = line.find("normal");
+                if (normalPos == std::string::npos)
+                    valid = false;
+                else
+                {
+                    ReadVec3(line, normalPos, temp[i].Normal);
+
+                    // Read "outer loop"
+                    if (!std::getline(is, line))
+                    {
+                        valid = false;
+                        break;
+                    }
+
+                    Vec3* vecs [3] = { &temp[i].A, &temp[i].B, &temp[i].C };
+                    for (uint8_t j = 0; j < 3; j++)
+                    {
+                        if (std::getline(is, line))
+                        {
+                            std::size_t vertexPos = line.find("vertex");
+                            if (vertexPos == std::string::npos)
+                            {
+                                valid = false;
+                                break;
+                            }
+                            else
+                                ReadVec3(line, vertexPos, *(vecs[i]));
+                        }
+                        else
+                        {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    // Read "endloop"
+                    if (!std::getline(is, line))
+                    {
+                        valid = false;
+                        break;
+                    }
+
+                    i++;
+                }
+            }
+        }
+
+        if (valid)
+        {
+            mesh = new Mesh(i);
+            mesh->TrigsFromArray(temp);
+            return mesh;
+        }
+        else
+            throw std::runtime_error("The ASCII file is invalid");
+    }
+    else
+        throw std::runtime_error(format_string("Could not open ASCII stl file with path: %s", path));
 
     is.close();
+
+    return mesh;
 }
 
 Mesh* ImportSTL(const char *path)
@@ -64,7 +161,7 @@ Mesh* ImportSTL(const char *path)
     {
         // get length of file:
         is.seekg (0, is.end);
-        int length = is.tellg();
+        std::size_t length = is.tellg();
         //is.seekg (0, is.beg);
 
         // move past the header
@@ -81,7 +178,7 @@ Mesh* ImportSTL(const char *path)
         else
         {
             is.close();
-            return ImportASCII(path);
+            return ImportASCII(path, length);
         }
     }
     else

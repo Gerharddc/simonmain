@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <Misc/strings.h>
+#include <cstring>
 
 // The unit that defines the component of vectors
 typedef float veccomp;
@@ -59,12 +60,18 @@ public:
     }
 
     int TrigCount() { return trigCount; }
+
     Triangle &operator[](int i)
     {
         if (i >= trigCount)
             throw std::runtime_error(format_string("Index %d out of range for mesh.", i));
         else
             return trigs[i];
+    }
+
+    void TrigsFromArray(Triangle* arr)
+    {
+        std::memcpy(trigs, arr, trigCount);
     }
 };
 
