@@ -8,10 +8,18 @@
 #include "Rendering/fborenderer.h"
 
 #include "Rendering/structures.h"
+#include "Rendering/stlimporting.h"
+
+int Hisher(int hmmm)
+{
+    return hmmm;
+}
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    FBORenderer::SetSTLMesh(STLImporting::ImportSTL("bin.stl"));
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 

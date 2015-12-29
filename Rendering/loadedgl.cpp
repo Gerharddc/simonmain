@@ -3,7 +3,7 @@
 #include "loadedgl.h"
 #include <QOpenGLFunctions>
 #include <QOpenGLContext>
-#include <stdexcept>
+#include <iostream>
 
 QOpenGLFunctions *glFuncs = NULL;
 
@@ -20,7 +20,10 @@ void LoadedGL::DeactivateGL()
 inline void ThrowInactive()
 {
     if (glFuncs == NULL)
-        throw std::runtime_error("The gl context has not been activated.");
+    {
+        std::cout << "The GL context was not activated.";
+        LoadedGL::ActivateGL();
+    }
 }
 
 GLuint glCreateShader(GLenum shaderType)
@@ -153,6 +156,12 @@ void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, cons
 {
     ThrowInactive();
     glFuncs->glUniformMatrix4fv(location, count, transpose, value);
+}
+
+void glUniform4fv(GLint location, GLsizei count, const GLfloat *value)
+{
+    ThrowInactive();
+    glFuncs->glUniform4fv(location, count, value);
 }
 
 #endif //GLES

@@ -31,5 +31,6 @@ extern void glUseProgram(GLuint program);
 extern void glEnableVertexAttribArray(GLuint index);
 extern void glVertexAttribPointer(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *ptr);
 extern void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+extern void glUniform4fv(GLint location, GLsizei count, const GLfloat *value);
 
 #endif // LOADEDGL_H

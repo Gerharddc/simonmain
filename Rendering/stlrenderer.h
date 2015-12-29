@@ -7,10 +7,12 @@
 #include "loadedgl.h"
 #endif
 
+#include "structures.h"
+
 class STLRenderer
 {
 public:
-    STLRenderer();
+    STLRenderer(Mesh* _mesh);
     ~STLRenderer();
     void Draw();
     void UpdateWindowSize(GLsizei width, GLsizei height);
@@ -23,6 +25,7 @@ private:
 
     GLint mPositionAttribLocation;
     GLint mColorAttribLocation;
+    GLint mColorUniformLocation;
 
     GLint mModelUniformLocation;
     GLint mViewUniformLocation;
@@ -33,6 +36,7 @@ private:
     GLuint mIndexBuffer;
 
     int mDrawCount;
+    Mesh *mesh;
 };
 
 #endif // STLRENDERER_H

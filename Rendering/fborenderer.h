@@ -3,13 +3,18 @@
 
 #include <QQuickFramebufferObject>
 
-class STLRenderer;
+#include "stlrenderer.h"
 
 class FBORenderer : public QQuickFramebufferObject
 {
     Q_OBJECT
 public:
+    ~FBORenderer();
     Renderer *createRenderer() const;
+    static void SetSTLMesh(Mesh *mesh);
+
+private:
+    static Mesh *stlMesh;
 };
 
 #endif // FBORENDERER_H
