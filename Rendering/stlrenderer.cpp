@@ -53,75 +53,12 @@ void STLRenderer::Init()
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
     mColorUniformLocation = glGetUniformLocation(mProgram, "uColor");
 
-
-    //Mesh *mesh = STLImporting::ImportSTL("bin.stl");
-    //GLfloat vertices[] = mesh->trigs;
-
-    // Then set up the cube geometry.
-    /*GLfloat vertexPositions[] =
-    {
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f, 1.0f,
-        -1.0f, 1.0f, -1.0f,
-        -1.0f, 1.0f, 1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, 1.0f,
-        1.0f, 1.0f, -1.0f,
-        1.0f, 1.0f, 1.0f,
-    };*/
-
-    GLfloat Vertices[] = {
-            -1.0f, -1.0f, 0.0f,
-            1.0f, -1.0f, 0.0f,
-            0.0f,  1.0f, 0.0f,
-        };
-
     glGenBuffers(1, &mVertexPositionBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->vertexCount * 3, mesh->vertexFloats, GL_STATIC_DRAW);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
-
-    /*GLfloat vertexColors[] =
-        {
-            0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f,
-            0.0f, 1.0f, 0.0f,
-            0.0f, 1.0f, 1.0f,
-            1.0f, 0.0f, 0.0f,
-            1.0f, 0.0f, 1.0f,
-            1.0f, 1.0f, 0.0f,
-            1.0f, 1.0f, 1.0f,
-        };
-
-    glGenBuffers(1, &mVertexColorBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexColorBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexColors), vertexColors, GL_STATIC_DRAW);*/
-
-    /*short indices[] =
-        {
-            0, 1, 2, // -x
-            1, 3, 2,
-
-            4, 6, 5, // +x
-            5, 6, 7,
-
-            0, 5, 1, // -y
-            0, 4, 5,
-
-            2, 7, 6, // +y
-            2, 3, 7,
-
-            0, 6, 4, // -z
-            0, 2, 6,
-
-            1, 7, 3, // +z
-            1, 5, 7,
-        };*/
 
     glGenBuffers(1, &mIndexBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(short) * mesh->TrigCount() * 3, mesh->indices, GL_STATIC_DRAW);
 }
 
@@ -140,10 +77,6 @@ void STLRenderer::Draw()
     glEnableVertexAttribArray(mPositionAttribLocation);
     glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    /*glBindBuffer(GL_ARRAY_BUFFER, mVertexColorBuffer);
-    glEnableVertexAttribArray(mColorAttribLocation);
-    glVertexAttribPointer(mColorAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);*/
-
     MathHelper::Matrix4 modelMatrix = MathHelper::SimpleModelMatrix((float)mDrawCount / 50.0f);
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, &(modelMatrix.m[0][0]));
 
@@ -153,14 +86,9 @@ void STLRenderer::Draw()
     MathHelper::Matrix4 projectionMatrix = MathHelper::SimpleProjectionMatrix(float(mWindowWidth) / float(mWindowHeight));
     glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, &(projectionMatrix.m[0][0]));
 
-    //GLfloat color[4] = { 0.7f, 0.5f, 0.3f, 1.0f };
-    //glUniform4fv(mColorUniformLocation, 1, color);
-
-    // Draw 36 indices: six faces, two triangles per face, 3 indices per triangle
+    // All the triangles
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-    //glDrawElements(GL_TRIANGLES, (6 * 2) * 3, GL_UNSIGNED_SHORT, 0);
     glDrawElements(GL_TRIANGLES, mesh->TrigCount() * 3, GL_UNSIGNED_SHORT, 0);
-    //glDrawArrays(GL_TRIANGLES, 0, mesh->TrigCount() * 3);
 
     mDrawCount += 1;
 }

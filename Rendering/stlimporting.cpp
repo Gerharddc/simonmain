@@ -6,7 +6,6 @@
 #include <ios>
 #include <math.h>
 #include <unordered_map>
-#include <vector>
 
 #include "Misc/strings.h"
 
@@ -18,20 +17,17 @@
 // This needs to be thought through very well because this code has a large workload and needs to be of as high performance
 // as possible whilst using as little memory as possible.
 
-#include <QDebug>
-
 namespace STLImporting
 {
 
+// This function reads a float from a binary stream using a preallocated buffer
 float ReadFloat(std::ifstream &is, char* buf)
 {
     is.read(buf, 4);
-    //return *((float*) buf) / 1.0f;
-    float f = *((float*) buf) / 20.0f;
-    //qDebug() << f;
-    return f;
+    return *((float*) buf);
 }
 
+// This function reads a vertex into a float array
 void ReadVec3(std::ifstream &is, char* buf, float *arr)
 {
     arr[0] = ReadFloat(is, buf);
@@ -57,6 +53,8 @@ void ReadVec3(std::ifstream &is, char* buf, float *arr)
 
 struct HashVertex
 {
+    // This functor creates a hash value from a vertex
+    // NOTE: this has not been optimized for best spreading at all!!!
     std::size_t operator()(const float *arrPos) const
     {
         uint32_t a = *((uint32_t*)(&(arrPos[0])));
@@ -68,6 +66,7 @@ struct HashVertex
 
 struct CompVertex
 {
+    // This functor compares to vertices
     bool operator()(const float *arrPos1, const float *arrPos2) const
     {
         return (arrPos1[0] ==  arrPos2[0]) && (arrPos1[1] ==  arrPos2[1]) && (arrPos1[2] ==  arrPos2[2]);
@@ -81,31 +80,23 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
     MinVec.ToMax();
     MaxVec.ToMin();
 
-    // We allocate this buffer once and resuse it for all the floats
+    // We allocate this buffer once and resuse it for all the floats that need to be read
     char buf[4];
 
-    // Store a hashtable of the exisiting vertices to elimate duplicates
+    // Store a hashtable of the exisiting vertices to easily find indices of exisitng vertices
     std::unordered_map<float*, int, HashVertex, CompVertex> vecTable;
 
-    //uint16_t curIdx = 0;
-    //uint16_t saveIdx = 0;
+    uint16_t curIdx = 0; // The first open index in the vertex buffer
+    uint16_t saveIdx = 0; // The current index that need to be saved
 
     for (unsigned int i = 0; i < trigCount; i++)
     {
-        //qDebug() << "Normal:";
+        // Read the normal first
         ReadVec3(is, buf, &(mesh->normalFloats[i * 3]));
-        //qDebug() << "V1:";
-        ReadVec3(is, buf, &(mesh->vertexFloats[i * 9]));
-        //qDebug() << "V2:";
-        ReadVec3(is, buf, &(mesh->vertexFloats[i * 9 + 3]));
-        //qDebug() << "V3:";
-        ReadVec3(is, buf, &(mesh->vertexFloats[i * 9 + 6]));
 
-        for (unsigned short j = i * 3; j < (i * 3 + 3); j++)
-            mesh->indices[j] = j;
-
-        /*ReadVec3(is, buf, &(mesh->normalFloats[i * 3])); // Normal
-
+        // We then read the next 3 vertices to the current position in the vertex buffer. If they are all new then
+        // they will be able to stay in these position. If they already exisit though then they will be overidden.
+        // This should result in the least amount of memory operations.
         float* posV[3];
         posV[0] = &(mesh->vertexFloats[curIdx * 3]);
         posV[1] = &(mesh->vertexFloats[curIdx * 3 + 3]);
@@ -115,60 +106,39 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
         ReadVec3(is, buf, posV[1]);
         ReadVec3(is, buf, posV[2]);
 
-        // Determine which vertices are new and get the indices of the old ones
-        bool newV[3];
-        uint16_t indV[3];
+        uint8_t fillPos = 0;
         for (uint8_t j = 0; j < 3; j++)
         {
-            newV[j] = vecTable.count(posV[j]) == 0;
-            if (!newV[j])
-                indV[j] = vecTable[posV[j]];
-        }
-
-        for (uint8_t j = 0; j < 3; j++)
-        {
-            if (newV[j])
+            if (vecTable.count(posV[j]) == 0)
             {
-                vecTable.emplace(posV[j], curIdx);
+                // We need to move the floats from new vertices to the front of the float array. In ther words,
+                // we need to replace the read values with any exisiting vertices with those of new one.
+                if (j != fillPos)
+                    memcpy(posV[fillPos], posV[j], sizeof(float) * 3);
+                vecTable.emplace(posV[fillPos], curIdx);
                 mesh->indices[saveIdx] = curIdx;
-                //mesh->indices[i * 3 + j] = curIdx;
                 curIdx++;
+                fillPos++;
             }
             else
             {
-                mesh->indices[saveIdx] = indV[j];
-                //mesh->indices[i * 3 + j] = indV[j];
-                for (uint8_t k = j + 1; k < 3; k++)
-                {
-                    *(posV[k - 1]) = *(posV[k - 1]);
-                    posV[k] = posV[k - 1];
-                }
+                // For existing vertices we reuse the indices of the first occurences of said verties
+                mesh->indices[saveIdx] = vecTable[posV[j]];
             }
             saveIdx++;
         }
 
-        /*ReadVec3(is, buf, &(mesh->vertexFloats[i * 3 * 3]));     // A
-        ReadVec3(is, buf, &(mesh->vertexFloats[i * 3 * 3 + 3])); // B
-        ReadVec3(is, buf, &(mesh->vertexFloats[i * 3 * 3 + 6])); // C*/
-
-        /*ReadVec3(is, buf, (*mesh)[i].Normal);
-        ReadVec3(is, buf, (*mesh)[i].A);
-        ReadVec3(is, buf, (*mesh)[i].B);
-        ReadVec3(is, buf, (*mesh)[i].C);
-
-        SetVecMinMax(MinVec, MaxVec, (*mesh)[i]);*/
+        //SetVecMinMax(MinVec, MaxVec, (*mesh)[i]);
 
         // Skip past the empty two bytes at the end
         is.seekg((std::size_t)is.tellg() + 2);
     }
 
-    mesh->vertexCount = trigCount * 3;
-
     is.close();
 
     //mesh->MinVec = MinVec;
     //mesh->MaxVec = MaxVec;
-    //mesh->vertexCount = curIdx;
+    mesh->vertexCount = curIdx; // Save the total amount of unique vertices
 
     return mesh;
 }
