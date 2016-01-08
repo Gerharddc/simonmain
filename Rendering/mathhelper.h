@@ -1,6 +1,8 @@
 #ifndef MATHHELPER
 #define MATHHELPER
 
+#include <math.h>
+
 namespace MathHelper
 {
     struct Matrix4

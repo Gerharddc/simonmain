@@ -9,32 +9,15 @@
 
 #include <stdexcept>
 #include <string>
-
-#ifdef QT_APPLICATION
-#include <QFile>
-#include <QString>
-#include <QTextStream>
-#else
 #include <fstream>
-#endif
 
 namespace GLHelper
 {
     std::string ReadEntireFile(const std::string &path)
     {
-#ifdef QT_APPLICATION
-        QFile f(":/" + QString::fromStdString(path));
-        if (!f.open(QFile::ReadOnly))
-            throw std::runtime_error("Could not open file: " + path);
-
-        QTextStream in(&f);
-        std::string alltext = in.readAll().toStdString();
-        f.close();
-        return alltext;
-#else
         std::ifstream in(path, std::ios::in);
 
-        if (in)
+        if (!in.fail())
         {
             std::string contents;
             in.seekg(0, std::ios::end);
@@ -45,8 +28,7 @@ namespace GLHelper
             return contents;
         }
         else
-            throw(errno); // TODO: make this better
-#endif
+            throw "Could not open gl file"; // TODO: make this better
     }
 
     GLuint CompileShader(GLenum type, const std::string &source)

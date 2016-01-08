@@ -278,7 +278,7 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
 Mesh* ImportSTL(const char *path)
 {
     std::ifstream is(path, std::ifstream::binary);
-    if (is)
+    if (!is.fail())
     {
         // get length of file:
         is.seekg (0, is.end);

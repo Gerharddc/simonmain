@@ -29,8 +29,35 @@ HEADERS += \
     Misc/strings.h \
     Rendering/stlimporting.h
 
+CONFIG += c++11
+QMAKE_CXXFLAGS += -std=c++11
+
 CONFIG(SIMON):DEFINES += ROTATE_SCREEN
 CONFIG(SIMON):DEFINES += GLES
 DEFINES += QT_APPLICATION
+
+# - setup the correct location to install to and load from
+android {
+    # android platform
+    # From: http://community.kde.org/Necessitas/Assets
+    SAMPLES_INSTALL_PATH = /assets
+    DEFINES += GLES
+    DEFINES += ANDROID
+} else {
+    # other platforms
+    SAMPLES_INSTALL_PATH = $$OUT_PWD
+}
+
+SAMPLE_FILES = \
+    bin.stl \
+    GL/cube.vsh \
+    GL/cube.fsh
+
+# - setup the 'make install' step
+samples.path = $$SAMPLES_INSTALL_PATH
+samples.files += $$SAMPLE_FILES
+samples.depends += FORCE
+
+INSTALLS += samples
 
 DISTFILES +=
