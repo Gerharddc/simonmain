@@ -12,7 +12,6 @@
 
 #include <QFile>
 #include <QString>
-#include <QDebug>
 
 int main(int argc, char *argv[])
 {
@@ -33,13 +32,14 @@ int main(int argc, char *argv[])
             dfile.copy(name);
             QFile::setPermissions(name, QFile::ReadOwner);
         }
-        else
-            qDebug() << names[i];
     }
     delete[] names;
 #endif
 
-    FBORenderer::SetSTLMesh(STLImporting::ImportSTL("bin.stl"));
+    FBORenderer::SetSTLMesh(STLImporting::ImportSTL("asc.stl"));
+
+    Mesh *bin = STLImporting::ImportSTL("bin.stl");
+    Mesh *asc = STLImporting::ImportSTL("asc.stl");
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 

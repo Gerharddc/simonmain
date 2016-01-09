@@ -9,32 +9,6 @@
 // The unit that defines the component of vectors
 typedef float veccomp;
 
-class Vertex
-{
-public:
-    float *x;
-    float *y;
-    float *z;
-
-    Vertex(float *_x, float *_y, float *_z)
-    {
-        x = _x;
-        y = _y;
-        z = _z;
-    }
-
-    Vertex(float *arr)
-    {
-        x = arr;
-        y = &(arr[1]);
-        z = &(arr[2]);
-    }
-
-    float &X() { return *x; }
-    float &Y() { return *y; }
-    float &Z() { return *z; }
-};
-
 class Vector3
 {
 public:
@@ -53,6 +27,7 @@ public:
     }
 
     // Sets this to the minimum of this and other
+    // NOTE: unused
     void SetMin(Vector3& other)
     {
         if (other.x < x)
@@ -63,9 +38,11 @@ public:
             z = other.z;
     }
 
+    // NOTE: unused
     void SetMin(Vector3 *other) { SetMin(*other); }
 
     // Sets this to the minimum of this and other
+    // NOTE: unused
     void SetMax(Vector3& other)
     {
         if (other.x > x)
@@ -76,28 +53,11 @@ public:
             z = other.z;
     }
 
+    // NOTE: unused
     void SetMax(Vector3 *other) { SetMax(*other); }
 };
 
 typedef Vector3 Vec3;
-
-/*struct Triangle
-{
-    Vec3 *Normal;
-    Vec3 *A;
-    Vec3 *B;
-    Vec3 *C;
-};*/
-
-/*class Triangle
-{
-    std::size_t index;
-
-    Vec3 *Normal()
-    {
-        return
-    }
-};*/
 
 class Mesh
 {
@@ -133,6 +93,27 @@ public:
     }
 
     int TrigCount() { return trigCount; }
+
+    void Resize(std::size_t newSize)
+    {
+        // Recreate the arrays with the new size
+        trigCount = newSize;
+        float *vF = new float[vertexCount * 3];
+        short *i = new short[newSize * 3];
+        float *nF = new float[newSize * 3];
+
+        memcpy(vF, vertexFloats, sizeof(float) * vertexCount * 3);
+        memcpy(i, indices, sizeof(short) * newSize * 3);
+        memcpy(nF, normalFloats, sizeof(float) * newSize * 3);
+
+        delete vertexFloats;
+        delete indices;
+        delete normalFloats;
+
+        vertexFloats = vF;
+        indices = i;
+        normalFloats = nF;
+    }
 
     /*Triangle &operator[](int i)
     {

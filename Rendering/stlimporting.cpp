@@ -35,22 +35,6 @@ void ReadVec3(std::ifstream &is, char* buf, float *arr)
     arr[2] = ReadFloat(is, buf);
 }
 
-/*void ReadVert(std::ifstream &is, char* buf, Vertex &v)
-{
-    ReadVec3(is, buf, v.x);
-}*/
-
-/*inline void SetVecMinMax(Vec3 *minVec, Vec3 *maxVec, Triangle &trig)
-{
-    minVec.SetMin(trig.A);
-    minVec.SetMin(trig.B);
-    minVec.SetMin(trig.C);
-
-    maxVec.SetMax(trig.A);
-    maxVec.SetMax(trig.B);
-    maxVec.SetMax(trig.C);
-}*/
-
 struct HashVertex
 {
     // This functor creates a hash value from a vertex
@@ -102,6 +86,7 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
         posV[1] = &(mesh->vertexFloats[curIdx * 3 + 3]);
         posV[2] = &(mesh->vertexFloats[curIdx * 3 + 6]);
 
+        // Read all 3 the vectors in
         ReadVec3(is, buf, posV[0]);
         ReadVec3(is, buf, posV[1]);
         ReadVec3(is, buf, posV[2]);
@@ -119,6 +104,18 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
                 mesh->indices[saveIdx] = curIdx;
                 curIdx++;
                 fillPos++;
+
+                // Update the min and max values for the mesh with this new vertex
+                float* minComps[] = { &MinVec.x, &MinVec.y, &MinVec.z };
+                float* maxComps[] = { &MaxVec.x, &MaxVec.y, &MaxVec.z };
+                for (uint8_t k = 0; k < 3; k++)
+                {
+                    if (posV[j][k] < *(minComps[k]))
+                        *(minComps[k]) = posV[j][k] ;
+
+                    if (posV[j][k] > *(maxComps[k]))
+                        *(maxComps[k]) = posV[j][k] ;
+                }
             }
             else
             {
@@ -128,25 +125,21 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
             saveIdx++;
         }
 
-        //SetVecMinMax(MinVec, MaxVec, (*mesh)[i]);
-
         // Skip past the empty two bytes at the end
         is.seekg((std::size_t)is.tellg() + 2);
     }
 
     is.close();
 
-    //mesh->MinVec = MinVec;
-    //mesh->MaxVec = MaxVec;
+    mesh->MinVec = MinVec;
+    mesh->MaxVec = MaxVec;
     mesh->vertexCount = curIdx; // Save the total amount of unique vertices
 
     return mesh;
 }
 
-void ReadVec3(std::string &line, std::size_t &lastPos, Vec3 *vec)
+void ReadVec3(std::string &line, std::size_t &lastPos, float* arr)
 {
-    /*veccomp* comps [3] = { &(*vec.x), &(*vec.y), &(*vec.z) };
-
     // This cuurently assumes the line is properly formatted (unsafe)
     for (uint8_t i = 0; i < 3; i++)
     {
@@ -170,8 +163,8 @@ void ReadVec3(std::string &line, std::size_t &lastPos, Vec3 *vec)
         std::string sub = line.substr(lastPos + 1, nextPos - lastPos - 1);
         lastPos = nextPos;
         veccomp val = std::stof(sub);
-        (*comps[i]) = val;
-    }*/
+        arr[i] = val / 20.0f;
+    }
 }
 
 // This is a rough (hopefully safe) estimation of the amount of bytes that an ASCII facet
@@ -179,14 +172,14 @@ void ReadVec3(std::string &line, std::size_t &lastPos, Vec3 *vec)
 const uint minSize = 100;
 
 inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
-{
-    /*Mesh* mesh;
+{   
+    // Allocate a large enough mesh and shrink it later
+    Mesh* mesh = new Mesh(fileSize / minSize);
     std::ifstream is(path);
 
+    // Check for a valid file
     if (is)
     {
-        // Allocate a temporary array
-        Triangle temp[fileSize / minSize];
         Vec3 MinVec, MaxVec;
         MinVec.ToMax();
         MaxVec.ToMin();
@@ -194,6 +187,12 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
         std::string line;
         int i = 0;
         bool valid = true;
+
+        // Store a hashtable of the exisiting vertices to easily find indices of exisitng vertices
+        std::unordered_map<float*, int, HashVertex, CompVertex> vecTable;
+
+        uint16_t curIdx = 0; // The first open index in the vertex buffer
+        uint16_t saveIdx = 0; // The current index that need to be saved
 
         while (valid && std::getline(is, line))
         {
@@ -204,7 +203,7 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                     valid = false;
                 else
                 {
-                    ReadVec3(line, normalPos, temp[i].Normal());
+                    ReadVec3(line, normalPos, &(mesh->normalFloats[i * 3]));
 
                     // Read "outer loop"
                     if (!std::getline(is, line))
@@ -213,7 +212,14 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                         break;
                     }
 
-                    Vec3* vecs [3] = { &temp[i].A(), &temp[i].B(), &temp[i].C() };
+                    // We then read the next 3 vertices to the current position in the vertex buffer. If they are all new then
+                    // they will be able to stay in these position. If they already exisit though then they will be overidden.
+                    // This should result in the least amount of memory operations.
+                    float* posV[3];
+                    posV[0] = &(mesh->vertexFloats[curIdx * 3]);
+                    posV[1] = &(mesh->vertexFloats[curIdx * 3 + 3]);
+                    posV[2] = &(mesh->vertexFloats[curIdx * 3 + 6]);
+
                     for (uint8_t j = 0; j < 3; j++)
                     {
                         if (std::getline(is, line))
@@ -226,9 +232,7 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                             }
                             else
                             {
-                                ReadVec3(line, vertexPos, *(vecs[j]));
-                                MinVec.SetMin(*(vecs[j]));
-                                MaxVec.SetMax(*(vecs[j]));
+                                ReadVec3(line, vertexPos, posV[j]);
                             }
                         }
                         else
@@ -252,6 +256,41 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                         break;
                     }
 
+                    // Determine which vertices are new and store them
+                    uint8_t fillPos = 0;
+                    for (uint8_t j = 0; j < 3; j++)
+                    {
+                        if (vecTable.count(posV[j]) == 0)
+                        {
+                            // We need to move the floats from new vertices to the front of the float array. In ther words,
+                            // we need to replace the read values with any exisiting vertices with those of new one.
+                            if (j != fillPos)
+                                memcpy(posV[fillPos], posV[j], sizeof(float) * 3);
+                            vecTable.emplace(posV[fillPos], curIdx);
+                            mesh->indices[saveIdx] = curIdx;
+                            curIdx++;
+                            fillPos++;
+
+                            // Update the min and max values for the mesh with this new vertex
+                            float* minComps[] = { &MinVec.x, &MinVec.y, &MinVec.z };
+                            float* maxComps[] = { &MaxVec.x, &MaxVec.y, &MaxVec.z };
+                            for (uint8_t k = 0; k < 3; k++)
+                            {
+                                if (posV[j][k] < *(minComps[k]))
+                                    *(minComps[k]) = posV[j][k] ;
+
+                                if (posV[j][k] > *(maxComps[k]))
+                                    *(maxComps[k]) = posV[j][k] ;
+                            }
+                        }
+                        else
+                        {
+                            // For existing vertices we reuse the indices of the first occurences of said verties
+                            mesh->indices[saveIdx] = vecTable[posV[j]];
+                        }
+                        saveIdx++;
+                    }
+
                     i++;
                 }
             }
@@ -259,10 +298,12 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
 
         if (valid)
         {
-            mesh = new Mesh(i);
-            mesh->TrigsFromArray(temp);
+            //mesh = new Mesh(i);
+            //mesh->TrigsFromArray(temp);
             mesh->MinVec = MinVec;
             mesh->MaxVec = MaxVec;
+            mesh->vertexCount = curIdx;
+            mesh->Resize(i);
         }
         else
             throw std::runtime_error("The ASCII file is invalid");
@@ -272,7 +313,7 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
 
     is.close();
 
-    return mesh;*/
+    return mesh;
 }
 
 Mesh* ImportSTL(const char *path)
