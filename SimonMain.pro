@@ -29,6 +29,8 @@ HEADERS += \
     Misc/strings.h \
     Rendering/stlimporting.h
 
+INCLUDEPATH += $$PWD/glm
+
 CONFIG += c++11
 QMAKE_CXXFLAGS += -std=c++11
 
@@ -59,5 +61,3 @@ samples.files += $$SAMPLE_FILES
 samples.depends += FORCE
 
 INSTALLS += samples
-
-DISTFILES +=

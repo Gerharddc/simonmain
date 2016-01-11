@@ -36,10 +36,8 @@ int main(int argc, char *argv[])
     delete[] names;
 #endif
 
+    //FBORenderer::SetSTLMesh(STLImporting::ImportSTL("block.ast"));
     FBORenderer::SetSTLMesh(STLImporting::ImportSTL("asc.stl"));
-
-    Mesh *bin = STLImporting::ImportSTL("bin.stl");
-    Mesh *asc = STLImporting::ImportSTL("asc.stl");
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 

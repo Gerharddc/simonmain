@@ -24,16 +24,16 @@ private:
     GLsizei mWindowHeight = 0;
 
     GLint mPositionAttribLocation;
-    GLint mColorAttribLocation;
-    GLint mColorUniformLocation;
+    GLint mNormalAttribLocation;
 
     GLint mModelUniformLocation;
     GLint mViewUniformLocation;
     GLint mProjUniformLocation;
+    GLint mNormUniformLocation;
 
     GLuint mVertexPositionBuffer;
-    GLuint mVertexColorBuffer;
     GLuint mIndexBuffer;
+    GLuint mVertexNormalBuffer;
 
     int mDrawCount;
     Mesh *mesh;

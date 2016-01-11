@@ -76,7 +76,9 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
     for (unsigned int i = 0; i < trigCount; i++)
     {
         // Read the normal first
-        ReadVec3(is, buf, &(mesh->normalFloats[i * 3]));
+        //ReadVec3(is, buf, &(mesh->normalFloats[i * 3]));
+        // Read past the normal
+        is.seekg((std::size_t)is.tellg() + sizeof(float) * 3);
 
         // We then read the next 3 vertices to the current position in the vertex buffer. If they are all new then
         // they will be able to stay in these position. If they already exisit though then they will be overidden.
@@ -91,6 +93,9 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
         ReadVec3(is, buf, posV[1]);
         ReadVec3(is, buf, posV[2]);
 
+        // Cache a pointer to the current triangle for use by the vertex allocator
+        Triangle* trig = &(mesh->trigs[i]);
+
         uint8_t fillPos = 0;
         for (uint8_t j = 0; j < 3; j++)
         {
@@ -102,6 +107,12 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
                     memcpy(posV[fillPos], posV[j], sizeof(float) * 3);
                 vecTable.emplace(posV[fillPos], curIdx);
                 mesh->indices[saveIdx] = curIdx;
+
+                /*Vertex& vert = mesh->vertices[curIdx];
+                vert.idx = curIdx;
+                vert.trigs.push_back(trig);
+                mesh->trigs[i].vertices[j] = &vert;*/
+
                 curIdx++;
                 fillPos++;
 
@@ -120,7 +131,12 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
             else
             {
                 // For existing vertices we reuse the indices of the first occurences of said verties
-                mesh->indices[saveIdx] = vecTable[posV[j]];
+                auto pos = vecTable[posV[j]];
+                mesh->indices[saveIdx] = pos;
+
+                /*Vertex& vert = mesh->vertices[pos];
+                vert.trigs.push_back(trig);
+                mesh->trigs[i].vertices[j] = &vert;*/
             }
             saveIdx++;
         }
@@ -163,7 +179,7 @@ void ReadVec3(std::string &line, std::size_t &lastPos, float* arr)
         std::string sub = line.substr(lastPos + 1, nextPos - lastPos - 1);
         lastPos = nextPos;
         veccomp val = std::stof(sub);
-        arr[i] = val / 20.0f;
+        arr[i] = val;
     }
 }
 
@@ -185,7 +201,7 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
         MaxVec.ToMin();
 
         std::string line;
-        int i = 0;
+        std::size_t i = 0;
         bool valid = true;
 
         // Store a hashtable of the exisiting vertices to easily find indices of exisitng vertices
@@ -198,12 +214,16 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
         {
             if (line.find("facet") != std::string::npos)
             {
+                // Cache a pointer to the current triangle for use by the vertex allocator
+                Triangle *trig = &(mesh->trigs[i]);
+
                 std::size_t normalPos = line.find("normal");
                 if (normalPos == std::string::npos)
                     valid = false;
                 else
                 {
-                    ReadVec3(line, normalPos, &(mesh->normalFloats[i * 3]));
+                    // Ignore the nromal
+                    //ReadVec3(line, normalPos, &(mesh->normalFloats[i * 3]));
 
                     // Read "outer loop"
                     if (!std::getline(is, line))
@@ -268,6 +288,14 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                                 memcpy(posV[fillPos], posV[j], sizeof(float) * 3);
                             vecTable.emplace(posV[fillPos], curIdx);
                             mesh->indices[saveIdx] = curIdx;
+
+                            /*Vertex *vert = &(mesh->vertices[curIdx]);
+                            vert->idx = curIdx;
+                            vert->trigs.push_back(trig);
+                            trig->vertices[j] = vert;*/
+                            mesh->vertices[curIdx].trigIdxs.push_back(i);
+                            mesh->trigs[i].vertIdxs[j] = curIdx;
+
                             curIdx++;
                             fillPos++;
 
@@ -286,13 +314,22 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                         else
                         {
                             // For existing vertices we reuse the indices of the first occurences of said verties
-                            mesh->indices[saveIdx] = vecTable[posV[j]];
+                            auto pos = vecTable[posV[j]];
+                            mesh->indices[saveIdx] = pos;
+
+                            // For some reason trying to used pointers as cache here causes the compiler
+                            // to act very strange
+                            /*mesh->vertices[pos].trigs.push_back(&(mesh->trigs[i]));
+                            mesh->trigs[i].vertices[j] = &(mesh->vertices[pos]);*/
+                            mesh->vertices[pos].trigIdxs.push_back(i);
+                            mesh->trigs[i].vertIdxs[j] = pos;
+
                         }
                         saveIdx++;
-                    }
-
-                    i++;
+                    }                    
                 }
+
+                i++;
             }
         }
 
@@ -333,14 +370,59 @@ Mesh* ImportSTL(const char *path)
         is.read(trigCountChars, 4);
         uint trigCount = *((uint*) trigCountChars);
 
+        Mesh *mesh;
+
         // check if the length is correct for binary
         if (length == (84 + (trigCount * 50)))
-            return ImportBinary(is, trigCount);
+            mesh = ImportBinary(is, trigCount);
         else
         {
             is.close();
-            return ImportASCII(path, length);
+            mesh = ImportASCII(path, length);
         }
+
+        // Calculate the non-unit normals for each face first
+        glm::vec3 faceNorms[mesh->trigCount];
+        for (std::size_t i = 0; i < mesh->trigCount; i++)
+        {
+            glm::vec3 vecs[3];
+
+            for (uint8_t j = 0; j < 3; j++)
+            {
+                auto idx = (mesh->indices[i + j]) * 3;
+                vecs[j].x = mesh->vertexFloats[idx];
+                vecs[j].y = mesh->vertexFloats[idx + 1];
+                vecs[j].z = mesh->vertexFloats[idx + 2];
+            }
+
+            glm::vec3 e1 = vecs[0] - vecs[1];
+            glm::vec3 e2 = vecs[2] - vecs[1];
+            faceNorms[i] = glm::cross(e1, e2);
+        }
+
+        // Now we need to sum the face normals for each vertex with larger faces carying more weight
+        // due to their non-unit normals. We can then normalize the sum to get the vertex normals.
+        for (std::size_t i = 0; i < mesh->vertexCount; i++)
+        {
+            glm::vec3 norm(0.0f);
+
+            for (std::size_t j = 0; j < mesh->vertices[i].trigIdxs.size(); j++)
+            {
+                norm += faceNorms[mesh->vertices[i].trigIdxs[j]];
+            }
+
+            mesh->vertices[i].trigIdxs.shrink_to_fit();
+
+            if (norm != glm::vec3(0.0f))
+                norm = glm::normalize(norm);
+
+            std::size_t pos = i * 3;
+            mesh->normalFloats[pos]       = norm.x;
+            mesh->normalFloats[pos + 1]   = norm.y;
+            mesh->normalFloats[pos + 2]   = norm.z;
+        }
+
+        return mesh;
     }
     else
         throw std::runtime_error(format_string("Could not open stl file with path: %s", path));

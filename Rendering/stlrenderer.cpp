@@ -1,6 +1,9 @@
 #include "stlrenderer.h"
 
 #include <string>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "glhelper.h"
 #include "mathhelper.h"
@@ -25,10 +28,10 @@ STLRenderer::~STLRenderer()
         mVertexPositionBuffer = 0;
     }
 
-    if (mVertexColorBuffer != 0)
+    if (mVertexNormalBuffer != 0)
     {
-        glDeleteBuffers(1, &mVertexColorBuffer);
-        mVertexColorBuffer = 0;
+        glDeleteBuffers(1, &mVertexNormalBuffer);
+        mVertexNormalBuffer = 0;
     }
 
     if (mIndexBuffer != 0)
@@ -47,11 +50,11 @@ void STLRenderer::Init()
     // Set up the shader and its uniform/attribute locations.
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
     mPositionAttribLocation = glGetAttribLocation(mProgram, "aPosition");
-    mColorAttribLocation = glGetAttribLocation(mProgram, "aColor");
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
     mViewUniformLocation = glGetUniformLocation(mProgram, "uViewMatrix");
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
-    mColorUniformLocation = glGetUniformLocation(mProgram, "uColor");
+    mNormalAttribLocation = glGetAttribLocation(mProgram, "aNormal");
+    mNormUniformLocation = glGetUniformLocation(mProgram, "uNormMatrix");
 
     glGenBuffers(1, &mVertexPositionBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
@@ -60,6 +63,10 @@ void STLRenderer::Init()
     glGenBuffers(1, &mIndexBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(short) * mesh->TrigCount() * 3, mesh->indices, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &mVertexNormalBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, mVertexNormalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->vertexCount * 3, mesh->normalFloats, GL_STATIC_DRAW);
 }
 
 void STLRenderer::Draw()
@@ -77,14 +84,25 @@ void STLRenderer::Draw()
     glEnableVertexAttribArray(mPositionAttribLocation);
     glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    MathHelper::Matrix4 modelMatrix = MathHelper::SimpleModelMatrix((float)mDrawCount / 50.0f);
-    glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, &(modelMatrix.m[0][0]));
+    glBindBuffer(GL_ARRAY_BUFFER, mVertexNormalBuffer);
+    glEnableVertexAttribArray(mNormalAttribLocation);
+    glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    MathHelper::Matrix4 viewMatrix = MathHelper::SimpleViewMatrix();
-    glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, &(viewMatrix.m[0][0]));
+    glm::mat4 trans;
+    trans = glm::scale(trans, glm::vec3(2.0f, 2.0f, 2.0f));
+    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
+
+    glm::mat4 view = glm::lookAt(glm::vec3(100.0f, 100.0f, 100.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, glm::value_ptr(view));
 
     MathHelper::Matrix4 projectionMatrix = MathHelper::SimpleProjectionMatrix(float(mWindowWidth) / float(mWindowHeight));
     glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, &(projectionMatrix.m[0][0]));
+
+    glm::mat4 norm = view * trans;
+    norm = glm::inverse(norm);
+    norm = glm::transpose(norm);
+    glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE, glm::value_ptr(norm));
 
     // All the triangles
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
