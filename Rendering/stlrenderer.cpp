@@ -67,6 +67,9 @@ void STLRenderer::Init()
     glGenBuffers(1, &mVertexNormalBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mVertexNormalBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->vertexCount * 3, mesh->normalFloats, GL_STATIC_DRAW);
+
+    x = (mesh->MinVec.x + mesh->MaxVec.x) / 2;
+    y = (mesh->MinVec.y + mesh->MaxVec.y) / 2;
 }
 
 void STLRenderer::Draw()
@@ -89,11 +92,11 @@ void STLRenderer::Draw()
     glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glm::mat4 trans;
-    trans = glm::scale(trans, glm::vec3(2.0f, 2.0f, 2.0f));
-    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //trans = glm::scale(trans, glm::vec3(2.0f, 2.0f, 2.0f));
+    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
 
-    glm::mat4 view = glm::lookAt(glm::vec3(100.0f, 100.0f, 100.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 view = glm::lookAt(glm::vec3(x, y, 100.0f), glm::vec3(x, y, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, glm::value_ptr(view));
 
     MathHelper::Matrix4 projectionMatrix = MathHelper::SimpleProjectionMatrix(float(mWindowWidth) / float(mWindowHeight));

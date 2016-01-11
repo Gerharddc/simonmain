@@ -37,6 +37,9 @@ private:
 
     int mDrawCount;
     Mesh *mesh;
+
+    float x = 0;
+    float y = 0;
 };
 
 #endif // STLRENDERER_H

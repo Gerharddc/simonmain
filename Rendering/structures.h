@@ -64,17 +64,12 @@ struct Triangle;
 
 struct Vertex
 {
-    //short idx;
-    //std::vector<Triangle*> trigs;
     std::vector<std::size_t> trigIdxs;
 };
 
 struct Triangle
 {
-    //Vertex *vertices[3];
     std::size_t vertIdxs[3];
-    //bool cachedNormal = false;
-    //glm::vec3 normal;
 };
 
 struct Mesh
@@ -93,7 +88,6 @@ struct Mesh
 
     Mesh(int size)
     {
-        //trigs = new Triangle[size];
         trigCount = size;
         vertexFloats = new float[size * 3 * 3]; //TODO: maybe smaller
         indices = new short[size * 3];
@@ -104,7 +98,6 @@ struct Mesh
 
     ~Mesh()
     {
-        //delete[] trigs;
         delete[] vertexFloats;
         delete[] indices;
         delete[] normalFloats;
@@ -138,19 +131,6 @@ struct Mesh
         normalFloats = nF;
         trigs = nT;
     }
-
-    /*Triangle &operator[](int i)
-    {
-        if (i >= trigCount)
-            throw std::runtime_error(format_string("Index %d out of range for mesh.", i));
-        else
-            return trigs[i];
-    }*/
-
-    /*void TrigsFromArray(Triangle* arr)
-    {
-        std::memcpy(trigs, arr, trigCount);
-    }*/
 
     Vec3 Centre()
     {

@@ -7,6 +7,9 @@
 #include <math.h>
 #include <unordered_map>
 
+#include <QDebug>
+#include <QString>
+
 #include "Misc/strings.h"
 
 // NOTE: float has to be 32bit real number
@@ -289,10 +292,6 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                             vecTable.emplace(posV[fillPos], curIdx);
                             mesh->indices[saveIdx] = curIdx;
 
-                            /*Vertex *vert = &(mesh->vertices[curIdx]);
-                            vert->idx = curIdx;
-                            vert->trigs.push_back(trig);
-                            trig->vertices[j] = vert;*/
                             mesh->vertices[curIdx].trigIdxs.push_back(i);
                             mesh->trigs[i].vertIdxs[j] = curIdx;
 
@@ -317,10 +316,6 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
                             auto pos = vecTable[posV[j]];
                             mesh->indices[saveIdx] = pos;
 
-                            // For some reason trying to used pointers as cache here causes the compiler
-                            // to act very strange
-                            /*mesh->vertices[pos].trigs.push_back(&(mesh->trigs[i]));
-                            mesh->trigs[i].vertices[j] = &(mesh->vertices[pos]);*/
                             mesh->vertices[pos].trigIdxs.push_back(i);
                             mesh->trigs[i].vertIdxs[j] = pos;
 
@@ -335,8 +330,6 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
 
         if (valid)
         {
-            //mesh = new Mesh(i);
-            //mesh->TrigsFromArray(temp);
             mesh->MinVec = MinVec;
             mesh->MaxVec = MaxVec;
             mesh->vertexCount = curIdx;
@@ -389,14 +382,14 @@ Mesh* ImportSTL(const char *path)
 
             for (uint8_t j = 0; j < 3; j++)
             {
-                auto idx = (mesh->indices[i + j]) * 3;
+                auto idx = (mesh->indices[i * 3 + j]) * 3;
                 vecs[j].x = mesh->vertexFloats[idx];
                 vecs[j].y = mesh->vertexFloats[idx + 1];
                 vecs[j].z = mesh->vertexFloats[idx + 2];
             }
 
-            glm::vec3 e1 = vecs[0] - vecs[1];
-            glm::vec3 e2 = vecs[2] - vecs[1];
+            glm::vec3 e1 = vecs[1] - vecs[0];
+            glm::vec3 e2 = vecs[2] - vecs[0];
             faceNorms[i] = glm::cross(e1, e2);
         }
 

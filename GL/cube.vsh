@@ -12,14 +12,27 @@ varying vec3 vPosition;
 varying vec3 vNormal;
 varying vec3 lightPos;
 
-const vec4 lightPosBase = vec4(100.0, 100.0, 100.0, 0.0);
+const vec4 lightPosBase = vec4(25.0, 25.0, 100.0, 0.0);
 //const vec3 baseColor = vec3(1.0, 0.5, 0.25);
+const vec3 baseColor = vec3(1.0, 0.0, 0.0);
 
 void main()
 {
     vPosition = vec3(uViewMatrix * uModelMatrix * aPosition);
     vNormal = vec3(uNormMatrix * aNormal);
     lightPos = vec3(1.0 * lightPosBase);
+    //lightPos = vec3(uModelMatrix * lightPosBase);
+
+    /*vec3 vPosition = vec3(uViewMatrix * uModelMatrix * aPosition);
+    vec3 vNormal = vec3(uNormMatrix * aNormal);
+    vec3 lightPos = vec3(1.0 * lightPosBase);
+
+    float distance = length(lightPos - vPosition);
+    vec3 lightVector = normalize(lightPos - vPosition);
+    float diffuse = max(dot(vNormal, lightVector), 0.1);
+    diffuse += 0.15;
+
+    vColor = vec4(baseColor * diffuse, 1.0);*/
 
     gl_Position = uProjMatrix * uViewMatrix * uModelMatrix * aPosition;
 }
