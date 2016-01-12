@@ -7,9 +7,6 @@
 #include <math.h>
 #include <unordered_map>
 
-#include <QDebug>
-#include <QString>
-
 #include "Misc/strings.h"
 
 // NOTE: float has to be 32bit real number
@@ -96,9 +93,6 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
         ReadVec3(is, buf, posV[1]);
         ReadVec3(is, buf, posV[2]);
 
-        // Cache a pointer to the current triangle for use by the vertex allocator
-        Triangle* trig = &(mesh->trigs[i]);
-
         uint8_t fillPos = 0;
         for (uint8_t j = 0; j < 3; j++)
         {
@@ -111,10 +105,8 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
                 vecTable.emplace(posV[fillPos], curIdx);
                 mesh->indices[saveIdx] = curIdx;
 
-                /*Vertex& vert = mesh->vertices[curIdx];
-                vert.idx = curIdx;
-                vert.trigs.push_back(trig);
-                mesh->trigs[i].vertices[j] = &vert;*/
+                mesh->vertices[curIdx].trigIdxs.push_back(i);
+                mesh->trigs[i].vertIdxs[j] = curIdx;
 
                 curIdx++;
                 fillPos++;
@@ -137,9 +129,8 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
                 auto pos = vecTable[posV[j]];
                 mesh->indices[saveIdx] = pos;
 
-                /*Vertex& vert = mesh->vertices[pos];
-                vert.trigs.push_back(trig);
-                mesh->trigs[i].vertices[j] = &vert;*/
+                mesh->vertices[pos].trigIdxs.push_back(i);
+                mesh->trigs[i].vertIdxs[j] = pos;
             }
             saveIdx++;
         }
@@ -152,7 +143,7 @@ inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
 
     mesh->MinVec = MinVec;
     mesh->MaxVec = MaxVec;
-    mesh->vertexCount = curIdx; // Save the total amount of unique vertices
+    mesh->ShrinkVertices(curIdx); // Shrink the vertex storage to what is needed
 
     return mesh;
 }
@@ -217,16 +208,12 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
         {
             if (line.find("facet") != std::string::npos)
             {
-                // Cache a pointer to the current triangle for use by the vertex allocator
-                Triangle *trig = &(mesh->trigs[i]);
-
                 std::size_t normalPos = line.find("normal");
                 if (normalPos == std::string::npos)
                     valid = false;
                 else
                 {
-                    // Ignore the nromal
-                    //ReadVec3(line, normalPos, &(mesh->normalFloats[i * 3]));
+                    // Ignore the nromal as it will be calculated manually for safety reasons
 
                     // Read "outer loop"
                     if (!std::getline(is, line))
@@ -332,8 +319,8 @@ inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
         {
             mesh->MinVec = MinVec;
             mesh->MaxVec = MaxVec;
-            mesh->vertexCount = curIdx;
-            mesh->Resize(i);
+            mesh->ShrinkVertices(curIdx);
+            mesh->ShrinkTrigs(i);
         }
         else
             throw std::runtime_error("The ASCII file is invalid");

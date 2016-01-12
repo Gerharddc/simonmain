@@ -43,11 +43,16 @@ struct Triangle
     std::size_t vertIdxs[3];
 };
 
+// This is not a safe class and should be used carefully because it has almost
+// no defences against logical mistakes. This because it should only be used in high
+// performance and well tested areas of the program.
 class Mesh
 {
 private:
     float *vertFloats = nullptr;
     float *normFloats = nullptr;
+
+    std::size_t vertArrCount = 0;
 
 public:
     Vec3 MinVec;
@@ -61,46 +66,67 @@ public:
 
     std::size_t vertexCount = 0;
 
-    Mesh(int size)
+    Mesh(std::size_t size)
     {
         trigCount = size;
-        vertexFloats = new float[size * 3 * 3]; //TODO: maybe smaller
-        indices = new std::size_t[size * 3];
-        trigs = new Triangle[size];
-        vertices = new Vertex[size * 3]; // TODO: smaller
+
+        // Malloc is used to simply the shrinking of the arrays later on if needed
+        vertexFloats = (float*)malloc(sizeof(float) * size * 9); // This will need to be shrunk
+        indices = (std::size_t*)malloc(sizeof(std::size_t) * size * 3);
+        trigs = (Triangle*)malloc(sizeof(Triangle) * size);
+
+        // The arrays in triangles need to be initialized
+        for (std::size_t i = 0; i < size; i++)
+            trigs[i] = Triangle();
+
+        // The std::vectors in the vertices need to be initialized, we also need to keep track of how many there are as to be able to
+        // properly destruct them later on
+        vertices = (Vertex*)malloc(sizeof(Vertex) * size * 3);  // This will need to be shrunk
+        for (std::size_t i = 0; i < size * 3; i++)
+            vertices[i] = Vertex();
+        vertArrCount = size * 3;
     }
 
     ~Mesh()
     {
-        delete[] vertexFloats;
-        delete[] indices;
-        delete[] trigs;
-        delete[] vertices;
+        free(vertexFloats);
+        free(indices);
+        free(trigs);
         delete[] vertFloats;
         delete[] normFloats;
+
+        // Because they contains std::vectors, the vertices have to be destructed first
+        for (std::size_t i = 0; i < vertArrCount; i++)
+            vertices[i].~Vertex();
+        free(vertices);
     }
 
-    int TrigCount() { return trigCount; }
-
-    void Resize(std::size_t newSize)
+    void ShrinkVertices(std::size_t vertCount)
     {
-        // Recreate the arrays with the new size
+        // Recreate the arrays that are linked insize to the amount of vertices
+        vertexCount = vertCount;
+
+        // We can simply reallocate the memory for the vertex floats
+        vertexFloats = (float*)realloc(vertexFloats, sizeof(float) * vertexCount * 3);
+
+        // We need to properly dispose of all the vertices (std::vectors) that will be lost
+        // and then reallocate the smaller amount of memory
+        // WARNING: this has never failed but the complex nature of std::vector does provide a chance of it
+        // perhaps causing strange behaviour when copied directly, please keep this in mind when debugging...
+        for (std::size_t i = vertexCount; i < vertArrCount; i++)
+        {
+            vertices[i].~Vertex();
+        }
+        vertices = (Vertex*)realloc(vertices, sizeof(Vertex) * vertexCount);
+        vertArrCount = vertexCount;
+    }
+
+    void ShrinkTrigs(std::size_t newSize)
+    {
+        // Reallocate the arrays with the new size
         trigCount = newSize;
-        float *vF = new float[vertexCount * 3];
-        std::size_t *i = new std::size_t[newSize * 3];
-        Triangle *nT = new Triangle[newSize];
-
-        memcpy(vF, vertexFloats, sizeof(float) * vertexCount * 3);
-        memcpy(i, indices, sizeof(std::size_t) * newSize * 3);
-        memcpy(nT, trigs, sizeof(Triangle) * newSize);
-
-        delete[] vertexFloats;
-        delete[] indices;
-        delete[] trigs;
-
-        vertexFloats = vF;
-        indices = i;
-        trigs = nT;
+        indices = (std::size_t*)realloc(indices, sizeof(std::size_t) * newSize * 3);
+        trigs = (Triangle*)realloc(trigs, sizeof(Triangle) * newSize);
     }
 
     Vec3 Centre()

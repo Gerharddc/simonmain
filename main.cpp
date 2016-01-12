@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 #endif
 
     //FBORenderer::SetSTLMesh(STLImporting::ImportSTL("block.ast"));
-    FBORenderer::SetSTLMesh(STLImporting::ImportSTL("asc.stl"));
+    FBORenderer::SetSTLMesh(STLImporting::ImportSTL("bin.stl"));
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 
