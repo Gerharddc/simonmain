@@ -7,6 +7,7 @@
 #include <limits>
 #include <vector>
 #include <glm/glm.hpp>
+
 // The unit that defines the component of vectors
 typedef float veccomp;
 
@@ -26,36 +27,6 @@ public:
     {
         x = y = z = std::numeric_limits<veccomp>::lowest();
     }
-
-    // Sets this to the minimum of this and other
-    // NOTE: unused
-    void SetMin(Vector3& other)
-    {
-        if (other.x < x)
-            x = other.x;
-        if (other.y < y)
-            y = other.y;
-        if (other.z < z)
-            z = other.z;
-    }
-
-    // NOTE: unused
-    void SetMin(Vector3 *other) { SetMin(*other); }
-
-    // Sets this to the minimum of this and other
-    // NOTE: unused
-    void SetMax(Vector3& other)
-    {
-        if (other.x > x)
-            x = other.x;
-        if (other.y > y)
-            y = other.y;
-        if (other.z > z)
-            z = other.z;
-    }
-
-    // NOTE: unused
-    void SetMax(Vector3 *other) { SetMax(*other); }
 };
 
 typedef Vector3 Vec3;
@@ -72,14 +43,18 @@ struct Triangle
     std::size_t vertIdxs[3];
 };
 
-struct Mesh
+class Mesh
 {
+private:
+    float *vertFloats = nullptr;
+    float *normFloats = nullptr;
+
+public:
     Vec3 MinVec;
     Vec3 MaxVec;
 
     float *vertexFloats;
-    short *indices;
-    float *normalFloats;
+    std::size_t *indices;
     Vertex *vertices;
     Triangle *trigs;
     std::size_t trigCount;
@@ -90,8 +65,7 @@ struct Mesh
     {
         trigCount = size;
         vertexFloats = new float[size * 3 * 3]; //TODO: maybe smaller
-        indices = new short[size * 3];
-        normalFloats = new float[size * 3 * 3]; // TODO: smaller
+        indices = new std::size_t[size * 3];
         trigs = new Triangle[size];
         vertices = new Vertex[size * 3]; // TODO: smaller
     }
@@ -100,9 +74,10 @@ struct Mesh
     {
         delete[] vertexFloats;
         delete[] indices;
-        delete[] normalFloats;
         delete[] trigs;
         delete[] vertices;
+        delete[] vertFloats;
+        delete[] normFloats;
     }
 
     int TrigCount() { return trigCount; }
@@ -112,23 +87,19 @@ struct Mesh
         // Recreate the arrays with the new size
         trigCount = newSize;
         float *vF = new float[vertexCount * 3];
-        short *i = new short[newSize * 3];
-        float *nF = new float[newSize * 3];
+        std::size_t *i = new std::size_t[newSize * 3];
         Triangle *nT = new Triangle[newSize];
 
         memcpy(vF, vertexFloats, sizeof(float) * vertexCount * 3);
-        memcpy(i, indices, sizeof(short) * newSize * 3);
-        memcpy(nF, normalFloats, sizeof(float) * newSize * 3);
+        memcpy(i, indices, sizeof(std::size_t) * newSize * 3);
         memcpy(nT, trigs, sizeof(Triangle) * newSize);
 
         delete[] vertexFloats;
         delete[] indices;
-        delete[] normalFloats;
         delete[] trigs;
 
         vertexFloats = vF;
         indices = i;
-        normalFloats = nF;
         trigs = nT;
     }
 
@@ -139,6 +110,74 @@ struct Mesh
         centre.y = (MinVec.y + MaxVec.y) / 2;
         centre.z = (MinVec.z + MaxVec.z) / 2;
         return centre;
+    }
+
+
+    // These functions temporarily create an array of repetead vertices for flat shading
+    // it is recommended to delete the values directly after passing them to the GPU
+    float *getFlatVerts()
+    {
+        if (vertexFloats != nullptr)
+            delete[] vertFloats;
+
+        vertFloats = new float[trigCount * 9];
+        for (std::size_t i = 0; i < trigCount; i++)
+        {
+            for (uint8_t j = 0; j < 3; j++)
+            {
+                auto idx = trigs[i].vertIdxs[j];
+
+                for (uint8_t k = 0; k < 3; k++)
+                {
+                    vertFloats[(i * 9) + (j * 3) + k] = vertexFloats[(idx * 3) + k];
+                }
+            }
+        }
+        return vertFloats;
+    }
+    void dumpFlatVerts()
+    {
+        delete[] vertFloats;
+        vertFloats = nullptr;
+    }
+
+    // These functions temporarily create an array of repetead vertices for flat shading
+    // it is recommended to delete the values directly after passing them to the GPU
+    float *getFlatNorms()
+    {
+        if (normFloats != nullptr)
+            delete[] vertexFloats;
+
+        normFloats = new float[trigCount * 9];
+        for (std::size_t i = 0; i <trigCount; i++)
+        {
+            glm::vec3 vecs[3];
+
+            for (uint8_t j = 0; j < 3; j++)
+            {
+                auto idx = (indices[i * 3 + j]) * 3;
+                vecs[j].x = vertexFloats[idx];
+                vecs[j].y = vertexFloats[idx + 1];
+                vecs[j].z = vertexFloats[idx + 2];
+            }
+
+            glm::vec3 e1 = vecs[1] - vecs[0];
+            glm::vec3 e2 = vecs[2] - vecs[0];
+            glm::vec3 norm = glm::normalize(glm::cross(e1, e2));
+
+            for (uint8_t j = 0; j < 3; j++)
+            {
+                normFloats[(i * 9) + (j * 3)] = norm.x;
+                normFloats[(i * 9) + (j * 3) + 1] = norm.y;
+                normFloats[(i * 9) + (j * 3) + 2] = norm.z;
+            }
+        }
+        return normFloats;
+    }
+    void dumpFlatNorms()
+    {
+        delete[] normFloats;
+        normFloats = nullptr;
     }
 };
 

@@ -374,45 +374,11 @@ Mesh* ImportSTL(const char *path)
             mesh = ImportASCII(path, length);
         }
 
-        // Calculate the non-unit normals for each face first
-        glm::vec3 faceNorms[mesh->trigCount];
-        for (std::size_t i = 0; i < mesh->trigCount; i++)
-        {
-            glm::vec3 vecs[3];
-
-            for (uint8_t j = 0; j < 3; j++)
-            {
-                auto idx = (mesh->indices[i * 3 + j]) * 3;
-                vecs[j].x = mesh->vertexFloats[idx];
-                vecs[j].y = mesh->vertexFloats[idx + 1];
-                vecs[j].z = mesh->vertexFloats[idx + 2];
-            }
-
-            glm::vec3 e1 = vecs[1] - vecs[0];
-            glm::vec3 e2 = vecs[2] - vecs[0];
-            faceNorms[i] = glm::cross(e1, e2);
-        }
-
-        // Now we need to sum the face normals for each vertex with larger faces carying more weight
-        // due to their non-unit normals. We can then normalize the sum to get the vertex normals.
+        // Shrink the triangle index vectors for each vertex as they will never have to grow again
+        // and don't need to waste memory
         for (std::size_t i = 0; i < mesh->vertexCount; i++)
         {
-            glm::vec3 norm(0.0f);
-
-            for (std::size_t j = 0; j < mesh->vertices[i].trigIdxs.size(); j++)
-            {
-                norm += faceNorms[mesh->vertices[i].trigIdxs[j]];
-            }
-
             mesh->vertices[i].trigIdxs.shrink_to_fit();
-
-            if (norm != glm::vec3(0.0f))
-                norm = glm::normalize(norm);
-
-            std::size_t pos = i * 3;
-            mesh->normalFloats[pos]       = norm.x;
-            mesh->normalFloats[pos + 1]   = norm.y;
-            mesh->normalFloats[pos + 2]   = norm.z;
         }
 
         return mesh;

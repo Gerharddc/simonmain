@@ -33,19 +33,13 @@ STLRenderer::~STLRenderer()
         glDeleteBuffers(1, &mVertexNormalBuffer);
         mVertexNormalBuffer = 0;
     }
-
-    if (mIndexBuffer != 0)
-    {
-        glDeleteBuffers(1, &mIndexBuffer);
-        mIndexBuffer = 0;
-    }
 }
 
 void STLRenderer::Init()
 {
     // Shader source files
-    const std::string vs = "cube.vsh";//"GL/cube.vsh";
-    const std::string fs = "cube.fsh";//"GL/cube.fsh";
+    const std::string vs = "cube.vsh";
+    const std::string fs = "cube.fsh";
 
     // Set up the shader and its uniform/attribute locations.
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
@@ -58,15 +52,13 @@ void STLRenderer::Init()
 
     glGenBuffers(1, &mVertexPositionBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->vertexCount * 3, mesh->vertexFloats, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &mIndexBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(short) * mesh->TrigCount() * 3, mesh->indices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatVerts(), GL_STATIC_DRAW);
+    mesh->dumpFlatVerts();
 
     glGenBuffers(1, &mVertexNormalBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mVertexNormalBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->vertexCount * 3, mesh->normalFloats, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
+    mesh->dumpFlatNorms();
 
     x = (mesh->MinVec.x + mesh->MaxVec.x) / 2;
     y = (mesh->MinVec.y + mesh->MaxVec.y) / 2;
@@ -92,7 +84,6 @@ void STLRenderer::Draw()
     glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glm::mat4 trans;
-    //trans = glm::scale(trans, glm::vec3(2.0f, 2.0f, 2.0f));
     trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
 
@@ -107,9 +98,7 @@ void STLRenderer::Draw()
     norm = glm::transpose(norm);
     glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE, glm::value_ptr(norm));
 
-    // All the triangles
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-    glDrawElements(GL_TRIANGLES, mesh->TrigCount() * 3, GL_UNSIGNED_SHORT, 0);
+    glDrawArrays(GL_TRIANGLES, 0, mesh->trigCount * 3);
 
     mDrawCount += 1;
 }

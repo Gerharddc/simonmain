@@ -32,7 +32,6 @@ private:
     GLint mNormUniformLocation;
 
     GLuint mVertexPositionBuffer;
-    GLuint mIndexBuffer;
     GLuint mVertexNormalBuffer;
 
     int mDrawCount;
