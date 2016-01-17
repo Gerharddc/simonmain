@@ -38,8 +38,8 @@ STLRenderer::~STLRenderer()
 void STLRenderer::Init()
 {
     // Shader source files
-    const std::string vs = "cube.vsh";
-    const std::string fs = "cube.fsh";
+    const std::string vs = "mesh.vsh";
+    const std::string fs = "minimal.fsh";
 
     // Set up the shader and its uniform/attribute locations.
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);

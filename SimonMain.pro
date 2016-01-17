@@ -8,7 +8,8 @@ SOURCES += main.cpp \
     Rendering/loadedgl.cpp \
     Rendering/fborenderer.cpp \
     Rendering/stlrenderer.cpp \
-    Rendering/stlimporting.cpp
+    Rendering/stlimporting.cpp \
+    Rendering/gcodeimporting.cpp
 
 RESOURCES += qml.qrc
 
@@ -27,7 +28,9 @@ HEADERS += \
     Rendering/mathhelper.h \
     Rendering/structures.h \
     Misc/strings.h \
-    Rendering/stlimporting.h
+    Rendering/stlimporting.h \
+    Rendering/gridgeneration.h \
+    Rendering/gcodeimporting.h
 
 INCLUDEPATH += $$PWD/glm
 
@@ -52,8 +55,8 @@ android {
 
 SAMPLE_FILES = \
     bin.stl \
-    GL/cube.vsh \
-    GL/cube.fsh
+    GL/mesh.vsh \
+    GL/minimal.fsh
 
 # - setup the 'make install' step
 samples.path = $$SAMPLES_INSTALL_PATH

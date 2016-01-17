@@ -207,5 +207,42 @@ public:
     }
 };
 
+struct Point
+{
+    float x = 0;
+    float y = 0;
+    bool extruded = false;
+};
+
+enum GType
+{
+    RapidMove = 0,
+    Move = 1,
+    Home = 28,
+    ToInch = 20,
+    ToMM = 21,
+    SetAbs = 90,
+    SetRel =  91,
+    SetPos = 92
+};
+
+struct Layer
+{
+    float z;
+    std::vector<Point> points;
+};
+
+class Toolpath
+{
+public:
+    std::vector<Layer*> layers;
+
+    ~Toolpath()
+    {
+        for (Layer* layer : layers)
+            delete layer;
+    }
+};
+
 #endif // STRUCTURES
 
