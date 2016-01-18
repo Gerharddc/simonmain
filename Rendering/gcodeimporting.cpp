@@ -6,9 +6,9 @@
 
 #include "structures.h"
 
-namespace GCodeImportent {
+#include <QDebug>
 
-Toolpath* ImportGCode(const char *path)
+Toolpath* GCodeImporting::ImportGCode(const char *path)
 {
     std::ifstream is(path);
 
@@ -25,9 +25,13 @@ Toolpath* ImportGCode(const char *path)
         float prevE[2] = {0, 0};
         bool prevValid[2] = {false, false};
 
-        Layer *curLayer = NULL;
+        Layer *curLayer = nullptr;
         int8_t g = -1;
         bool rel = false;
+
+        // TODO: add support for comments
+        // TODO: add support for home command
+        // TODO: add support for set pos command
 
         // Read through each line
         std::string line;
@@ -48,17 +52,32 @@ Toolpath* ImportGCode(const char *path)
                     g = type;
                 else
                 {
-                    g = -1;
-
                     if (type == SetRel)
                         rel = true;
                     else if (type == SetAbs)
                         rel = false;
+                    else if (type == Home)
+                    {
+                        prevX[0] = 0;
+                        prevX[1] = 0;
+                        prevY[0] = 0;
+                        prevY[1] = 0;
+                        prevZ[0] = 0;
+                        prevZ[1] = 0;
+                    }
+
+                    continue;
                 }
             }
 
+            bool moved = false; // Flag if movement occured
+
+            // Create a point at the last position
+            Point p;
+            p.extruded = false;
+
             // Read the parts as spilt by spaces
-            // TODO: add support or at least warnigns for irregularly long whitespaces
+            // TODO: add support or at least warnings for irregularly long whitespaces
             char *pch = std::strtok((char*)line.c_str(), "     ");
             while (pch != NULL)
             {
@@ -71,23 +90,24 @@ Toolpath* ImportGCode(const char *path)
 
                 pch = std::strtok(NULL, "     "); // Get the next part so long
 
-                Point p;
-                p.x = prevX[g];
-                p.y = prevY[g];
-                p.extruded = false;
-
                 switch(c) {
                     case 'X' :
                         if (rel)
                             prevX[g] += num;
                         else
                             prevX[g] = num;
+
+                        if (!moved && (num != 0))
+                            moved = true;
                         break;
                     case 'Y' :
                         if (rel)
                             prevY[g] += num;
                         else
                             prevY[g] = num;
+
+                        if (!moved && (num != 0))
+                            moved = true;
                         break;
                     case 'Z' :
                     {
@@ -95,8 +115,13 @@ Toolpath* ImportGCode(const char *path)
 
                         if (nZ != prevZ[g])
                         {
-                            if (curLayer != NULL)
-                                tp->layers.push_back(curLayer);
+                            if (curLayer != nullptr)
+                            {
+                                // We need to clone the pointer because otherwise the main pointer becomes initialized
+                                // I think this is a compiler bug though or is caused by something in pushback
+                                Layer* temp = curLayer;
+                                tp->layers.push_back(temp);
+                            }
                             curLayer = new Layer();
                             curLayer->z = num;
                         }
@@ -118,20 +143,37 @@ Toolpath* ImportGCode(const char *path)
                             p.extruded = true;
                         break;
                 }
-
-                // Wait until we have current values to work from
-                if (!prevValid[g])
-                {
-                    prevValid[g] = (prevX[g] != -1) && (prevY[g] != -1) && (prevZ[g] != -1);
-
-                    if (!prevValid[g])
-                        continue;
-                }
-
-                curLayer->points.push_back(p);
             }
+
+            // Skip the line if there was no movement
+            //if (!moved)
+              //  continue;
+
+            // Wait until we have current values to work from
+            if (!prevValid[g])
+            {
+                prevValid[g] = (prevX[g] != -1) && (prevY[g] != -1) && (prevZ[g] != -1);
+
+                if (!prevValid[g])
+                    continue;
+            }
+
+            // Assign the position
+            p.x = prevX[g];
+            p.y = prevY[g];
+
+            if (curLayer != nullptr)
+                curLayer->points.push_back(p);
+        }
+
+        if (curLayer != nullptr)
+        {
+            // We need to clone the pointer because otherwise the main pointer becomes initialized
+            // I think this is a compiler bug though or is caused by something in pushback
+            Layer* temp = curLayer;
+            tp->layers.push_back(temp);
         }
     }
-}
 
+    return tp;
 }

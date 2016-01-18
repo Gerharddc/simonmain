@@ -118,5 +118,34 @@ float *Mesh::getFlatNorms()
 
 float *Toolpath::getLineVerts()
 {
+    auto count = getLineCount();
 
+    if (lineVerts != nullptr)
+        delete[] lineVerts;
+
+    lineVerts = new float[count * 6];
+
+    std::size_t i = 0;
+
+    for (Layer *layer : layers)
+    {
+        auto pCount = layer->points.size();
+
+        for (uint j = 0; j < pCount; j++)
+        {
+            Point prev = (j == 0) ? layer->points[pCount - 1] : layer->points[j - 1];
+            lineVerts[i + 0] = prev.x;
+            lineVerts[i + 1] = prev.y;
+            lineVerts[i + 2] = layer->z;
+
+            Point p = layer->points[j];
+            lineVerts[i + 3] = p.x;
+            lineVerts[i + 4] = p.y;
+            lineVerts[i + 5] = layer->z;
+
+            i += 6;
+        }
+    }
+
+    return lineVerts;
 }

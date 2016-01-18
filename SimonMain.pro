@@ -60,7 +60,9 @@ android {
 SAMPLE_FILES = \
     bin.stl \
     GL/mesh.vsh \
-    GL/minimal.fsh
+    GL/minimal.fsh \
+    GL/line.vsh \
+    test.gcode
 
 # - setup the 'make install' step
 samples.path = $$SAMPLES_INSTALL_PATH

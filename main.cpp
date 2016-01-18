@@ -9,6 +9,7 @@
 
 #include "Rendering/structures.h"
 #include "Rendering/stlimporting.h"
+#include "Rendering/gcodeimporting.h"
 
 #include <QFile>
 #include <QString>
@@ -38,6 +39,7 @@ int main(int argc, char *argv[])
 
     //FBORenderer::SetSTLMesh(STLImporting::ImportSTL("block.ast"));
     FBORenderer::SetSTLMesh(STLImporting::ImportSTL("bin.stl"));
+    FBORenderer::SetToolpath(GCodeImporting::ImportGCode("test.gcode"));
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 

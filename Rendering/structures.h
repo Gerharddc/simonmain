@@ -146,7 +146,7 @@ public:
         if (lineCount == 0)
         {
             for (Layer *layer : layers)
-                lineCount += layer->points.size() - 1;
+                lineCount += layer->points.size();
         }
 
         return lineCount;
