@@ -21,7 +21,7 @@ public:
     {
         stl = new STLRenderer(mesh);
         tp = new ToolpathRenderer(toolPath);
-        grid = new GridRenderer(100, 100, 100, 10);
+        grid = new GridRenderer(100, 100, 30, 10);
 
 #ifndef GLES
         LoadedGL::ActivateGL();
