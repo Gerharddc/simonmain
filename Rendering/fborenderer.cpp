@@ -8,23 +8,27 @@
 
 #include "stlrenderer.h"
 #include "toolpathrenderer.h"
+#include "gridrenderer.h"
 
 class STLinFBORenderer : public QQuickFramebufferObject::Renderer
 {   
 public:
     STLRenderer *stl;
     ToolpathRenderer *tp;
+    GridRenderer *grid;
 
     STLinFBORenderer(Mesh* mesh, Toolpath *toolPath)
     {
         stl = new STLRenderer(mesh);
         tp = new ToolpathRenderer(toolPath);
+        grid = new GridRenderer(100, 100, 100, 10);
 
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
         stl->Init();
         tp->Init();
+        grid->Init();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -34,6 +38,7 @@ public:
     {
         delete stl;
         delete tp;
+        delete grid;
     }
 
     void render() {
@@ -41,7 +46,8 @@ public:
         LoadedGL::ActivateGL();
 #endif
         //stl->Draw();
-        tp->Draw();
+        //tp->Draw();
+        grid->Draw();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -54,6 +60,7 @@ public:
         format.setSamples(4);
         stl->UpdateWindowSize(size.width(), size.height());
         tp->UpdateWindowSize(size.width(), size.height());
+        grid->UpdateWindowSize(size.width(), size.height());
 
         return new QOpenGLFramebufferObject(size, format);
     }
