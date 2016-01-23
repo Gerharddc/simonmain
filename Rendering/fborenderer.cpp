@@ -45,9 +45,9 @@ public:
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
-        //stl->Draw();
         //tp->Draw();
         grid->Draw();
+        //stl->Draw();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif

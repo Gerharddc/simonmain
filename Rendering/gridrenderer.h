@@ -29,7 +29,6 @@ private:
     GLint mPositionAttribLocation;
 
     GLint mModelUniformLocation;
-    GLint mViewUniformLocation;
     GLint mProjUniformLocation;
 
     GLuint mVertexPositionBuffer;
@@ -38,8 +37,16 @@ private:
     GridGeneration::Grid *grid;
     unsigned int vertCount;
 
-    float xAim = 0;
-    float yAim = 0;
+    // These represent the position in scene space that should be in the centre of the viewport
+    float aimX = 50.0f;
+    float aimY = 50.0f;
+
+    // These are the centre position of the display area in pixels
+    // and will e calculated when the viewport size is set
+    float centreX = 0;
+    float centreY = 0;
+
+    float zoom = 3.0f;
 };
 
 #endif // GRIDRENDERER_H

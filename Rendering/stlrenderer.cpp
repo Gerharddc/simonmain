@@ -67,8 +67,7 @@ void STLRenderer::Init()
 void STLRenderer::Draw()
 {
     glEnable(GL_DEPTH_TEST);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT);
 
     if (mProgram == 0)
         return;
@@ -84,14 +83,14 @@ void STLRenderer::Draw()
     glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glm::mat4 trans;
-    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(0.5f, 0.5f, 0.0f));
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
 
-    glm::mat4 view = glm::lookAt(glm::vec3(x, y, 100.0f), glm::vec3(x, y, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(glm::vec3(x, y, 100.0f), glm::vec3(x, y, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, glm::value_ptr(view));
 
-    MathHelper::Matrix4 projectionMatrix = MathHelper::SimpleProjectionMatrix(float(mWindowWidth) / float(mWindowHeight));
-    glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, &(projectionMatrix.m[0][0]));
+    glm::mat4 proj = glm::perspective(1.0f, float(mWindowWidth) / float(mWindowHeight), 0.1f, 200.0f);
+    glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(proj));
 
     glm::mat4 norm = view * trans;
     norm = glm::inverse(norm);

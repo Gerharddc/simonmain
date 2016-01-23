@@ -39,7 +39,6 @@ void GridRenderer::Init()
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
     mPositionAttribLocation = glGetAttribLocation(mProgram, "aPosition");
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
-    mViewUniformLocation = glGetUniformLocation(mProgram, "uViewMatrix");
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
 
     glGenBuffers(1, &mVertexPositionBuffer);
@@ -64,15 +63,21 @@ void GridRenderer::Draw()
     glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glm::mat4 trans;
+    // We need to apply the matrixes in reverse because that is how they work
+    trans = glm::translate(trans, glm::vec3(50.0f, 50.0f, 0.0f));
     trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(0.5f, 0.5f, 0.0f));
-    trans = glm::scale(trans, glm::vec3(1.0f, 1.0f, 1.0f));
+    trans = glm::translate(trans, glm::vec3(-50.0f, -50.0f, 0.0f));
+    //trans = glm::scale(trans, glm::vec3(1.0f, 1.0f, 1.0f));
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
 
-    glm::mat4 view = glm::lookAt(glm::vec3(50.0f, 50.0f, 150.0f), glm::vec3(50.0f, 50.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, glm::value_ptr(view));
-
-    MathHelper::Matrix4 projectionMatrix = MathHelper::SimpleProjectionMatrix(float(mWindowWidth) / float(mWindowHeight));
-    glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, &(projectionMatrix.m[0][0]));
+    // Calculate an orthographic projection that centres the view at the aiming position and applies the zoom
+    float left = aimX - (centreX / zoom);
+    float right = aimX + (centreX / zoom);
+    float bottom = aimY - (centreY / zoom);
+    float top = aimY + (centreY / zoom);
+    // With the orthographic system we need a negative and positive clip plane of enough distance
+    glm::mat4 proj = glm::ortho(left, right, bottom, top, -300.0f, 300.0f);
+    glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(proj));
 
     glDrawArrays(GL_LINES, 0, vertCount);
 
@@ -84,4 +89,7 @@ void GridRenderer::UpdateWindowSize(GLsizei width, GLsizei height)
     glViewport(0, 0, width, height);
     mWindowWidth = width;
     mWindowHeight = height;
+
+    centreX = float(width) / 2.0f;
+    centreY = float(height) / 2.0f;
 }
