@@ -13,7 +13,8 @@ SOURCES += main.cpp \
     Rendering/toolpathrenderer.cpp \
     Rendering/glhelper.cpp \
     Rendering/structures.cpp \
-    Rendering/gridrenderer.cpp
+    Rendering/gridrenderer.cpp \
+    Rendering/comborendering.cpp
 
 RESOURCES += qml.qrc
 
@@ -36,7 +37,8 @@ HEADERS += \
     Rendering/gridgeneration.h \
     Rendering/gcodeimporting.h \
     Rendering/toolpathrenderer.h \
-    Rendering/gridrenderer.h
+    Rendering/gridrenderer.h \
+    Rendering/comborendering.h
 
 INCLUDEPATH += $$PWD/glm
 

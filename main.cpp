@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
 #endif
 
     //FBORenderer::SetSTLMesh(STLImporting::ImportSTL("block.ast"));
-    FBORenderer::SetSTLMesh(STLImporting::ImportSTL("bin.stl"));
-    FBORenderer::SetToolpath(GCodeImporting::ImportGCode("test.gcode"));
+    //FBORenderer::SetSTLMesh(STLImporting::ImportSTL("bin.stl"));
+    //FBORenderer::SetToolpath(GCodeImporting::ImportGCode("test.gcode"));
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 

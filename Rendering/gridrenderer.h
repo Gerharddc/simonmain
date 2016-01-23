@@ -10,15 +10,17 @@
 #include "structures.h"
 #include "gridgeneration.h"
 
-#define uint unsigned int
+// Importing this would be a cyclic dependancy
+class ComboRendering;
 
 class GridRenderer
 {
+    friend class ComboRendering;
+
 public:
     GridRenderer(uint xSize, uint ySize, uint zSize, uint interval);
     ~GridRenderer();
     void Draw();
-    void UpdateWindowSize(GLsizei width, GLsizei height);
     void Init();
 
 private:
@@ -33,20 +35,14 @@ private:
 
     GLuint mVertexPositionBuffer;
 
-    int mDrawCount;
+    //int mDrawCount;
     GridGeneration::Grid *grid;
     unsigned int vertCount;
 
-    // These represent the position in scene space that should be in the centre of the viewport
-    float aimX = 50.0f;
-    float aimY = 50.0f;
-
-    // These are the centre position of the display area in pixels
-    // and will e calculated when the viewport size is set
-    float centreX = 0;
-    float centreY = 0;
-
-    float zoom = 3.0f;
+    // We need flags to determine when matrices have changed as
+    // to be able to give new ones to opengl
+    bool dirtyProjMat = true;
+    bool dirtySceneMat = true;
 };
 
 #endif // GRIDRENDERER_H
