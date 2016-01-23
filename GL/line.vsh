@@ -5,7 +5,7 @@ attribute vec4 aPosition;
 
 varying vec4 vColor;
 
-const vec3 color = vec3(0.0, 0.0, 1.0);
+const vec3 color = vec3(0.6, 0.6, 0.6);
 
 void main(void)
 {

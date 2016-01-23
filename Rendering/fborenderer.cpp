@@ -47,7 +47,7 @@ public:
 #endif
         //tp->Draw();
         grid->Draw();
-        //stl->Draw();
+        stl->Draw();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif

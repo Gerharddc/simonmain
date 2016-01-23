@@ -27,7 +27,6 @@ private:
     GLint mNormalAttribLocation;
 
     GLint mModelUniformLocation;
-    GLint mViewUniformLocation;
     GLint mProjUniformLocation;
     GLint mNormUniformLocation;
 
@@ -37,8 +36,15 @@ private:
     int mDrawCount;
     Mesh *mesh;
 
-    float x = 0;
-    float y = 0;
+    float x, y = 0.0f;
+
+    float aimX = 50.0f;
+    float aimY = 50.0f;
+
+    float centreX = 0.0f;
+    float centreY = 0.0f;
+
+    float zoom = 3.0f;
 };
 
 #endif // STLRENDERER_H

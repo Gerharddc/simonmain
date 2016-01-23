@@ -45,7 +45,6 @@ void STLRenderer::Init()
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
     mPositionAttribLocation = glGetAttribLocation(mProgram, "aPosition");
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
-    mViewUniformLocation = glGetUniformLocation(mProgram, "uViewMatrix");
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
     mNormalAttribLocation = glGetAttribLocation(mProgram, "aNormal");
     mNormUniformLocation = glGetUniformLocation(mProgram, "uNormMatrix");
@@ -66,9 +65,6 @@ void STLRenderer::Init()
 
 void STLRenderer::Draw()
 {
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_DEPTH_BUFFER_BIT);
-
     if (mProgram == 0)
         return;
 
@@ -83,16 +79,22 @@ void STLRenderer::Draw()
     glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glm::mat4 trans;
+    trans = glm::translate(trans, glm::vec3(50.0f, 50.0f, 0.0f));
     trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(0.5f, 0.5f, 0.0f));
+    trans = glm::translate(trans, glm::vec3(-50.0f, -50.0f, 0.0f));
+    trans = glm::translate(trans, glm::vec3(50.0f - x, 50.0f - y, 0.0f));
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
 
-    glm::mat4 view = glm::lookAt(glm::vec3(x, y, 100.0f), glm::vec3(x, y, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, glm::value_ptr(view));
-
-    glm::mat4 proj = glm::perspective(1.0f, float(mWindowWidth) / float(mWindowHeight), 0.1f, 200.0f);
+    // Calculate an orthographic projection that centres the view at the aiming position and applies the zoom
+    float left = aimX - (centreX / zoom);
+    float right = aimX + (centreX / zoom);
+    float bottom = aimY - (centreY / zoom);
+    float top = aimY + (centreY / zoom);
+    // With the orthographic system we need a negative and positive clip plane of enough distance
+    glm::mat4 proj = glm::ortho(left, right, bottom, top, -300.0f, 300.0f);
     glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(proj));
 
-    glm::mat4 norm = view * trans;
+    glm::mat4 norm = trans;
     norm = glm::inverse(norm);
     norm = glm::transpose(norm);
     glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE, glm::value_ptr(norm));
@@ -107,5 +109,8 @@ void STLRenderer::UpdateWindowSize(GLsizei width, GLsizei height)
     glViewport(0, 0, width, height);
     mWindowWidth = width;
     mWindowHeight = height;
+
+    centreX = width / 2.0f;
+    centreY = height / 2.0f;
 }
 
