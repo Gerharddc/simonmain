@@ -9,26 +9,31 @@
 #include "stlrenderer.h"
 #include "toolpathrenderer.h"
 #include "gridrenderer.h"
+#include "comborendering.h"
 
 class STLinFBORenderer : public QQuickFramebufferObject::Renderer
-{   
+{
+private:
+    ComboRendering comb;
+
 public:
-    STLRenderer *stl;
-    ToolpathRenderer *tp;
-    GridRenderer *grid;
+    //STLRenderer *stl;
+    //ToolpathRenderer *tp;
+    //GridRenderer *grid;
 
     STLinFBORenderer(Mesh* mesh, Toolpath *toolPath)
     {
-        stl = new STLRenderer(mesh);
-        tp = new ToolpathRenderer(toolPath);
-        grid = new GridRenderer(100, 100, 30, 10);
+        //stl = new STLRenderer(mesh);
+        //tp = new ToolpathRenderer(toolPath);
+        //grid = new GridRenderer(100, 100, 30, 10);
 
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
-        stl->Init();
-        tp->Init();
-        grid->Init();
+        //stl->Init();
+        //tp->Init();
+        //grid->Init();
+        comb.Init();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -36,9 +41,9 @@ public:
 
     ~STLinFBORenderer()
     {
-        delete stl;
-        delete tp;
-        delete grid;
+        //delete stl;
+        //delete tp;
+        //delete grid;
     }
 
     void render() {
@@ -46,8 +51,9 @@ public:
         LoadedGL::ActivateGL();
 #endif
         //tp->Draw();
-        grid->Draw();
-        stl->Draw();
+        //grid->Draw();
+        //stl->Draw();
+        comb.Draw();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -58,9 +64,10 @@ public:
         QOpenGLFramebufferObjectFormat format;
         format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
         format.setSamples(4);
-        stl->UpdateWindowSize(size.width(), size.height());
-        tp->UpdateWindowSize(size.width(), size.height());
-        grid->UpdateWindowSize(size.width(), size.height());
+        //stl->UpdateWindowSize(size.width(), size.height());
+        //tp->UpdateWindowSize(size.width(), size.height());
+        //grid->UpdateWindowSize(size.width(), size.height());
+        comb.SetViewSize(size.width(), size.height());
 
         return new QOpenGLFramebufferObject(size, format);
     }
