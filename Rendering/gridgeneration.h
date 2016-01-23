@@ -50,6 +50,8 @@ namespace GridGeneration {
 
             idx += 6;
         }
+
+        return buf;
     }
 
 }

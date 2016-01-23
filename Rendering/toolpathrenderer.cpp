@@ -46,11 +46,6 @@ void ToolpathRenderer::Init()
     glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * path->getLineCount() * 2 * 3, path->getLineVerts(), GL_STATIC_DRAW);
     path->dumpLineVerts();
-
-    /*//float *ding = path->getLineVerts();
-    //delete[] ding;
-    float *hisher = path->getLineVerts();//new float[10];
-    delete[] hisher;*/
 }
 
 void ToolpathRenderer::Draw()
@@ -69,7 +64,7 @@ void ToolpathRenderer::Draw()
     glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     glm::mat4 trans;
-    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     trans = glm::scale(trans, glm::vec3(1.1f, 1.1f, 1.1f));
     glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
 

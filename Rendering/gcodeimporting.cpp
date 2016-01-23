@@ -78,7 +78,18 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces
-            char *pch = std::strtok((char*)line.c_str(), "     ");
+            // Working correctly with the c_str  directly in strtok
+            // breaks the std::string a bit and complicates debugging
+#ifdef PRESERVE_LINE_STR
+            auto temp = line.c_str();
+            auto len = strlen(temp);
+            char *lineCpy = new char[len];
+            memcpy(lineCpy, temp, sizeof(char) * len);
+            char *pch = std::strtok(lineCpy, " ");
+#else
+            char *pch = std::strtok((char*)line.c_str(), " ");
+#endif
+
             while (pch != NULL)
             {
                 std::string part(pch);
@@ -92,23 +103,35 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
                 switch(c) {
                     case 'X' :
+                    {
+                        float old = prevX[g];
+
                         if (rel)
                             prevX[g] += num;
                         else
                             prevX[g] = num;
 
-                        if (!moved && (num != 0))
+                        if (!moved && (prevX[g] != old))
+                        {
                             moved = true;
+                        }
                         break;
+                    }
                     case 'Y' :
+                    {
+                        float old = prevY[g];
+
                         if (rel)
                             prevY[g] += num;
                         else
                             prevY[g] = num;
 
-                        if (!moved && (num != 0))
+                        if (!moved && (prevY[g] != old))
+                        {
                             moved = true;
+                        }
                         break;
+                    }
                     case 'Z' :
                     {
                         float nZ = (rel) ? (prevZ[g] + num) : num;
@@ -144,10 +167,15 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                         break;
                 }
             }
+#ifdef PRESERVE_LINE_STR
+            delete[] lineCpy;
+#endif
 
             // Skip the line if there was no movement
-            //if (!moved)
-              //  continue;
+            if (!moved)
+            {
+                continue;
+            }
 
             // Wait until we have current values to work from
             if (!prevValid[g])
@@ -166,6 +194,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 curLayer->points.push_back(p);
         }
 
+        // Store the final layer
         if (curLayer != nullptr)
         {
             // We need to clone the pointer because otherwise the main pointer becomes initialized
