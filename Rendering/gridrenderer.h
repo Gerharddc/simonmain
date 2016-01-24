@@ -35,7 +35,6 @@ private:
 
     GLuint mVertexPositionBuffer;
 
-    //int mDrawCount;
     GridGeneration::Grid *grid;
     unsigned int vertCount;
 

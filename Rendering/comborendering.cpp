@@ -24,10 +24,12 @@ float ComboRendering::zoom = 2.0f;
 glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
 GridRenderer ComboRendering::gridRen = GridRenderer(100, 100, 100, 10);
+STLRenderer ComboRendering::stlRen = STLRenderer();
 
 ComboRendering::ComboRendering()
 {
     stlMesh = STLImporting::ImportSTL("bin.stl");
+    stlRen.AddMesh(stlMesh);
 }
 
 ComboRendering::~ComboRendering()
@@ -46,8 +48,6 @@ void ComboRendering::SetViewSize(float width, float height)
 
     // Update the projection
     UpdateProjection();
-
-    //gridRen.UpdateWindowSize(width, height);
 }
 
 void ComboRendering::UpdateProjection()
@@ -63,6 +63,7 @@ void ComboRendering::UpdateProjection()
 
     // Flag the renderers to update their proj matrices
     gridRen.dirtyProjMat = true;
+    stlRen.dirtyProjMat();
 }
 
 const glm::vec3 yVec(0.0f, 1.0f, 0.0f);
@@ -94,6 +95,7 @@ void ComboRendering::ApplyRot(float x, float y)
 
     // Flag the renderers to update their scene matrices
     gridRen.dirtySceneMat = true;
+    stlRen.dirtySceneMat();
 }
 
 void ComboRendering::Move(float x, float y)
@@ -110,6 +112,7 @@ void ComboRendering::Move(float x, float y)
 void ComboRendering::Init()
 {
     gridRen.Init();
+    stlRen.Init();
 }
 
 void ComboRendering::Draw()
@@ -122,6 +125,7 @@ void ComboRendering::Draw()
     ApplyRot(0.01f, 0.01f);
 
     gridRen.Draw();
+    stlRen.Draw();
 }
 
 #ifdef REDUNDANT

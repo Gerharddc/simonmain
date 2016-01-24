@@ -31,7 +31,7 @@ private:
     bool movedSinceRot = true;
     glm::mat4 rotOrg, rotOrgInv;
 
-    //STLRenderer stlRen;
+    static STLRenderer stlRen;
     //ToolpathRenderer tpRen;
     static GridRenderer gridRen;
 

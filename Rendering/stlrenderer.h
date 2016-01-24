@@ -12,11 +12,14 @@
 class STLRenderer
 {
 public:
-    STLRenderer(Mesh* _mesh);
+    STLRenderer();
     ~STLRenderer();
     void Draw();
-    void UpdateWindowSize(GLsizei width, GLsizei height);
     void Init();
+    int AddMesh(Mesh *_mesh);
+
+    void ProjMatDirty();
+    void SceneMatDirty();
 
 private:
     GLuint mProgram = 0;
@@ -30,21 +33,19 @@ private:
     GLint mProjUniformLocation;
     GLint mNormUniformLocation;
 
-    GLuint mVertexPositionBuffer;
-    GLuint mVertexNormalBuffer;
+    GLuint mVertexPositionBuffer = 0;
+    GLuint mVertexNormalBuffer = 0;
 
-    int mDrawCount;
-    Mesh *mesh;
+    void LoadMesh(Mesh* mesh);
+    Mesh *mesher = nullptr;
 
     float x, y = 0.0f;
 
-    float aimX = 50.0f;
-    float aimY = 50.0f;
-
-    float centreX = 0.0f;
-    float centreY = 0.0f;
-
-    float zoom = 3.0f;
+    // We need flags to determine when matrices have changed as
+    // to be able to give new ones to opengl
+    bool dirtyProjMat = true;
+    bool dirtySceneMat = true;
+    bool dirtyMesh = false;
 };
 
 #endif // STLRENDERER_H
