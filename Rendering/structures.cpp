@@ -17,7 +17,7 @@ Mesh::Mesh(std::size_t size)
     // properly destruct them later on
     vertices = (Vertex*)malloc(sizeof(Vertex) * size * 3);  // This will need to be shrunk
     for (std::size_t i = 0; i < size * 3; i++)
-        vertices[i] = Vertex();
+        new (vertices + i) Vertex();
     vertArrCount = size * 3;
 }
 

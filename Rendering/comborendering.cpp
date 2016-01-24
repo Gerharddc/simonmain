@@ -25,18 +25,15 @@ glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
 GridRenderer ComboRendering::gridRen = GridRenderer(100, 100, 100, 10);
 
-//Mesh *mesh;
-
 ComboRendering::ComboRendering()
 {
-    //stlMesh = STLImporting::ImportSTL("bin.stl");
-    //STLImporting::ImportSTL("bin.stl");
+    stlMesh = STLImporting::ImportSTL("bin.stl");
 }
 
 ComboRendering::~ComboRendering()
 {
-    //if (stlMesh != nullptr)
-     //   delete stlMesh;
+    if (stlMesh != nullptr)
+        delete stlMesh;
 }
 
 void ComboRendering::SetViewSize(float width, float height)

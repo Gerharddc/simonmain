@@ -35,8 +35,7 @@ private:
     //ToolpathRenderer tpRen;
     static GridRenderer gridRen;
 
-    //Mesh *stlMesh = nullptr;
-    Mesh *mesh;
+    Mesh *stlMesh = nullptr;
 
 public:
     ComboRendering();

@@ -36,6 +36,7 @@ struct Triangle;
 struct Vertex
 {
     std::vector<std::size_t> trigIdxs;
+    //std::size_t trigIdxs[10];
 };
 
 struct Triangle

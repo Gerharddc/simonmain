@@ -41,9 +41,9 @@ struct HashVertex
     // NOTE: this has not been optimized for best spreading at all!!!
     std::size_t operator()(const float *arrPos) const
     {
-        uint32_t a = *((uint32_t*)(&(arrPos[0])));
-        uint32_t b = *((uint32_t*)(&(arrPos[1])));
-        uint32_t c = *((uint32_t*)(&(arrPos[2])));
+        uint32_t a = *((uint32_t*)(arrPos));
+        uint32_t b = *((uint32_t*)(arrPos + 1));
+        uint32_t c = *((uint32_t*)(arrPos + 2));
         return a*3 + b*5 + c*7;
     }
 };
