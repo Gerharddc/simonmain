@@ -12,11 +12,13 @@
 class ToolpathRenderer
 {
 public:
-    ToolpathRenderer(Toolpath* _path);
+    ToolpathRenderer();
     ~ToolpathRenderer();
     void Draw();
-    void UpdateWindowSize(GLsizei width, GLsizei height);
     void Init();
+    void SetToolpath(Toolpath *tp);\
+    void ProjMatDirty();
+    void SceneMatDirty();
 
 private:
     GLuint mProgram = 0;
@@ -29,13 +31,16 @@ private:
     GLint mViewUniformLocation;
     GLint mProjUniformLocation;
 
-    GLuint mVertexPositionBuffer;
+    GLuint mVertexPositionBuffer = 0;
 
-    int mDrawCount;
+    inline void LoadPath();
     Toolpath *path;
 
-    float xAim = 0;
-    float yAim = 0;
+    // We need flags to determine when matrices have changed as
+    // to be able to give new ones to opengl
+    bool dirtyProjMat = true;
+    bool dirtySceneMat = true;
+    bool dirtyPath = false;
 };
 
 #endif // TOOLPATHRENDERER_H

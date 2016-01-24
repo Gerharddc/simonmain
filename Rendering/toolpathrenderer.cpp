@@ -8,10 +8,11 @@
 #include "glhelper.h"
 #include "mathhelper.h"
 #include "gcodeimporting.h"
+#include "comborendering.h"
 
-ToolpathRenderer::ToolpathRenderer(Toolpath *_path)
+ToolpathRenderer::ToolpathRenderer()
 {
-    path = _path;
+
 }
 
 ToolpathRenderer::~ToolpathRenderer()
@@ -29,6 +30,33 @@ ToolpathRenderer::~ToolpathRenderer()
     }
 }
 
+void ToolpathRenderer::SceneMatDirty()
+{
+    dirtySceneMat = true;
+}
+
+void ToolpathRenderer::ProjMatDirty()
+{
+    dirtyProjMat = true;
+}
+
+void ToolpathRenderer::SetToolpath(Toolpath *tp)
+{
+    path = tp;
+    dirtyPath = true;
+}
+
+void ToolpathRenderer::LoadPath()
+{
+    if (mVertexPositionBuffer != 0)
+        glDeleteBuffers(1, &mVertexPositionBuffer);
+
+    glGenBuffers(1, &mVertexPositionBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * path->getLineCount() * 2 * 3, path->getLineVerts(), GL_STATIC_DRAW);
+    path->dumpLineVerts();
+}
+
 void ToolpathRenderer::Init()
 {
     // Shader source files
@@ -41,47 +69,30 @@ void ToolpathRenderer::Init()
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
     mViewUniformLocation = glGetUniformLocation(mProgram, "uViewMatrix");
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
-
-    glGenBuffers(1, &mVertexPositionBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * path->getLineCount() * 2 * 3, path->getLineVerts(), GL_STATIC_DRAW);
-    path->dumpLineVerts();
 }
 
 void ToolpathRenderer::Draw()
 {
-    glEnable(GL_DEPTH_TEST);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     if (mProgram == 0)
         return;
 
     glUseProgram(mProgram);
 
+    if (dirtyPath)
+        LoadPath();
+
+    if (mVertexPositionBuffer == 0)
+        return;
+
     glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
     glEnableVertexAttribArray(mPositionAttribLocation);
     glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    glm::mat4 trans;
-    trans = glm::rotate(trans, glm::radians((float)mDrawCount / 5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    trans = glm::scale(trans, glm::vec3(1.1f, 1.1f, 1.1f));
-    glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(trans));
+    if (dirtySceneMat)
+        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
 
-    glm::mat4 view = glm::lookAt(glm::vec3(10, 10, 60.0f), glm::vec3(10, 10, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    glUniformMatrix4fv(mViewUniformLocation, 1, GL_FALSE, glm::value_ptr(view));
-
-    MathHelper::Matrix4 projectionMatrix = MathHelper::SimpleProjectionMatrix(float(mWindowWidth) / float(mWindowHeight));
-    glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, &(projectionMatrix.m[0][0]));
+    if (dirtyProjMat)
+        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
 
     glDrawArrays(GL_LINES, 0, path->getLineCount() * 2);
-
-    mDrawCount += 1;
-}
-
-void ToolpathRenderer::UpdateWindowSize(GLsizei width, GLsizei height)
-{
-    glViewport(0, 0, width, height);
-    mWindowWidth = width;
-    mWindowHeight = height;
 }

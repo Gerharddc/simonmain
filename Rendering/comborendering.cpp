@@ -4,6 +4,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include "stlimporting.h"
+#include "gcodeimporting.h"
 
 // Init
 float ComboRendering::viewWidth = 0.0f;
@@ -20,22 +21,35 @@ float ComboRendering::sceneXRot = 0.0f;
 float ComboRendering::sceneYRot = 0.0f;
 float ComboRendering::sceneZRot = 0.0f;
 #endif
-float ComboRendering::zoom = 2.0f;
+float ComboRendering::zoom = 3.0f;
 glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
 GridRenderer ComboRendering::gridRen = GridRenderer(100, 100, 100, 10);
 STLRenderer ComboRendering::stlRen = STLRenderer();
+ToolpathRenderer ComboRendering::tpRen = ToolpathRenderer();
 
 ComboRendering::ComboRendering()
 {
     stlMesh = STLImporting::ImportSTL("bin.stl");
     stlRen.AddMesh(stlMesh);
+
+    gcodePath = GCodeImporting::ImportGCode("test.gcode");
+    tpRen.SetToolpath(gcodePath);
 }
 
 ComboRendering::~ComboRendering()
 {
     if (stlMesh != nullptr)
+    {
         delete stlMesh;
+        stlMesh = nullptr;
+    }
+
+    if (gcodePath != nullptr)
+    {
+        delete gcodePath;
+        gcodePath = nullptr;
+    }
 }
 
 void ComboRendering::SetViewSize(float width, float height)
@@ -63,7 +77,9 @@ void ComboRendering::UpdateProjection()
 
     // Flag the renderers to update their proj matrices
     gridRen.dirtyProjMat = true;
-    stlRen.dirtyProjMat();
+    stlRen.ProjMatDirty();
+    tpRen.ProjMatDirty();
+
 }
 
 const glm::vec3 yVec(0.0f, 1.0f, 0.0f);
@@ -95,7 +111,8 @@ void ComboRendering::ApplyRot(float x, float y)
 
     // Flag the renderers to update their scene matrices
     gridRen.dirtySceneMat = true;
-    stlRen.dirtySceneMat();
+    stlRen.SceneMatDirty();
+    tpRen.SceneMatDirty();
 }
 
 void ComboRendering::Move(float x, float y)
@@ -113,6 +130,7 @@ void ComboRendering::Init()
 {
     gridRen.Init();
     stlRen.Init();
+    tpRen.Init();
 }
 
 void ComboRendering::Draw()
@@ -126,6 +144,7 @@ void ComboRendering::Draw()
 
     gridRen.Draw();
     stlRen.Draw();
+    tpRen.Draw();
 }
 
 #ifdef REDUNDANT

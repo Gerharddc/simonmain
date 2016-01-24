@@ -32,10 +32,11 @@ private:
     glm::mat4 rotOrg, rotOrgInv;
 
     static STLRenderer stlRen;
-    //ToolpathRenderer tpRen;
+    static ToolpathRenderer tpRen;
     static GridRenderer gridRen;
 
     Mesh *stlMesh = nullptr;
+    Toolpath *gcodePath = nullptr;
 
 public:
     ComboRendering();
