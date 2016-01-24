@@ -89,10 +89,10 @@ void FBORenderer::SetToolpath(Toolpath *path)
 
 QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 {
-    if (stlMesh != nullptr && toolPath != nullptr)
+    //if (stlMesh != nullptr && toolPath != nullptr)
         return new STLinFBORenderer(stlMesh, toolPath);
-    else
-        throw "No STL mesh was set";
+    //else
+      //  throw "No STL mesh was set";
 }
 
 FBORenderer::~FBORenderer()

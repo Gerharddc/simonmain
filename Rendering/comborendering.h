@@ -6,6 +6,7 @@
 #include "stlrenderer.h"
 #include "toolpathrenderer.h"
 #include "gridrenderer.h"
+#include "structures.h"
 
 class ComboRendering
 {
@@ -34,8 +35,12 @@ private:
     //ToolpathRenderer tpRen;
     static GridRenderer gridRen;
 
+    //Mesh *stlMesh = nullptr;
+    Mesh *mesh;
+
 public:
     ComboRendering();
+    ~ComboRendering();
 
     void SetViewSize(float width, float height);
     void Init();

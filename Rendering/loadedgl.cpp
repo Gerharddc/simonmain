@@ -5,162 +5,221 @@
 #include <QOpenGLContext>
 #include <iostream>
 
-QOpenGLFunctions *glFuncs = NULL;
+QOpenGLFunctions *glFuncs = nullptr;
 
 void LoadedGL::ActivateGL()
 {
-    glFuncs = QOpenGLContext::currentContext()->functions();
+    if (QOpenGLContext::currentContext())
+        glFuncs = QOpenGLContext::currentContext()->functions();
+    else
+    {
+        glFuncs = nullptr;
+        std::cout << "No OpenGL context availible." << std::endl;
+    }
 }
 
 void LoadedGL::DeactivateGL()
 {
-    glFuncs = NULL;
+    glFuncs = nullptr;
 }
 
-inline void ThrowInactive()
+bool ThrowInactive()
 {
-    if (glFuncs == NULL)
+    if (glFuncs == nullptr)
     {
-        std::cout << "The GL context was not activated.";
+        std::cout << "OpenGL function called without context." << std::endl;
         LoadedGL::ActivateGL();
+        return true;
     }
+
+    return false;
 }
 
 GLuint glCreateShader(GLenum shaderType)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return -1;
+
     return glFuncs->glCreateShader(shaderType);
 }
 
 void glShaderSource(GLuint shader, GLsizei count, const GLchar **string, const GLint *length)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glShaderSource(shader, count, string, length);
 }
 
 void glCompileShader(GLuint shader)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glCompileShader(shader);
 }
 
 void glGetShaderiv(GLuint shader, GLenum pname, GLint *params)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glGetShaderiv(shader, pname, params);
 }
 
 void glGetShaderInfoLog(GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glGetShaderInfoLog(shader, maxLength, length, infoLog);
 }
 
 GLuint glCreateProgram()
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return -1;
+
     return glFuncs->glCreateProgram();
 }
 
 void glDeleteProgram(GLuint program)
 {
-    ThrowInactive();
-    glFuncs->glDeleteProgram(program);
+    if (ThrowInactive())
+        return;
+
+    try
+    {
+        glFuncs->glDeleteProgram(program);
+    }
+    catch (...) {}
 }
 
 void glDeleteShader(GLuint shader)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glDeleteShader(shader);
 }
 
 void glAttachShader(GLuint program, GLuint shader)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glAttachShader(program, shader);
 }
 
 void glLinkProgram(GLuint program)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glLinkProgram(program);
 }
 
 void glGetProgramiv(GLuint program, GLenum pname, GLint *params)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glGetProgramiv(program, pname, params);
 }
 
 void glGetProgramInfoLog(GLuint program, GLsizei bufsize, GLsizei *length, char *infoLog)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glGetProgramInfoLog(program, bufsize, length, infoLog);
 }
 
 void glDeleteBuffers(GLsizei n, const GLuint *buffers)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glDeleteBuffers(n, buffers);
 }
 
 GLint glGetAttribLocation(GLuint program, const char *name)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return -1;
+
     return glFuncs->glGetAttribLocation(program, name);
 }
 
 GLint glGetUniformLocation(GLuint program, const char *name)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return -1;
+
     return glFuncs->glGetUniformLocation(program, name);
 }
 
 void glGenBuffers(GLsizei n, GLuint *buffers)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glGenBuffers(n, buffers);
 }
 
 void glBindBuffer(GLenum target, GLuint buffer)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glBindBuffer(target, buffer);
 }
 
 void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glBufferData(target, size, data, usage);
 }
 
 void glUseProgram(GLuint program)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glUseProgram(program);
 }
 
 void glEnableVertexAttribArray(GLuint index)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glEnableVertexAttribArray(index);
 }
 
 void glVertexAttribPointer(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *ptr)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glVertexAttribPointer(indx, size, type, normalized, stride, ptr);
 }
 
 void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glUniformMatrix4fv(location, count, transpose, value);
 }
 
 void glUniform4fv(GLint location, GLsizei count, const GLfloat *value)
 {
-    ThrowInactive();
+    if (ThrowInactive())
+        return;
+
     glFuncs->glUniform4fv(location, count, value);
 }
 
