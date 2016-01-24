@@ -11,12 +11,6 @@ class FBORenderer : public QQuickFramebufferObject
 public:
     ~FBORenderer();
     Renderer *createRenderer() const;
-    static void SetSTLMesh(Mesh *mesh);
-    static void SetToolpath(Toolpath *path);
-
-private:
-    static Mesh *stlMesh;
-    static Toolpath *toolPath;
 };
 
 #endif // FBORENDERER_H
