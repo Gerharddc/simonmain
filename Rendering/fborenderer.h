@@ -16,6 +16,7 @@ public:
     Renderer *createRenderer() const;
     Q_INVOKABLE void rotateView(float x, float y);
     Q_INVOKABLE void panView(float x, float y);
+    Q_INVOKABLE void zoomView(float scale);
 };
 
 #endif // FBORENDERER_H

@@ -107,7 +107,13 @@ void ComboRendering::ApplyRot(float x, float y)
 {
     // We need to transform the rotation axis into screen space by applying the inverse of the rotation
     // currently being applied to our scene
-    glm::vec2 axis = glm::vec2(x, y);
+
+    // We also need to scale the roation to the screen size and aspect ratio
+    // TODO: add dpi scaling
+    // For some reason the x rot is in the inverse direction of the mouse movement
+    float yAng = (x / sizeX * 1.1) / zoom;
+    float xAng = -(y / sizeY * (1.1 * sizeY / sizeX)) / zoom;
+    glm::vec2 axis = glm::vec2(xAng, yAng);
     auto l = glm::length(axis); // doesnt work
     if (l == 0) // This is important to avoid normaliztion disasters ahead
         return;
@@ -121,7 +127,7 @@ void ComboRendering::ApplyRot(float x, float y)
 
     // Now we need to rotate accordingly around the calculated centre
     sceneTrans = rotOrg;
-    sceneRot *= glm::angleAxis(l / 250.0f, glm::vec3(dir.x, dir.y, dir.z));
+    sceneRot *= glm::angleAxis(l, glm::vec3(dir.x, dir.y, dir.z));
     sceneTrans *= glm::mat4_cast(sceneRot);
     sceneTrans *= rotOrgInv;
 
@@ -133,9 +139,20 @@ void ComboRendering::ApplyRot(float x, float y)
 
 void ComboRendering::Move(float x, float y)
 {
-    aimX += x;
-    aimY += y;
+    // The direction of mouse movement is inverse of the view movement
+    // We need to scale the move distance to the size of the viewport
+    // We want a constant move distance for a viewport length and take
+    // aspect ration into account
+    // TODO: add dpi support
+    aimX -= (x / sizeX * 65) / zoom;
+    aimY -= (y / sizeY * (65 * sizeY / sizeX)) / zoom;
 
+    UpdateProjection();
+}
+
+void ComboRendering::Zoom(float scale)
+{
+    zoom *= scale;
     UpdateProjection();
 }
 

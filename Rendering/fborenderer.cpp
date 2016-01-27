@@ -62,6 +62,9 @@ void FBORenderer::rotateView(float x, float y)
 void FBORenderer::panView(float x, float y)
 {
     comb.Move(x, y);
-    //comb.Move(10.0f, 0);
 }
 
+void FBORenderer::zoomView(float scale)
+{
+    comb.Zoom(scale);
+}

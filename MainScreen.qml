@@ -79,13 +79,20 @@ Rectangle {
                 if ((deltaX != 0) || (deltaY != 0))
                 {
                     if (panning)
-                        renderer.panView(-deltaX / 5, -deltaY / 5);
+                        renderer.panView(deltaX, deltaY);
                     else
-                        renderer.rotateView(-deltaY, deltaX);
+                        renderer.rotateView(deltaX, deltaY);
                 }
 
                 lastX = mouseX
                 lastY = mouseY
+            }
+
+            onWheel: {
+                if (wheel.angleDelta.y > 0)
+                    renderer.zoomView(1.1)
+                else if (wheel.angleDelta.y < 0)
+                    renderer.zoomView(0.9)
             }
 
             Button {

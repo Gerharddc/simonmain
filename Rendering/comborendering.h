@@ -45,6 +45,7 @@ public:
     void Draw();
     void ApplyRot(float x, float y);
     void Move(float x, float y);
+    void Zoom(float scale);
 };
 
 #endif // COMBORENDERING_H
