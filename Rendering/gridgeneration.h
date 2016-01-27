@@ -22,14 +22,12 @@ namespace GridGeneration {
         }
     };
 
-#define uint unsigned int
-
-    inline Grid* GenerateGrids(uint xSize, uint ySize, uint zSize, uint interval)
+    inline Grid* GenerateGrids(unsigned int xSize, unsigned int ySize, unsigned int zSize, unsigned int interval)
     {   
         // When calculate the amount of blocks and then add the final line
-        uint xCount = xSize / interval;
-        uint yCount = ySize / interval;
-        uint zCount = zSize / interval;
+        unsigned int xCount = xSize / interval;
+        unsigned int yCount = ySize / interval;
+        unsigned int zCount = zSize / interval;
         float xInt = xSize / xCount;
         float yInt = ySize / yCount;
         float zInt = zSize / zCount;
@@ -40,10 +38,10 @@ namespace GridGeneration {
         // Each line has 2 points and each point has 3 floats (x,y,z)
         Grid *grid = new Grid((xCount + yCount + zCount) * 2 * 6);
 
-        uint idx = 0;
+        unsigned int idx = 0;
 
         // Calculate the vertical bottom lines
-        for (uint i = 0; i < xCount; i++)
+        for (unsigned int i = 0; i < xCount; i++)
         {
             float x = xInt * i;
 
@@ -59,7 +57,7 @@ namespace GridGeneration {
         }
 
         // Calculate the horizontal bottom lines
-        for (uint i = 0; i < yCount; i++)
+        for (unsigned int i = 0; i < yCount; i++)
         {
             float y = yInt * i;
 
@@ -75,7 +73,7 @@ namespace GridGeneration {
         }
 
         // Calculate the vertical side lines
-        for (uint i = 0; i < xCount; i++)
+        for (unsigned int i = 0; i < xCount; i++)
         {
             float x = xInt * i;
 
@@ -91,7 +89,7 @@ namespace GridGeneration {
         }
 
         // Calculate the horizontal side lines
-        for (uint i = 0; i < zCount; i++)
+        for (unsigned int i = 0; i < zCount; i++)
         {
             float z = zInt * i;
 
@@ -107,7 +105,7 @@ namespace GridGeneration {
         }
 
         // Calculate the vertical back lines
-        for (uint i = 0; i < xCount; i++)
+        for (unsigned int i = 0; i < xCount; i++)
         {
             float y = yInt * i;
 
@@ -123,7 +121,7 @@ namespace GridGeneration {
         }
 
         // Calculate the horizontal back lines
-        for (uint i = 0; i < zCount; i++)
+        for (unsigned int i = 0; i < zCount; i++)
         {
             float z = zInt * i;
 

@@ -1,5 +1,7 @@
 #include "comborendering.h"
 
+#include <QDebug>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 
@@ -16,17 +18,15 @@ float ComboRendering::aimY = 50.0f;
 float ComboRendering::sizeX = 100.0f;
 float ComboRendering::sizeY = 100.0f;
 float ComboRendering::sizeZ = 100.0f;
-#ifdef REDUNDANT
-float ComboRendering::sceneXRot = 0.0f;
-float ComboRendering::sceneYRot = 0.0f;
-float ComboRendering::sceneZRot = 0.0f;
-#endif
 float ComboRendering::zoom = 3.0f;
 glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
 GridRenderer ComboRendering::gridRen = GridRenderer(100, 100, 100, 10);
 STLRenderer ComboRendering::stlRen = STLRenderer();
 ToolpathRenderer ComboRendering::tpRen = ToolpathRenderer();
+glm::mat4 ComboRendering::rotOrg = glm::mat4();
+glm::mat4 ComboRendering::rotOrgInv = glm::mat4();
+glm::quat ComboRendering::sceneRot = glm::quat();
 
 ComboRendering::ComboRendering()
 {
@@ -62,6 +62,18 @@ void ComboRendering::SetViewSize(float width, float height)
 
     // Update the projection
     UpdateProjection();
+
+    // Reset the scene view looking at the centre of the box from a height above the origin
+    RecalculateCentre();
+    sceneTrans = rotOrg;
+    sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::quat inv = sceneRot;
+    inv.w *= -1; // Invert the angle
+    glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
+    xDir = inv * xDir;
+    sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
+    sceneTrans *= glm::mat4_cast(sceneRot);
+    sceneTrans *= rotOrgInv;
 }
 
 void ComboRendering::UpdateProjection()
@@ -73,40 +85,44 @@ void ComboRendering::UpdateProjection()
     float top = aimY + (centreY / zoom);
 
     // With the orthographic system we need a negative and positive clip plane of enough distance
-    sceneProj = glm::ortho(left, right, bottom, top, -sizeZ * 2, sizeZ * 2);
+    sceneProj = glm::ortho(left, right, bottom, top, -sizeZ * 10, sizeZ * 10);
 
     // Flag the renderers to update their proj matrices
     gridRen.dirtyProjMat = true;
     stlRen.ProjMatDirty();
     tpRen.ProjMatDirty();
-
 }
 
-const glm::vec3 yVec(0.0f, 1.0f, 0.0f);
-const glm::vec3 xVec(1.0f, 0.0f, 0.0f);
+void ComboRendering::RecalculateCentre()
+{
+    // We need to translate the centre of the box to the origin for rotation
+    float midX = sizeX / 2.0f;
+    float midY = sizeY / 2.0f;
+
+    rotOrg = glm::translate(glm::mat4(), glm::vec3(midX, midY, 0.0f));
+    rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-midX, -midY, 0.0f));
+}
 
 void ComboRendering::ApplyRot(float x, float y)
 {
-    // We want to rotate around whatever point is in the centre of the screen
-    // if we have panned then we need to recalculate the point underneath the
-    // centre of the screen
-    if (movedSinceRot)
-    {
-        movedSinceRot = false;
+    // We need to transform the rotation axis into screen space by applying the inverse of the rotation
+    // currently being applied to our scene
+    glm::vec2 axis = glm::vec2(x, y);
+    auto l = glm::length(axis); // doesnt work
+    if (l == 0) // This is important to avoid normaliztion disasters ahead
+        return;
 
-        // Project the centre screen pos into scene space on z = 0 (floor)
-        glm::mat4 inv = glm::inverse(sceneProj * sceneTrans);
-        // The x and y should be between -1 and 1 thus 0
-        glm::vec4 centre(0.0f, 0.0f, 1.0f, 1.0f); // Not sure if z and w are needed...
-        centre = inv * centre; // Order is important here
-        rotOrg = glm::translate(glm::mat4(), glm::vec3(centre.x, centre.y, 0.0f));
-        rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-centre.x, -centre.y, 0.0f));
-    }
+    axis = glm::normalize(axis);
+    glm::vec4 dir = glm::vec4(axis.x, axis.y, 0.0f, 0.0f);
+    glm::quat inv = sceneRot;
+    inv.w *= -1;
+    dir = inv * dir;
+    dir = glm::normalize(dir);
 
     // Now we need to rotate accordingly around the calculated centre
-    sceneTrans *= rotOrg;
-    sceneTrans = glm::rotate(sceneTrans, y, yVec);
-    sceneTrans = glm::rotate(sceneTrans, x, xVec);
+    sceneTrans = rotOrg;
+    sceneRot *= glm::angleAxis(l / 250.0f, glm::vec3(dir.x, dir.y, dir.z));
+    sceneTrans *= glm::mat4_cast(sceneRot);
     sceneTrans *= rotOrgInv;
 
     // Flag the renderers to update their scene matrices
@@ -121,9 +137,6 @@ void ComboRendering::Move(float x, float y)
     aimY += y;
 
     UpdateProjection();
-
-    if (!movedSinceRot)
-        movedSinceRot = true;
 }
 
 void ComboRendering::Init()
@@ -140,26 +153,7 @@ void ComboRendering::Draw()
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    ApplyRot(0.01f, 0.01f);
-
     gridRen.Draw();
     stlRen.Draw();
     tpRen.Draw();
 }
-
-#ifdef REDUNDANT
-void ComboRendering::UpdateTransform()
-{
-    // Use quaternions to avoid gimbal lock
-    glm::quat xRot = glm::angleAxis(sceneXRot, glm::vec3(1.0f, 0.0f, 0.0f));
-    glm::quat yRot = glm::angleAxis(sceneYRot, glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::quat zRot = glm::angleAxis(sceneZRot, glm::vec3(0.0f, 0.0f, 1.0f));
-
-    // Combine them and caclualte the matrix
-    glm::quat rot = xRot * yRot * zRot;
-    sceneTrans = glm::mat4_cast(rot);
-
-    // Flag the renderers to update their trans matrices
-    // TODO
-}
-#endif

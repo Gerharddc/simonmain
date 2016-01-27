@@ -21,15 +21,13 @@ private:
     static float aimX, aimY;
     static float sizeX, sizeY, sizeZ;
     static float zoom;
-#ifdef REDUNDANT
-    static float sceneXRot, sceneYRot, sceneZRot;
-#endif
 
     static void UpdateProjection();
     static void UpdateTransform();
+    static void RecalculateCentre();
 
-    bool movedSinceRot = true;
-    glm::mat4 rotOrg, rotOrgInv;
+    static glm::mat4 rotOrg, rotOrgInv;
+    static glm::quat sceneRot;
 
     static STLRenderer stlRen;
     static ToolpathRenderer tpRen;

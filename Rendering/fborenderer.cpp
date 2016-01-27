@@ -9,21 +9,20 @@
 #include "stlrenderer.h"
 #include "toolpathrenderer.h"
 #include "gridrenderer.h"
-#include "comborendering.h"
 
 class ComboFBORenderer : public QQuickFramebufferObject::Renderer
 {
-private:
-    ComboRendering comb;
-
 public:
+    ComboRendering *comb;
 
-    ComboFBORenderer()
+    ComboFBORenderer(const ComboRendering *c)
     {
+        comb = (ComboRendering*)c;
+
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
-        comb.Init();
+        comb->Init();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -33,7 +32,7 @@ public:
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
-        comb.Draw();
+        comb->Draw();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -44,7 +43,7 @@ public:
         QOpenGLFramebufferObjectFormat format;
         format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
         format.setSamples(4);
-        comb.SetViewSize(size.width(), size.height());
+        comb->SetViewSize(size.width(), size.height());
 
         return new QOpenGLFramebufferObject(size, format);
     }
@@ -52,11 +51,17 @@ public:
 
 QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 {
-    return new ComboFBORenderer();
+    return new ComboFBORenderer(&comb);
 }
 
-FBORenderer::~FBORenderer()
+void FBORenderer::rotateView(float x, float y)
 {
+    comb.ApplyRot(x, y);
+}
 
+void FBORenderer::panView(float x, float y)
+{
+    comb.Move(x, y);
+    //comb.Move(10.0f, 0);
 }
 
