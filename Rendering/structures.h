@@ -133,6 +133,15 @@ private:
     float *lineVerts = nullptr;
     std::size_t lineCount = 0;
 
+    float *curFloats = nullptr;
+    float *prevFloats = nullptr;
+    float *nextFloats = nullptr;
+    short *indices = nullptr;
+    float *sides = nullptr;
+    float *zFloats = nullptr;
+
+    void CalculateVertices();
+
 public:
     std::vector<Layer*> layers;
 
@@ -158,6 +167,27 @@ public:
     {
         delete[] lineVerts;
         lineVerts = nullptr;
+    }
+
+    float *getCurFloats();
+    float *getNextFloats();
+    float *getPrevFloats();
+    short *getIndices();
+    float *getSides();
+    float *getZFloats();
+    void dumpVertices()
+    {
+        delete[] curFloats;
+        delete[] prevFloats;
+        delete[] nextFloats;
+        //delete[] indices;
+        delete[] zFloats;
+
+        curFloats = nullptr;
+        prevFloats = nullptr;
+        nextFloats = nullptr;
+        //indices = nullptr;
+        zFloats = nullptr;
     }
 };
 

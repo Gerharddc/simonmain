@@ -67,11 +67,12 @@ void ComboRendering::SetViewSize(float width, float height)
     RecalculateCentre();
     sceneTrans = rotOrg;
     sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //sceneRot = glm::angleAxis(glm::radians(180.0f + 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::quat inv = sceneRot;
     inv.w *= -1; // Invert the angle
     glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
     xDir = inv * xDir;
-    sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
+    //sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
     sceneTrans *= glm::mat4_cast(sceneRot);
     sceneTrans *= rotOrgInv;
 }
@@ -171,6 +172,6 @@ void ComboRendering::Draw()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     gridRen.Draw();
-    stlRen.Draw();
+    //stlRen.Draw();
     tpRen.Draw();
 }

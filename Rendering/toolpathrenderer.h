@@ -25,13 +25,26 @@ private:
     GLsizei mWindowWidth = 0;
     GLsizei mWindowHeight = 0;
 
-    GLint mPositionAttribLocation;
+    //GLint mPositionAttribLocation;
+
+    GLint mCurPosAttribLocation;
+    GLint mNextPosAttribLocation;
+    GLint mPrevPosAttribLocation;
+    GLint mSideAttribLocation;
+    GLint mZAttribLocation;
 
     GLint mModelUniformLocation;
-    GLint mViewUniformLocation;
+    //GLint mViewUniformLocation;
+    GLint mRadiusUniformLocation;
     GLint mProjUniformLocation;
 
-    GLuint mVertexPositionBuffer = 0;
+    //GLuint mVertexPositionBuffer = 0;
+
+    GLuint mCurPosBuffer = 0;
+    GLuint mNextPosBuffer = 0;
+    GLuint mPrevPosBuffer = 0;
+    GLuint mSideBuffer = 0;
+    GLuint mZBuffer = 0;
 
     inline void LoadPath();
     Toolpath *path;

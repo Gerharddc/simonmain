@@ -66,6 +66,7 @@ SAMPLE_FILES = \
     GL/mesh.vsh \
     GL/minimal.fsh \
     GL/line.vsh \
+    GL/filament.vsh \
     test.gcode
 
 # - setup the 'make install' step
