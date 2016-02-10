@@ -16,7 +16,7 @@ vec2 GetNormal(vec2 a, vec2 b)
 {
     float dX = b.x - a.x;
     float dY = b.y - a.y;
-    if (aSide > 0.5)
+    if (aSide > 0.0)
         dY *= -1.0;
     else
         dX *= -1.0;
@@ -24,36 +24,34 @@ vec2 GetNormal(vec2 a, vec2 b)
     return normalize(norm) * uFilamentRadius;
 }
 
-bool isNan(float val)
+/*bool isNan(float val)
 {
     return ( val < 0.0 || 0.0 < val || val == 0.0 ) ? false : true;
-}
+}*/
 
 void main(void)
 {
     // Project the positions into view space
     vec4 curPos = uModelMatrix * vec4(aCurPos, aZ, 1.0);
+    vec4 prevPos = uModelMatrix * vec4(aPrevPos, aZ, 1.0);
+    vec4 nextPos = uModelMatrix * vec4(aNextPos, aZ, 1.0);
     vec4 newPos;
 
-    if (isNan(aNextPos.x))
+    // Calculate the normals for the line segments
+    vec2 normNext = GetNormal(curPos.xy, nextPos.xy);
+    vec2 normPrev = GetNormal(prevPos.xy, curPos.xy);
+
+    if (abs(aSide) < 0.6)
     {
-        // This is the 2nd point
-        vec4 prevPos = uModelMatrix * vec4(aPrevPos, aZ, 1.0);
-        vec2 norm = GetNormal(prevPos.xy, curPos.xy);
-        newPos = vec4(curPos.xy + norm, curPos.z, 1.0);
-    }
-    else if (isNan(aPrevPos.x))
-    {
-        // This is the 1st point
-        vec4 nextPos = uModelMatrix * vec4(aNextPos, aZ, 1.0);
-        vec2 norm = GetNormal(curPos.xy, nextPos.xy);
-        newPos = vec4(curPos.xy + norm, curPos.z, 1.0);
+        // This is a 2nd point
+        newPos = vec4(curPos.xy + normPrev, curPos.z, 1.0);
     }
     else
     {
-        // This is an intersection point
-        //newPos = curPos;
+        // This is a 1st point
+        newPos = vec4(curPos.xy + normNext, curPos.z, 1.0);
     }
+
     //newPos = curPos;
 
     gl_Position = uProjMatrix * newPos;

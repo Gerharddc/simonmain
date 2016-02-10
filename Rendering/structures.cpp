@@ -153,16 +153,18 @@ float *Toolpath::getLineVerts()
 void AddPointToArray(float *array, Point &p, std::size_t arrPos)
 {
     // We need to add the point twice because one goes up and one down
-    array[arrPos + 0] = p.x;
+    array[arrPos + 0] = p.x; // up
     array[arrPos + 1] = p.y;
-    array[arrPos + 2] = p.x;
+    array[arrPos + 2] = p.x; // down
     array[arrPos + 3] = p.y;
 }
 
-inline void AddNanToArray(float *array, std::size_t arrPos)
+inline void AddPointsToArray(float *array, Point &p, std::size_t arrPos)
 {
-    array[arrPos] = NAN;
-    array[arrPos + 2] = NAN;
+    // We add the point twice because one connects to the next and one
+    // to the previous
+    AddPointToArray(array, p, arrPos);
+    AddPointToArray(array, p, arrPos + 4);
 }
 
 void Toolpath::CalculateVertices()
@@ -172,15 +174,14 @@ void Toolpath::CalculateVertices()
     auto count = getLineCount();
 
     // We need an up and a down version of each point
-    curFloats   = new float[count * 8];
-    nextFloats  = new float[count * 8];
-    prevFloats  = new float[count * 8];
-    sides       = new float[count * 4];
-    indices     = new short[count * 6];
-    zFloats     = new float[count * 4];
+    curFloats   = new float[count * 8 + 4];
+    nextFloats  = new float[count * 8 + 4];
+    prevFloats  = new float[count * 8 + 4];
+    sides       = new float[count * 4 + 2];
+    indices     = new short[count * 12];
+    zFloats     = new float[count * 4 + 2];
 
     short curIdx = 0;
-    std::size_t idxPos = 2; // The first two vertices are indexed last
 
     for (Layer *layer : layers)
     {
@@ -188,28 +189,28 @@ void Toolpath::CalculateVertices()
 
         for (uint j = 0; j < pCount; j++)
         {
-            bool last = (j == pCount - 1);
+            bool isLast = (j == pCount - 1);
+            bool isFirst = (j == 0);
 
             // Get the wrapped points
-            Point prevPoint = (j == 0) ? layer->points[pCount - 1] : layer->points[j - 1];
+            Point prevPoint = isFirst ? layer->points[pCount - 1] : layer->points[j - 1];
             Point curPoint = layer->points[j];
-            Point nextPoint = last ? layer->points[0] : layer->points[j + 1];
+            Point nextPoint = isLast ? layer->points[0] : layer->points[j + 1];
 
             // Add all the position components
-            std::size_t arrPos = 8 * curIdx;
-            AddPointToArray(curFloats, curPoint, arrPos);
-            AddPointToArray(curFloats, curPoint, arrPos + 4);
-            AddPointToArray(prevFloats, prevPoint, arrPos);
-            AddNanToArray(prevFloats, arrPos + 4);
-            AddNanToArray(nextFloats, arrPos);
-            AddPointToArray(nextFloats, nextPoint, arrPos + 4);
+            std::size_t arrPos = 2 * curIdx;
+            AddPointsToArray(curFloats, curPoint, arrPos);
+            AddPointsToArray(prevFloats, prevPoint, arrPos);
+            AddPointsToArray(nextFloats, nextPoint, arrPos);
 
             // Make the first point up and the next down
-            arrPos = 4 * curIdx;
-            sides[arrPos + 0] = 0.0f;
-            sides[arrPos + 1] = 1.0f;
-            sides[arrPos + 2] = 0.0f;
-            sides[arrPos + 3] = 1.0f;
+            arrPos = curIdx;
+            // Positive = up, negative = down
+            // abs < 0.6= 2nd point else = 1st point
+            sides[arrPos + 0] = 0.1f;
+            sides[arrPos + 1] = -0.1f;
+            sides[arrPos + 2] = 1.0f;
+            sides[arrPos + 3] = -1.0f;
 
             // Write the z floats
             zFloats[arrPos + 0] = layer->z;
@@ -218,33 +219,50 @@ void Toolpath::CalculateVertices()
             zFloats[arrPos + 3] = layer->z;
 
             // We connect the current points with the following ones
-            // 0---------2
-            // -----------
-            // 1---------3
-            arrPos = 6 * curIdx;
-            if (last)
-            {
-                indices[arrPos + 0] = idxPos + 0;
-                indices[arrPos + 1] = idxPos + 1;
-                indices[arrPos + 2] = 0;
-                indices[arrPos + 3] = idxPos + 1;
-                indices[arrPos + 4] = 1;
-                indices[arrPos + 5] = 0;
-            }
-            else
-            {
-                indices[arrPos + 0] = idxPos + 0;
-                indices[arrPos + 1] = idxPos + 1;
-                indices[arrPos + 2] = idxPos + 2;
-                indices[arrPos + 3] = idxPos + 1;
-                indices[arrPos + 4] = idxPos + 3;
-                indices[arrPos + 5] = idxPos + 2;
-            }
+            // The 4 current points form the corner and then we connect
+            // to the next point to come
+            // 0--2--4
+            // | /| /|
+            // |/ |/ |
+            // 1--3--5
+            // Only one of the corner triangles will be visible if any because
+            // two points of the other will be the same when the rectangle
+            // intersections are calculated
+            arrPos = 3 * curIdx;
+
+            // Connector trigs
+            indices[arrPos + 0] = -1;//idxPos + 0;
+            indices[arrPos + 1] = -1;//idxPos + 3;
+            indices[arrPos + 2] = -1;//idxPos + 4;
+            indices[arrPos + 3] = -1;//idxPos + 1;
+            indices[arrPos + 4] = -1;//idxPos + 2;
+            indices[arrPos + 5] = -1;//idxPos + 5;
+
+            // Rectangle
+            indices[arrPos + 6] = curIdx + 2;
+            indices[arrPos + 7] = curIdx + 4;
+            indices[arrPos + 8] = curIdx + 3;
+            indices[arrPos + 9] = curIdx + 3;
+            indices[arrPos + 10] = curIdx + 4;
+            indices[arrPos + 11] = curIdx + 5;
 
             // Increment the current vertex index
-            curIdx++;
-            idxPos += 4;
+            curIdx += 4;
         }
+
+        // Add the first two parts of the first point for the last point to connect to
+        std::size_t arrPos = 2 * curIdx; // TODO: opto
+        Point prevPoint = layer->points[pCount - 1];
+        Point curPoint = layer->points[0];
+        Point nextPoint = layer->points[1];
+        AddPointToArray(curFloats, curPoint, arrPos);
+        AddPointToArray(prevFloats, prevPoint, arrPos);
+        AddPointToArray(nextFloats, nextPoint, arrPos);
+        arrPos = curIdx;
+        sides[arrPos + 0] = 0.1f;
+        sides[arrPos + 1] = -0.1f;
+        zFloats[arrPos + 0] = layer->z;
+        zFloats[arrPos + 1] = layer->z;
     }
 }
 

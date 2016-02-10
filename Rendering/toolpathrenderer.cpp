@@ -23,12 +23,6 @@ ToolpathRenderer::~ToolpathRenderer()
         mProgram = 0;
     }
 
-    /*if (mVertexPositionBuffer != 0)
-    {
-        glDeleteBuffers(1, &mVertexPositionBuffer);
-        mVertexPositionBuffer = 0;
-    }*/
-
     if (mCurPosBuffer != 0)
     {
         glDeleteBuffers(1, &mCurPosBuffer);
@@ -80,9 +74,6 @@ void ToolpathRenderer::LoadPath()
 {
     dirtyPath = false;
 
-    /*if (mVertexPositionBuffer != 0)
-        glDeleteBuffers(1, &mVertexPositionBuffer);*/
-
     if (mCurPosBuffer != 0)
     {
         glDeleteBuffers(1, &mCurPosBuffer);
@@ -92,33 +83,27 @@ void ToolpathRenderer::LoadPath()
         glDeleteBuffers(1, &mZBuffer);
     }
 
-    /*glGenBuffers(1, &mVertexPositionBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * path->getLineCount() * 2 * 3, path->getLineVerts(), GL_STATIC_DRAW);
-    path->dumpLineVerts();*/
-
     auto lCount = path->getLineCount();
-    //auto ding = path->getCurFloats();
 
     glGenBuffers(1, &mCurPosBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mCurPosBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * lCount * 8, path->getCurFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 8 + 4), path->getCurFloats(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mNextPosBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mNextPosBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * lCount * 8, path->getNextFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 8 + 4), path->getNextFloats(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mPrevPosBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mPrevPosBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * lCount * 8, path->getPrevFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 8 + 4), path->getPrevFloats(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mSideBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mSideBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * lCount * 4, path->getSides(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 4 + 2), path->getSides(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mZBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mZBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * lCount * 4, path->getZFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 4 + 2), path->getZFloats(), GL_STATIC_DRAW);
 
     path->dumpVertices();
 }
@@ -132,9 +117,7 @@ void ToolpathRenderer::Init()
 
     // Set up the shader and its uniform/attribute locations.
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
-    //mPositionAttribLocation = glGetAttribLocation(mProgram, "aPosition");
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
-    //mViewUniformLocation = glGetUniformLocation(mProgram, "uViewMatrix");
 
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
     mCurPosAttribLocation = glGetAttribLocation(mProgram, "aCurPos");
@@ -156,15 +139,8 @@ void ToolpathRenderer::Draw()
     if (dirtyPath)
         LoadPath();
 
-    //if (mVertexPositionBuffer == 0)
-      //  return;
-
     if (mCurPosBuffer == 0)
         return;
-
-    /*glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glEnableVertexAttribArray(mPositionAttribLocation);
-    glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);*/
 
     glBindBuffer(GL_ARRAY_BUFFER, mCurPosBuffer);
     glEnableVertexAttribArray(mCurPosAttribLocation);
@@ -194,11 +170,17 @@ void ToolpathRenderer::Draw()
     if (dirtyProjMat)
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
 
-    //glDrawArrays(GL_LINES, 0, path->getLineCount() * 2);
-    glDrawElements(GL_TRIANGLES, path->getLineCount() * 6, GL_UNSIGNED_SHORT, path->getIndices());
-    //glDrawElements(GL_LINES, path->getLineCount() * 6, GL_UNSIGNED_SHORT, path->getIndices());
+    //glDrawArrays(GL_LINE_STRIP, 0, path->getLineCount() * 12);
+    glDrawElements(GL_TRIANGLES, path->getLineCount() * 12, GL_UNSIGNED_SHORT, path->getIndices());
+    //glDrawElements(GL_LINE_STRIP, path->getLineCount() * 12, GL_UNSIGNED_SHORT, path->getIndices());
     //short idxs[] = { 0, 2, 2, 4, 4, 6, 6, 0  ,1, 3, 3, 5, 5, 7, 7, 1 };
     //glDrawElements(GL_LINES, 16, GL_UNSIGNED_SHORT, idxs);
     //short idxs[] = { 2, 4, 6, 8, 10, 12, 14, 0  ,3, 5, 7, 9, 11, 13, 15, 1 };
     //glDrawElements(GL_LINES, 16, GL_UNSIGNED_SHORT, idxs);
+    //short idxs[] = { 4, 6, 10, 12, 16, 18, 22, 0 };
+    //glDrawElements(GL_LINES, 8, GL_UNSIGNED_SHORT, idxs);
+    //short idxs[] = { 14, 16, 15, 15, 16, 17 };
+    //short idxs[] = { 15, 17 };
+    //glDrawElements(GL_LINES, 2, GL_UNSIGNED_SHORT, idxs);
+    // Check indices
 }
