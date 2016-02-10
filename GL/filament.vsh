@@ -11,6 +11,7 @@ attribute float aSide;
 
 varying vec4 vColor;
 const vec3 color = vec3(0.2, 0.2, 0.8);
+const vec3 lightPos = vec3(50.0, 50.0, 150.0);
 
 vec2 GetNormal(vec2 a, vec2 b)
 {
@@ -41,7 +42,9 @@ void main(void)
     vec2 normNext = GetNormal(curPos.xy, nextPos.xy);
     vec2 normPrev = GetNormal(prevPos.xy, curPos.xy);
 
-    if (abs(aSide) < 0.6)
+    bool sndPoint = (abs(aSide) < 0.6);
+
+    if (sndPoint)
     {
         // This is a 2nd point
         newPos = vec4(curPos.xy + normPrev, curPos.z, 1.0);
@@ -55,7 +58,22 @@ void main(void)
     //newPos = curPos;
 
     gl_Position = uProjMatrix * newPos;
-    vColor = vec4(color, 1.0);
+    //vColor = vec4(color, 1.0);
+
+    // Get the lighting normal which is the same as the next or prev normal
+    // but raised slightly out of the screen
+    vec3 lightNorm;
+    if (sndPoint)
+        lightNorm = vec3(normPrev, 1.0);
+    else
+        lightNorm = vec3(normNext, 1.0);
+    lightNorm = normalize(lightNorm);
+
+    // Calculate the lighting and colour
+    vec3 vPos = curPos.xyz;
+    vec3 lightVector = normalize(lightPos - vPos);
+    float diffuse = max(dot(lightNorm, lightVector), 0.1);
+    vColor = vec4(color * diffuse, 1.0);
 
     /*vec4 nextPos = uModelMatrix * vec4(aNextPos, aZ, 1.0);
     vec4 prevPos = uModelMatrix * vec4(aPrevPos, aZ, 1.0);

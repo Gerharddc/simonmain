@@ -231,12 +231,12 @@ void Toolpath::CalculateVertices()
             arrPos = 3 * curIdx;
 
             // Connector trigs
-            indices[arrPos + 0] = -1;//idxPos + 0;
-            indices[arrPos + 1] = -1;//idxPos + 3;
-            indices[arrPos + 2] = -1;//idxPos + 4;
-            indices[arrPos + 3] = -1;//idxPos + 1;
-            indices[arrPos + 4] = -1;//idxPos + 2;
-            indices[arrPos + 5] = -1;//idxPos + 5;
+            indices[arrPos + 0] = curIdx + 0;
+            indices[arrPos + 1] = curIdx + 2;
+            indices[arrPos + 2] = curIdx + 1;
+            indices[arrPos + 3] = curIdx + 1;
+            indices[arrPos + 4] = curIdx + 2;
+            indices[arrPos + 5] = curIdx + 3;
 
             // Rectangle
             indices[arrPos + 6] = curIdx + 2;
