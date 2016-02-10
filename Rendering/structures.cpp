@@ -237,6 +237,12 @@ void Toolpath::CalculateVertices()
             indices[arrPos + 3] = curIdx + 1;
             indices[arrPos + 4] = curIdx + 2;
             indices[arrPos + 5] = curIdx + 3;
+            /*indices[arrPos + 0] = -1;
+            indices[arrPos + 1] = -1;
+            indices[arrPos + 2] = -1;
+            indices[arrPos + 3] = -1;
+            indices[arrPos + 4] = -1;
+            indices[arrPos + 5] = -1;*/
 
             // Rectangle
             indices[arrPos + 6] = curIdx + 2;
