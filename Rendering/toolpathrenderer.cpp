@@ -87,23 +87,23 @@ void ToolpathRenderer::LoadPath()
 
     glGenBuffers(1, &mCurPosBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mCurPosBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 8 + 4), path->getCurFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 12 + 4), path->getCurFloats(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mNextPosBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mNextPosBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 8 + 4), path->getNextFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 12 + 4), path->getNextFloats(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mPrevPosBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mPrevPosBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 8 + 4), path->getPrevFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 12 + 4), path->getPrevFloats(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mSideBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mSideBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 4 + 2), path->getSides(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 6 + 2), path->getSides(), GL_STATIC_DRAW);
 
     glGenBuffers(1, &mZBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mZBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 4 + 2), path->getZFloats(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 6 + 2), path->getZFloats(), GL_STATIC_DRAW);
 
     path->dumpVertices();
 }

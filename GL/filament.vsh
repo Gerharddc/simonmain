@@ -10,6 +10,9 @@ attribute float aZ;
 attribute float aSide;
 
 varying vec4 vColor;
+//varying vec3 vLightNorm;
+//varying vec3 vPos;
+
 const vec3 color = vec3(0.2, 0.2, 0.8);
 const vec3 lightPos = vec3(50.0, 50.0, 150.0);
 
@@ -74,7 +77,17 @@ void main(void)
     vec2 normNext = GetNormal(curPos.xy, nextPos.xy);
     vec2 normPrev = GetNormal(prevPos.xy, curPos.xy);
 
-    bool sndPoint = (abs(aSide) < 0.6);
+    bool sndPoint = (abs(aSide) < 0.3);
+    bool cnrPoint = sndPoint ? false : (abs(aSide) < 0.7);
+
+    /*if (cnrPoint)
+    {
+
+    }
+    else
+    {
+
+    }*/
 
     // Calculate the intersection if any
     vec2 a1 = prevPos.xy + normPrev;
@@ -82,8 +95,11 @@ void main(void)
     vec2 b1 = nextPos.xy + normNext;
     vec2 b2 = curPos.xy + normNext;
 
+    float prevZ = (prevPos.z + curPos.z) / 2.0;
+    float nextZ = (curPos.z + nextPos.z) / 2.0;
+    bool prevFront = (prevZ > nextZ);
+
     InterPoint inter = Intersection(a1.x, a2.x, b1.x, b2.x, a1.y, a2.y, b1.y, b2.y);
-    bool intersects = false;
     if (inter.does && distance(a1, inter.point) < distance(a1, a2))
     {
         // We need the z pos of the intersection
@@ -91,13 +107,13 @@ void main(void)
         float totalNextD = distance(b1, b2);
         float z = curPos.z;
 
-        if (totalPrevD != 0.0 && prevPos.z != curPos.z)
+        if (totalPrevD != 0.0 && prevPos.z != curPos.z && (sndPoint || (cnrPoint && prevFront)))
         {
             float deltaD = distance(a1, inter.point);
             float deltaZ = curPos.z - prevPos.z;
             z = prevPos.z + (deltaD / totalPrevD * deltaZ);
         }
-        else if (totalNextD != 0.0 && nextPos.z != curPos.z)
+        else if (totalNextD != 0.0 && nextPos.z != curPos.z && !sndPoint)
         {
             float deltaD = distance(b1, inter.point);
             float deltaZ = curPos.z - nextPos.z;
@@ -105,7 +121,7 @@ void main(void)
         }
 
         newPos = vec3(inter.point, z);
-        intersects = true;
+        //intersects = true;
     }
     else
     {
@@ -118,19 +134,30 @@ void main(void)
 
     // Get the lighting normal which is the same as the next or prev normal
     // but raised slightly out of the screen
-    vec3 lightNorm;
-    const float lift = 0.8;
-    if (intersects)
-        lightNorm = vec3((normPrev + normNext) / 2.0, lift);
+    vec2 temp;
+    const float lift = 0.9;
+    if (cnrPoint)
+    {
+        if (prevZ == nextZ)
+            temp = (normPrev + normNext) / 2.0;
+        else if (nextZ > prevZ)
+            temp = normNext;
+        else
+            temp = normPrev;
+    }
     else if (sndPoint)
-        lightNorm = vec3(normPrev, lift);
+        temp = normPrev;
     else
-        lightNorm = vec3(normNext, lift);
-    lightNorm = normalize(lightNorm);
+        temp = normNext;
+
+    vec3 lightNorm = normalize(vec3(temp, lift));
+
+    //vLightNorm = lightNorm;
+    //vPos = newPos;
 
     // Calculate the lighting and colour
-    vec3 vPos = curPos.xyz;
-    vec3 lightVector = normalize(lightPos - vPos);
+    vec3 lightVector = normalize(lightPos - newPos);
     float diffuse = max(dot(lightNorm, lightVector), 0.1);
     vColor = vec4(color * diffuse, 1.0);
+
 }
