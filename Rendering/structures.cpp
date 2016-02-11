@@ -165,7 +165,9 @@ inline void AddPointsToArray(float *array, Point &p, std::size_t arrPos)
     // to the previous
     AddPointToArray(array, p, arrPos);
     AddPointToArray(array, p, arrPos + 4);
-    AddPointToArray(array, p, arrPos + 8);
+    //AddPointToArray(array, p, arrPos + 8);
+    array[arrPos + 8] = p.x;
+    array[arrPos + 9] = p.y;
 }
 
 void Toolpath::CalculateVertices()
@@ -175,12 +177,12 @@ void Toolpath::CalculateVertices()
     auto count = getLineCount();
 
     // We need an up and a down version of each point
-    curFloats   = new float[count * 12 + 4];
-    nextFloats  = new float[count * 12 + 4];
-    prevFloats  = new float[count * 12 + 4];
-    sides       = new float[count * 6 + 2];
+    curFloats   = new float[count * 10 + 4];
+    nextFloats  = new float[count * 10 + 4];
+    prevFloats  = new float[count * 10 + 4];
+    sides       = new float[count * 5 + 2];
     indices     = new short[count * 12];
-    zFloats     = new float[count * 6 + 2];
+    zFloats     = new float[count * 5 + 2];
 
     short curIdx = 0;
 
@@ -208,12 +210,17 @@ void Toolpath::CalculateVertices()
             arrPos = curIdx;
             // Positive = up, negative = down
             // abs < 0.6= 2nd point else = 1st point
-            sides[arrPos + 0] = 0.1f;
+            /*sides[arrPos + 0] = 0.1f;
             sides[arrPos + 1] = -0.1f;
             sides[arrPos + 2] = 0.5f;
             sides[arrPos + 3] = -0.5f;
             sides[arrPos + 4] = 1.0f;
-            sides[arrPos + 5] = -1.0f;
+            sides[arrPos + 5] = -1.0f;*/
+            sides[arrPos + 0] = 0.1f;
+            sides[arrPos + 1] = -0.1f;
+            sides[arrPos + 2] = 0.5f;
+            sides[arrPos + 3] = 1.0f;
+            sides[arrPos + 4] = -1.0f;
 
             // Write the z floats
             zFloats[arrPos + 0] = layer->z;
@@ -221,7 +228,7 @@ void Toolpath::CalculateVertices()
             zFloats[arrPos + 2] = layer->z;
             zFloats[arrPos + 3] = layer->z;
             zFloats[arrPos + 4] = layer->z;
-            zFloats[arrPos + 5] = layer->z;
+            //zFloats[arrPos + 5] = layer->z;
 
             // We connect the current points with the following ones
             // The 4 current points form the corner and then we connect
@@ -233,15 +240,9 @@ void Toolpath::CalculateVertices()
             // Only one of the corner triangles will be visible if any because
             // two points of the other will be the same when the rectangle
             // intersections are calculated
-            arrPos = 2 * curIdx;
+            arrPos = curIdx / 5 * 12; // TODO: opto
 
             // Connector trigs
-            /*indices[arrPos + 0] = curIdx + 0;
-            indices[arrPos + 1] = curIdx + 2;
-            indices[arrPos + 2] = curIdx + 1;
-            indices[arrPos + 3] = curIdx + 1;
-            indices[arrPos + 4] = curIdx + 2;
-            indices[arrPos + 5] = curIdx + 3;*/
             /*indices[arrPos + 0] = -1;
             indices[arrPos + 1] = -1;
             indices[arrPos + 2] = -1;
@@ -249,28 +250,22 @@ void Toolpath::CalculateVertices()
             indices[arrPos + 4] = -1;
             indices[arrPos + 5] = -1;*/
             indices[arrPos + 0] = curIdx + 0;
-            indices[arrPos + 1] = curIdx + 4;
-            indices[arrPos + 2] = curIdx + 3;
+            indices[arrPos + 1] = curIdx + 3;
+            indices[arrPos + 2] = curIdx + 2;
             indices[arrPos + 3] = curIdx + 1;
             indices[arrPos + 4] = curIdx + 2;
-            indices[arrPos + 5] = curIdx + 5;
+            indices[arrPos + 5] = curIdx + 4;
 
             // Rectangle
-            /*indices[arrPos + 6] = curIdx + 2;
-            indices[arrPos + 7] = curIdx + 4;
-            indices[arrPos + 8] = curIdx + 3;
-            indices[arrPos + 9] = curIdx + 3;
-            indices[arrPos + 10] = curIdx + 4;
-            indices[arrPos + 11] = curIdx + 5;*/
-            indices[arrPos + 6] = curIdx + 4;
-            indices[arrPos + 7] = curIdx + 6;
-            indices[arrPos + 8] = curIdx + 5;
-            indices[arrPos + 9] = curIdx + 5;
-            indices[arrPos + 10] = curIdx + 6;
-            indices[arrPos + 11] = curIdx + 7;
+            indices[arrPos + 6] = curIdx + 3;
+            indices[arrPos + 7] = curIdx + 5;
+            indices[arrPos + 8] = curIdx + 4;
+            indices[arrPos + 9] = curIdx + 4;
+            indices[arrPos + 10] = curIdx + 5;
+            indices[arrPos + 11] = curIdx + 6;
 
             // Increment the current vertex index
-            curIdx += 6;
+            curIdx += 5;
         }
 
         // Add the first two parts of the first point for the last point to connect to

@@ -10,17 +10,15 @@ attribute float aZ;
 attribute float aSide;
 
 varying vec4 vColor;
-//varying vec3 vLightNorm;
-//varying vec3 vPos;
 
 const vec3 color = vec3(0.2, 0.2, 0.8);
 const vec3 lightPos = vec3(50.0, 50.0, 150.0);
 
-vec2 GetNormal(vec2 a, vec2 b)
+vec2 GetNormal(vec2 a, vec2 b, bool outside)
 {
     float dX = b.x - a.x;
     float dY = b.y - a.y;
-    if (aSide > 0.0)
+    if (outside)
         dY *= -1.0;
     else
         dX *= -1.0;
@@ -73,55 +71,104 @@ void main(void)
     vec4 nextPos = uModelMatrix * vec4(aNextPos, aZ, 1.0);
     vec3 newPos;
 
+    bool outsidePoint = (aSide > 0.0);
+
     // Calculate the normals for the line segments
-    vec2 normNext = GetNormal(curPos.xy, nextPos.xy);
-    vec2 normPrev = GetNormal(prevPos.xy, curPos.xy);
+    vec2 normNext = GetNormal(curPos.xy, nextPos.xy, outsidePoint);
+    vec2 normPrev = GetNormal(prevPos.xy, curPos.xy, outsidePoint);
+
+    // If the normals have a positive cross then the direction will
+    // be on the outside
+    vec3 crossed = cross(vec3(normPrev, 0.0), vec3(normNext, 0.0));
+    const vec3 ref = vec3(0.0, 0.0, 1.0);
+    bool interOut = (dot(crossed, ref) > 0.0);
 
     bool sndPoint = (abs(aSide) < 0.3);
     bool cnrPoint = sndPoint ? false : (abs(aSide) < 0.7);
 
-    /*if (cnrPoint)
+    // Invert the normals for a corner point if it is on the wrong side
+    if (cnrPoint && outsidePoint && !interOut)
     {
-
+        normNext *= -1.0;
+        normPrev *= -1.0;
     }
-    else
-    {
 
-    }*/
-
-    // Calculate the intersection if any
+    // Get the 4 points of the two lines
     vec2 a1 = prevPos.xy + normPrev;
     vec2 a2 = curPos.xy + normPrev;
     vec2 b1 = nextPos.xy + normNext;
     vec2 b2 = curPos.xy + normNext;
 
+    // Calculate the intersection if any
     float prevZ = (prevPos.z + curPos.z) / 2.0;
     float nextZ = (curPos.z + nextPos.z) / 2.0;
     bool prevFront = (prevZ > nextZ);
 
-    InterPoint inter = Intersection(a1.x, a2.x, b1.x, b2.x, a1.y, a2.y, b1.y, b2.y);
-    if (inter.does && distance(a1, inter.point) < distance(a1, a2))
+    // We should only check for an intersection if it can be possible like when the interscetion is
+    // on the current side
+    if (cnrPoint || (outsidePoint && interOut))
     {
-        // We need the z pos of the intersection
-        float totalPrevD = distance(a1, a2);
-        float totalNextD = distance(b1, b2);
-        float z = curPos.z;
-
-        if (totalPrevD != 0.0 && prevPos.z != curPos.z && (sndPoint || (cnrPoint && prevFront)))
+        // If the intersection is not on a horizontal edge then it should be on a vertical edge
+        InterPoint inter = Intersection(a1.x, a2.x, b1.x, b2.x, a1.y, a2.y, b1.y, b2.y);
+        if (inter.does && distance(a1, inter.point) < distance(a1, a2))
         {
-            float deltaD = distance(a1, inter.point);
-            float deltaZ = curPos.z - prevPos.z;
-            z = prevPos.z + (deltaD / totalPrevD * deltaZ);
-        }
-        else if (totalNextD != 0.0 && nextPos.z != curPos.z && !sndPoint)
-        {
-            float deltaD = distance(b1, inter.point);
-            float deltaZ = curPos.z - nextPos.z;
-            z = nextPos.z + (deltaD / totalNextD * deltaZ);
-        }
+            // We need the z pos of the intersection
+            float totalPrevD = distance(a1, a2);
+            float totalNextD = distance(b1, b2);
+            float z = curPos.z;
 
-        newPos = vec3(inter.point, z);
-        //intersects = true;
+            // The z of a 2nd point should lay on the previous line whilst the z of a 1st point should be on the next line
+            // the z of the should be on whichever one is in front
+            if ((sndPoint || (cnrPoint && prevFront)) && totalPrevD != 0.0 && prevPos.z != curPos.z)
+            {
+                float deltaD = distance(a1, inter.point);
+                float deltaZ = curPos.z - prevPos.z;
+                z = prevPos.z + (deltaD / totalPrevD * deltaZ);
+            }
+            else if (!sndPoint && totalNextD != 0.0 && nextPos.z != curPos.z)
+            {
+                float deltaD = distance(b1, inter.point);
+                float deltaZ = curPos.z - nextPos.z;
+                z = nextPos.z + (deltaD / totalNextD * deltaZ);
+            }
+
+            newPos = vec3(inter.point, z);
+        }
+        else
+        {
+            vec2 up, down;
+            vec2 left, right;
+            float deltaZ;
+            if (prevFront)
+            {
+                up = prevPos.xy + normPrev;
+                down = prevPos.xy - normPrev;
+                left = b1;
+                right = b2;
+                deltaZ = prevPos.z - curPos.z;
+            }
+            else
+            {
+                up = nextPos.xy + normNext;
+                down = nextPos.xy - normNext;
+                left = a1;
+                right = a2;
+                deltaZ = nextPos.z - curPos.z;
+            }
+
+            InterPoint inter = Intersection(left.x, right.x, up.x, down.x, left.y, right.y, up.y, down.y);
+
+            float totalD = distance(left, right);
+            float z = curPos.z;
+
+            if (totalD != 0.0 && deltaZ != 0.0)
+            {
+                float deltaD = distance(right, inter.point);
+                z = curPos.z + (deltaD / totalD * deltaZ);
+            }
+
+            newPos = vec3(inter.point, z);
+        }
     }
     else
     {
@@ -138,7 +185,7 @@ void main(void)
     const float lift = 0.9;
     if (cnrPoint)
     {
-        if (prevZ == nextZ)
+        if (abs(prevZ - nextZ) < 1.0)
             temp = (normPrev + normNext) / 2.0;
         else if (nextZ > prevZ)
             temp = normNext;
@@ -152,12 +199,8 @@ void main(void)
 
     vec3 lightNorm = normalize(vec3(temp, lift));
 
-    //vLightNorm = lightNorm;
-    //vPos = newPos;
-
     // Calculate the lighting and colour
     vec3 lightVector = normalize(lightPos - newPos);
     float diffuse = max(dot(lightNorm, lightVector), 0.1);
     vColor = vec4(color * diffuse, 1.0);
-
 }
