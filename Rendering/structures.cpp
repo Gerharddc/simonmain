@@ -210,12 +210,6 @@ void Toolpath::CalculateVertices()
             arrPos = curIdx;
             // Positive = up, negative = down
             // abs < 0.6= 2nd point else = 1st point
-            /*sides[arrPos + 0] = 0.1f;
-            sides[arrPos + 1] = -0.1f;
-            sides[arrPos + 2] = 0.5f;
-            sides[arrPos + 3] = -0.5f;
-            sides[arrPos + 4] = 1.0f;
-            sides[arrPos + 5] = -1.0f;*/
             sides[arrPos + 0] = 0.1f;
             sides[arrPos + 1] = -0.1f;
             sides[arrPos + 2] = 0.5f;
@@ -228,7 +222,6 @@ void Toolpath::CalculateVertices()
             zFloats[arrPos + 2] = layer->z;
             zFloats[arrPos + 3] = layer->z;
             zFloats[arrPos + 4] = layer->z;
-            //zFloats[arrPos + 5] = layer->z;
 
             // We connect the current points with the following ones
             // The 4 current points form the corner and then we connect

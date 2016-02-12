@@ -1,7 +1,18 @@
+#ifdef GL_ES
+  precision mediump float;
+#else
+    #define USE_Z
+#endif
+
+#extension EXT_frag_depth: enable
+#ifdef GL_EXT_frag_depth
+    #define USE_Z
+#endif
+
 uniform mat4 uModelMatrix;
 uniform mat4 uProjMatrix;
 //uniform float uFilamentRadius;
-const float uFilamentRadius = 1.5;
+const float uFilamentRadius = 0.5;
 
 attribute vec2 aCurPos;
 attribute vec2 aNextPos;
@@ -10,6 +21,9 @@ attribute float aZ;
 attribute float aSide;
 
 varying vec4 vColor;
+#ifdef USE_Z
+varying float vZOff;
+#endif
 
 const vec3 color = vec3(0.2, 0.2, 0.8);
 const vec3 lightPos = vec3(50.0, 50.0, 150.0);
@@ -100,13 +114,14 @@ void main(void)
     vec2 b2 = curPos.xy + normNext;
 
     // Calculate the intersection if any
-    float prevZ = (prevPos.z + curPos.z) / 2.0;
-    float nextZ = (curPos.z + nextPos.z) / 2.0;
+    // We can use avergae x 2 for comparison
+    float prevZ = (prevPos.z + curPos.z);
+    float nextZ = (curPos.z + nextPos.z);
     bool prevFront = (prevZ > nextZ);
 
     // We should only check for an intersection if it can be possible like when the interscetion is
     // on the current side
-    if (cnrPoint || (outsidePoint && interOut))
+    if (cnrPoint|| (outsidePoint == interOut))
     {
         // If the intersection is not on a horizontal edge then it should be on a vertical edge
         InterPoint inter = Intersection(a1.x, a2.x, b1.x, b2.x, a1.y, a2.y, b1.y, b2.y);
@@ -203,4 +218,16 @@ void main(void)
     vec3 lightVector = normalize(lightPos - newPos);
     float diffuse = max(dot(lightNorm, lightVector), 0.1);
     vColor = vec4(color * diffuse, 1.0);
+
+#ifdef USE_Z
+    // Tell the fragment shader how much z to add
+    if (cnrPoint)
+    {
+        vZOff = interOut ? uFilamentRadius : -1.0 * uFilamentRadius;
+    }
+    else
+    {
+        vZOff = outsidePoint ? uFilamentRadius : -1.0 * uFilamentRadius;
+    }
+#endif
 }

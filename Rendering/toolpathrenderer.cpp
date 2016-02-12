@@ -113,7 +113,7 @@ void ToolpathRenderer::Init()
     // Shader source files
     //const std::string vs = "line.vsh";
     const std::string vs = "filament.vsh";
-    const std::string fs = "minimal.fsh";
+    const std::string fs = "filament.fsh";
 
     // Set up the shader and its uniform/attribute locations.
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
