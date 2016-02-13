@@ -19,7 +19,6 @@ void main()
 {
     gl_FragColor = vColor;
 
-    // TODO: these distances might need scaling
 #ifndef GL_ES
     gl_FragDepth = gl_FragCoord.z + abs(vZOff);
 #endif
@@ -28,4 +27,4 @@ void main()
 #endif
 }
 
-// TODO: the depths to add might not have been calculated correctly for intersecting points
+// TODO: the depths are not calculated correctly for intersecting points

@@ -223,4 +223,12 @@ void glUniform4fv(GLint location, GLsizei count, const GLfloat *value)
     glFuncs->glUniform4fv(location, count, value);
 }
 
+void glUniform1f(GLint location,  GLfloat v0)
+{
+    if (ThrowInactive())
+        return;
+
+    glFuncs->glUniform1f(location, v0);
+}
+
 #endif //GLES

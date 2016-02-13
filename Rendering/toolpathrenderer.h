@@ -7,7 +7,22 @@
 #include "loadedgl.h"
 #endif
 
+#include <array>
 #include "structures.h"
+
+struct LayerGLData
+{
+    ~LayerGLData();
+
+    GLuint mCurPosBuffer = 0;
+    GLuint mNextPosBuffer = 0;
+    GLuint mPrevPosBuffer = 0;
+    GLuint mSideBuffer = 0;
+
+    short *indices;
+    float layerHeight = 0.0f;
+    short idxCount = 0;
+};
 
 class ToolpathRenderer
 {
@@ -25,26 +40,18 @@ private:
     GLsizei mWindowWidth = 0;
     GLsizei mWindowHeight = 0;
 
-    //GLint mPositionAttribLocation;
-
     GLint mCurPosAttribLocation;
     GLint mNextPosAttribLocation;
     GLint mPrevPosAttribLocation;
     GLint mSideAttribLocation;
-    GLint mZAttribLocation;
 
     GLint mModelUniformLocation;
-    //GLint mViewUniformLocation;
     GLint mRadiusUniformLocation;
     GLint mProjUniformLocation;
+    GLint mZUniformLocation;
 
-    //GLuint mVertexPositionBuffer = 0;
-
-    GLuint mCurPosBuffer = 0;
-    GLuint mNextPosBuffer = 0;
-    GLuint mPrevPosBuffer = 0;
-    GLuint mSideBuffer = 0;
-    GLuint mZBuffer = 0;
+    LayerGLData *layerDatas = nullptr;
+    std::size_t layerCount = 0;
 
     inline void LoadPath();
     Toolpath *path;

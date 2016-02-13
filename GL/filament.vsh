@@ -11,13 +11,12 @@
 
 uniform mat4 uModelMatrix;
 uniform mat4 uProjMatrix;
-//uniform float uFilamentRadius;
-const float uFilamentRadius = 0.5;
+uniform float uFilamentRadius;
+uniform float uLayerZ;
 
 attribute vec2 aCurPos;
 attribute vec2 aNextPos;
 attribute vec2 aPrevPos;
-attribute float aZ;
 attribute float aSide;
 
 varying vec4 vColor;
@@ -80,9 +79,9 @@ InterPoint Intersection(float x1, float x2, float x3, float x4,
 void main(void)
 {
     // Project the positions into view space
-    vec4 curPos = uModelMatrix * vec4(aCurPos, aZ, 1.0);
-    vec4 prevPos = uModelMatrix * vec4(aPrevPos, aZ, 1.0);
-    vec4 nextPos = uModelMatrix * vec4(aNextPos, aZ, 1.0);
+    vec4 curPos = uModelMatrix * vec4(aCurPos, uLayerZ, 1.0);
+    vec4 prevPos = uModelMatrix * vec4(aPrevPos, uLayerZ, 1.0);
+    vec4 nextPos = uModelMatrix * vec4(aNextPos, uLayerZ, 1.0);
     vec3 newPos;
 
     bool outsidePoint = (aSide > 0.0);
@@ -192,6 +191,9 @@ void main(void)
         else
             newPos = vec3(b2, curPos.z);
     }
+
+    // Add the radius to the z
+    newPos.z += uFilamentRadius;
     gl_Position = uProjMatrix * vec4(newPos, 1.0);
 
     // Get the lighting normal which is the same as the next or prev normal
@@ -220,14 +222,19 @@ void main(void)
     vColor = vec4(color * diffuse, 1.0);
 
 #ifdef USE_Z
-    // Tell the fragment shader how much z to add
+    // We need to calculate what z offset the filament should have
+    // after projection
+    vec4 heightV = vec4(0.0, 0.0, uFilamentRadius, 1.0);
+    heightV = uProjMatrix * heightV;
+
+    // Tell the fragment shader how much z to go back
     if (cnrPoint)
     {
-        vZOff = interOut ? uFilamentRadius : -1.0 * uFilamentRadius;
+        vZOff = interOut ? heightV.z : -1.0 * heightV.z;
     }
     else
     {
-        vZOff = outsidePoint ? uFilamentRadius : -1.0 * uFilamentRadius;
+        vZOff = outsidePoint ? heightV.z : -1.0 * heightV.z;
     }
 #endif
 }

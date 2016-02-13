@@ -130,17 +130,13 @@ struct Layer
 class Toolpath
 {
 private:
-    float *lineVerts = nullptr;
-    std::size_t lineCount = 0;
-
     float *curFloats = nullptr;
     float *prevFloats = nullptr;
     float *nextFloats = nullptr;
     short *indices = nullptr;
     float *sides = nullptr;
-    float *zFloats = nullptr;
 
-    void CalculateVertices();
+    bool indicesCopied = false;
 
 public:
     std::vector<Layer*> layers;
@@ -151,43 +147,31 @@ public:
             delete layer;
     }
 
-    std::size_t getLineCount()
-    {
-        if (lineCount == 0)
-        {
-            for (Layer *layer : layers)
-                lineCount += layer->points.size();
-        }
-
-        return lineCount;
-    }
-
-    float *getLineVerts();
-    void dumpLineVerts()
-    {
-        delete[] lineVerts;
-        lineVerts = nullptr;
-    }
-
+    void CalculateLayerData(std::size_t layerNum);
     float *getCurFloats();
     float *getNextFloats();
     float *getPrevFloats();
     short *getIndices();
     float *getSides();
-    float *getZFloats();
     void dumpVertices()
     {
         delete[] curFloats;
         delete[] prevFloats;
         delete[] nextFloats;
-        //delete[] indices;
-        delete[] zFloats;
+        delete[] sides;
 
         curFloats = nullptr;
         prevFloats = nullptr;
         nextFloats = nullptr;
-        //indices = nullptr;
-        zFloats = nullptr;
+        sides = nullptr;
+
+        // The indices won't be copied over to the gpu and will need to remain in existence
+        // the renderer will be responsible for freeing the memory used by that array
+        if (!indicesCopied)
+        {
+            delete[] indices;
+            indices = nullptr;
+        }
     }
 };
 
