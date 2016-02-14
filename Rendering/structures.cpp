@@ -154,6 +154,7 @@ void Toolpath::CalculateLayerData(std::size_t layerNum)
     short curIdx = 0;
 
     auto pCount = layer->points.size();
+    // TODO: we need to add a way to deal with travel moves
 
     for (uint j = 0; j < pCount; j++)
     {

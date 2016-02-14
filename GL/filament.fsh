@@ -1,6 +1,6 @@
 #ifdef GL_ES
   precision mediump float;
-#else
+/*#else
     #define USE_Z
 #endif
 
@@ -9,22 +9,22 @@
     #define USE_Z
 #endif
 
-varying vec4 vColor;
-
 #ifdef USE_Z
-varying float vZOff;
+varying float vZOff;*/
 #endif
+
+varying vec4 vColor;
 
 void main()
 {
     gl_FragColor = vColor;
 
-#ifndef GL_ES
+/*#ifndef GL_ES
     gl_FragDepth = gl_FragCoord.z + abs(vZOff);
 #endif
 #ifdef GL_EXT_frag_depth
     gl_FragDepthEXT = gl_FragCoord.z + abs(vZOff);
-#endif
+#endif*/
 }
 
 // TODO: the depths are not calculated correctly for intersecting points

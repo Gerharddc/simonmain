@@ -8,6 +8,19 @@
 
 #include <QDebug>
 
+// This finsihes up a layer so that it can be stored safely
+void PrepForPush(Layer* layer)
+{
+    // Check that the end and start aren't duplicated
+    if (layer->points.back() == layer->points.front())
+        layer->points.pop_back();
+
+    // Shrink the vectors to size
+    layer->points.shrink_to_fit();
+
+    // TODO: this bs is used to skip travel issue
+}
+
 Toolpath* GCodeImporting::ImportGCode(const char *path)
 {
     std::ifstream is(path);
@@ -80,6 +93,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             // TODO: add support or at least warnings for irregularly long whitespaces
             // Working correctly with the c_str  directly in strtok
             // breaks the std::string a bit and complicates debugging
+#define PRESERVE_LINE_STR
 #ifdef PRESERVE_LINE_STR
             auto temp = line.c_str();
             auto len = strlen(temp);
@@ -143,6 +157,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                                 // We need to clone the pointer because otherwise the main pointer becomes initialized
                                 // I think this is a compiler bug though or is caused by something in pushback
                                 Layer* temp = curLayer;
+                                PrepForPush(temp);
                                 tp->layers.push_back(temp);
                             }
                             curLayer = new Layer();
@@ -200,6 +215,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             // We need to clone the pointer because otherwise the main pointer becomes initialized
             // I think this is a compiler bug though or is caused by something in pushback
             Layer* temp = curLayer;
+            PrepForPush(temp);
             tp->layers.push_back(temp);
         }
     }

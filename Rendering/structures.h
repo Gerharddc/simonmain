@@ -107,6 +107,12 @@ struct Point
     float x = 0;
     float y = 0;
     bool extruded = false;
+
+    bool operator== (Point &b)
+    {
+        // TODO: this bs is used to skip travel issue
+        return (x == b.x && y == b.y);
+    }
 };
 
 enum GType

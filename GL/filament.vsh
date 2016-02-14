@@ -1,12 +1,16 @@
 #ifdef GL_ES
   precision mediump float;
-#else
+/*#else
     #define USE_Z
 #endif
 
 #extension EXT_frag_depth: enable
 #ifdef GL_EXT_frag_depth
     #define USE_Z
+#endif
+
+#ifdef USE_Z
+varying float vZOff;*/
 #endif
 
 uniform mat4 uModelMatrix;
@@ -20,9 +24,6 @@ attribute vec2 aPrevPos;
 attribute float aSide;
 
 varying vec4 vColor;
-#ifdef USE_Z
-varying float vZOff;
-#endif
 
 const vec3 color = vec3(0.2, 0.2, 0.8);
 const vec3 lightPos = vec3(50.0, 50.0, 150.0);
@@ -120,11 +121,12 @@ void main(void)
 
     // We should only check for an intersection if it can be possible like when the interscetion is
     // on the current side
-    if (cnrPoint|| (outsidePoint == interOut))
+    if (cnrPoint || outsidePoint == interOut)
     {
         // If the intersection is not on a horizontal edge then it should be on a vertical edge
         InterPoint inter = Intersection(a1.x, a2.x, b1.x, b2.x, a1.y, a2.y, b1.y, b2.y);
-        if (inter.does && distance(a1, inter.point) < distance(a1, a2))
+        // TODO: optimize below
+        if (inter.does && distance(a1, inter.point) < distance(a1, a2) && distance(a2, inter.point) < distance(a1, a2))
         {
             // We need the z pos of the intersection
             float totalPrevD = distance(a1, a2);
@@ -150,38 +152,10 @@ void main(void)
         }
         else
         {
-            vec2 up, down;
-            vec2 left, right;
-            float deltaZ;
             if (prevFront)
-            {
-                up = prevPos.xy + normPrev;
-                down = prevPos.xy - normPrev;
-                left = b1;
-                right = b2;
-                deltaZ = prevPos.z - curPos.z;
-            }
+                newPos = vec3(a2, curPos.z);
             else
-            {
-                up = nextPos.xy + normNext;
-                down = nextPos.xy - normNext;
-                left = a1;
-                right = a2;
-                deltaZ = nextPos.z - curPos.z;
-            }
-
-            InterPoint inter = Intersection(left.x, right.x, up.x, down.x, left.y, right.y, up.y, down.y);
-
-            float totalD = distance(left, right);
-            float z = curPos.z;
-
-            if (totalD != 0.0 && deltaZ != 0.0)
-            {
-                float deltaD = distance(right, inter.point);
-                z = curPos.z + (deltaD / totalD * deltaZ);
-            }
-
-            newPos = vec3(inter.point, z);
+                newPos = vec3(b2, curPos.z);
         }
     }
     else
@@ -199,7 +173,7 @@ void main(void)
     // Get the lighting normal which is the same as the next or prev normal
     // but raised slightly out of the screen
     vec2 temp;
-    const float lift = 0.9;
+    const float lift = 0.5;
     if (cnrPoint)
     {
         if (abs(prevZ - nextZ) < 1.0)
@@ -217,11 +191,14 @@ void main(void)
     vec3 lightNorm = normalize(vec3(temp, lift));
 
     // Calculate the lighting and colour
-    vec3 lightVector = normalize(lightPos - newPos);
-    float diffuse = max(dot(lightNorm, lightVector), 0.1);
+    //vec3 lightDir = normalize(lightPos);
+    vec3 lightDir = normalize(vec3(1.0, 1.5, 2.0));
+    float diffuse = max(dot(lightNorm, lightDir), 0.1);
+    /*vec3 lightVector = normalize(lightPos - newPos);
+    float diffuse = max(dot(lightNorm, lightVector), 0.1);*/
     vColor = vec4(color * diffuse, 1.0);
 
-#ifdef USE_Z
+/*#ifdef USE_Z
     // We need to calculate what z offset the filament should have
     // after projection
     vec4 heightV = vec4(0.0, 0.0, uFilamentRadius, 1.0);
@@ -236,5 +213,5 @@ void main(void)
     {
         vZOff = outsidePoint ? heightV.z : -1.0 * heightV.z;
     }
-#endif
+#endif*/
 }
