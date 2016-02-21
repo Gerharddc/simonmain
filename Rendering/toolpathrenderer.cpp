@@ -92,32 +92,30 @@ void ToolpathRenderer::LoadPath()
 
     for (std::size_t i = 0; i < layerCount; i++)
     {
-        auto lCount = path->layers[i].points.size();
-
-        path->CalculateLayerData(i);
+        LayerData *cld = path->CalculateLayerData(i);
         LayerGLData *ld = layerDatas + i;
 
         glGenBuffers(1, &ld->mCurPosBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mCurPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 12 + 4), path->getCurFloats(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->pointFloatCount, cld->curFloats, GL_STATIC_DRAW);
 
         glGenBuffers(1, &ld->mNextPosBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mNextPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 12 + 4), path->getNextFloats(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->pointFloatCount, cld->nextFloats, GL_STATIC_DRAW);
 
         glGenBuffers(1, &ld->mPrevPosBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mPrevPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 12 + 4), path->getPrevFloats(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->pointFloatCount, cld->prevFloats, GL_STATIC_DRAW);
 
         glGenBuffers(1, &ld->mSideBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mSideBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 6 + 2), path->getSides(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->sideFloatCount, cld->sides, GL_STATIC_DRAW);
 
-        ld->indices = path->getIndices();
+        ld->indices = cld->getIndices();
         ld->layerHeight = path->layers[i].z;
-        ld->idxCount = lCount * 12;
+        ld->idxCount = cld->idxCount;
 
-        path->dumpVertices();
+        delete cld;
     }
 }
 

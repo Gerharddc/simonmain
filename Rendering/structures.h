@@ -102,19 +102,6 @@ public:
     }
 };
 
-struct Point
-{
-    float x = 0;
-    float y = 0;
-    bool extruded = false;
-
-    bool operator== (Point &b)
-    {
-        // TODO: this bs is used to skip travel issue
-        return (x == b.x && y == b.y);
-    }
-};
-
 enum GType
 {
     RapidMove = 0,
@@ -127,9 +114,20 @@ enum GType
     SetPos = 92
 };
 
+struct Point
+{
+    float x, y = 0;
+
+    Point() {}
+    Point(float _x, float _y) : x(_x), y(_y) {}
+};
+
 struct Point3
 {
     float x,y,z = 0;
+
+    Point3() {}
+    Point3(float _x, float _y, float _z) : x(_y), y(_y), z(_z) {}
 };
 
 struct Island
@@ -146,34 +144,36 @@ struct Layer
     std::vector<Island> islands;
 };
 
-class Toolpath
+class Toolpath;
+
+class LayerData
 {
+    friend class Toolpath;
+
 private:
-    float *curFloats = nullptr;
-    float *prevFloats = nullptr;
-    float *nextFloats = nullptr;
-    short *indices = nullptr;
-    float *sides = nullptr;
+    short *indices;
+
+public:
+    float *curFloats;
+    float *prevFloats;
+    float *nextFloats;
+    float *sides;
+
+    short pointCount = 0;
+    short isleCount = 0;
+    short pointFloatCount = 0;
+    short sideFloatCount = 0;
+    short idxCount = 0;
 
     bool indicesCopied = false;
 
-public:
-    /*std::vector<Layer*> layers;
-
-    ~Toolpath()
+    short *getIndices()
     {
-        for (Layer* layer : layers)
-            delete layer;
-    }*/
-    std::vector<Layer> layers;
+        indicesCopied = true;
+        return indices;
+    }
 
-    void CalculateLayerData(std::size_t layerNum);
-    float *getCurFloats();
-    float *getNextFloats();
-    float *getPrevFloats();
-    short *getIndices();
-    float *getSides();
-    void dumpVertices()
+    ~LayerData()
     {
         delete[] curFloats;
         delete[] prevFloats;
@@ -184,6 +184,7 @@ public:
         prevFloats = nullptr;
         nextFloats = nullptr;
         sides = nullptr;
+        pointCount = 0;
 
         // The indices won't be copied over to the gpu and will need to remain in existence
         // the renderer will be responsible for freeing the memory used by that array
@@ -193,6 +194,13 @@ public:
             indices = nullptr;
         }
     }
+};
+
+struct Toolpath
+{
+    std::vector<Layer> layers;
+
+    LayerData *CalculateLayerData(std::size_t layerNum);
 };
 
 #endif // STRUCTURES

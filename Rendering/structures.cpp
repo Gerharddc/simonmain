@@ -135,147 +135,120 @@ inline void AddPointsToArray(float *array, Point &p, std::size_t arrPos)
     array[arrPos + 9] = p.y;
 }
 
-void Toolpath::CalculateLayerData(std::size_t layerNum)
+LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 {
-    if (curFloats != nullptr)
-        dumpVertices();
-    indicesCopied = false;
+    LayerData *ld = new LayerData();
 
     // Check that the layer is in range
     if ((layerNum + 1) > layers.size())
-        return;
+        return nullptr;
 
     Layer &layer = layers[layerNum];
 
-    auto count = layer.points.size();
+    //auto count = layer.points.size();
+    short pointCount = 0;
+
+    for (Island isle : layer.islands)
+        pointCount += isle.printPoints.size();
+
+    short isleCount = layer.islands.size();
+    ld->pointFloatCount = pointCount * 10 + (4 * isleCount);
+    ld->sideFloatCount = pointCount * 5 + (2 * isleCount);
+    ld->idxCount = pointCount * 12;
 
     // We need an up and a down version of each point
-    curFloats   = new float[count * 10 + 4];
-    nextFloats  = new float[count * 10 + 4];
-    prevFloats  = new float[count * 10 + 4];
-    sides       = new float[count * 5 + 2];
-    indices     = new short[count * 12];
+    ld->curFloats   = new float[ld->pointFloatCount];
+    ld->nextFloats  = new float[ld->pointFloatCount];
+    ld->prevFloats  = new float[ld->pointFloatCount];
+    ld->sides       = new float[ld->sideFloatCount];
+    ld->indices     = new short[ld->idxCount];
 
     short curIdx = 0;
 
-    auto pCount = layer.points.size();
     // TODO: we need to add a way to deal with travel moves
 
-    for (uint j = 0; j < pCount; j++)
+    for (Island isle : layer.islands)
     {
-        bool isLast = (j == pCount - 1);
-        bool isFirst = (j == 0);
+        short pCount = isle.printPoints.size();
 
-        // Get the wrapped points
-        Point prevPoint = isFirst ? layer.points[pCount - 1] : layer.points[j - 1];
-        Point curPoint = layer.points[j];
-        Point nextPoint = isLast ? layer.points[0] : layer.points[j + 1];
+        for (short j = 0; j < pCount; j++)
+        {
+            bool isLast = (j == pCount - 1);
+            bool isFirst = (j == 0);
 
-        // Add all the position components
-        std::size_t arrPos = 2 * curIdx;
-        AddPointsToArray(curFloats, curPoint, arrPos);
-        AddPointsToArray(prevFloats, prevPoint, arrPos);
-        AddPointsToArray(nextFloats, nextPoint, arrPos);
+            // Get the wrapped points
+            Point prevPoint = isFirst ? isle.printPoints[pCount - 1] : isle.printPoints[j - 1];
+            Point curPoint = isle.printPoints[j];
+            Point nextPoint = isLast ? isle.printPoints[0] : isle.printPoints[j + 1];
 
-        // Make the first point up and the next down
+            // Add all the position components
+            std::size_t arrPos = 2 * curIdx;
+            AddPointsToArray(ld->curFloats, curPoint, arrPos);
+            AddPointsToArray(ld->prevFloats, prevPoint, arrPos);
+            AddPointsToArray(ld->nextFloats, nextPoint, arrPos);
+
+            // Make the first point up and the next down
+            arrPos = curIdx;
+            // Positive = up, negative = down
+            // abs < 0.6= 2nd point else = 1st point
+            ld->sides[arrPos + 0] = 0.1f;
+            ld->sides[arrPos + 1] = -0.1f;
+            ld->sides[arrPos + 2] = 0.5f;
+            ld->sides[arrPos + 3] = 1.0f;
+            ld->sides[arrPos + 4] = -1.0f;
+
+            // We connect the current points with the following ones
+            // The 4 current points form the corner and then we connect
+            // to the next point to come
+            // 0--2--4
+            // | /| /|
+            // |/ |/ |
+            // 1--3--5
+            // Only one of the corner triangles will be visible if any because
+            // two points of the other will be the same when the rectangle
+            // intersections are calculated
+            arrPos = curIdx / 5 * 12; // TODO: opto
+
+            // Connector trigs
+            /*indices[arrPos + 0] = -1;
+            indices[arrPos + 1] = -1;
+            indices[arrPos + 2] = -1;
+            indices[arrPos + 3] = -1;
+            indices[arrPos + 4] = -1;
+            indices[arrPos + 5] = -1;*/
+            ld->indices[arrPos + 0] = curIdx + 0;
+            ld->indices[arrPos + 1] = curIdx + 3;
+            ld->indices[arrPos + 2] = curIdx + 2;
+            ld->indices[arrPos + 3] = curIdx + 1;
+            ld->indices[arrPos + 4] = curIdx + 2;
+            ld->indices[arrPos + 5] = curIdx + 4;
+
+            // Rectangle
+            ld->indices[arrPos + 6] = curIdx + 3;
+            ld->indices[arrPos + 7] = curIdx + 5;
+            ld->indices[arrPos + 8] = curIdx + 4;
+            ld->indices[arrPos + 9] = curIdx + 4;
+            ld->indices[arrPos + 10] = curIdx + 5;
+            ld->indices[arrPos + 11] = curIdx + 6;
+
+            // Increment the current vertex index
+            curIdx += 5;
+        }
+
+        // Add the first two parts of the first point for the last point to connect to
+        std::size_t arrPos = 2 * curIdx; // TODO: opto
+        Point prevPoint = layer.points[pCount - 1];
+        Point curPoint = layer.points[0];
+        Point nextPoint = layer.points[1];
+        AddPointToArray(ld->curFloats, curPoint, arrPos);
+        AddPointToArray(ld->prevFloats, prevPoint, arrPos);
+        AddPointToArray(ld->nextFloats, nextPoint, arrPos);
         arrPos = curIdx;
-        // Positive = up, negative = down
-        // abs < 0.6= 2nd point else = 1st point
-        sides[arrPos + 0] = 0.1f;
-        sides[arrPos + 1] = -0.1f;
-        sides[arrPos + 2] = 0.5f;
-        sides[arrPos + 3] = 1.0f;
-        sides[arrPos + 4] = -1.0f;
+        ld->sides[arrPos + 0] = 0.1f;
+        ld->sides[arrPos + 1] = -0.1f;
 
-        // We connect the current points with the following ones
-        // The 4 current points form the corner and then we connect
-        // to the next point to come
-        // 0--2--4
-        // | /| /|
-        // |/ |/ |
-        // 1--3--5
-        // Only one of the corner triangles will be visible if any because
-        // two points of the other will be the same when the rectangle
-        // intersections are calculated
-        arrPos = curIdx / 5 * 12; // TODO: opto
-
-        // Connector trigs
-        /*indices[arrPos + 0] = -1;
-        indices[arrPos + 1] = -1;
-        indices[arrPos + 2] = -1;
-        indices[arrPos + 3] = -1;
-        indices[arrPos + 4] = -1;
-        indices[arrPos + 5] = -1;*/
-        indices[arrPos + 0] = curIdx + 0;
-        indices[arrPos + 1] = curIdx + 3;
-        indices[arrPos + 2] = curIdx + 2;
-        indices[arrPos + 3] = curIdx + 1;
-        indices[arrPos + 4] = curIdx + 2;
-        indices[arrPos + 5] = curIdx + 4;
-
-        // Rectangle
-        indices[arrPos + 6] = curIdx + 3;
-        indices[arrPos + 7] = curIdx + 5;
-        indices[arrPos + 8] = curIdx + 4;
-        indices[arrPos + 9] = curIdx + 4;
-        indices[arrPos + 10] = curIdx + 5;
-        indices[arrPos + 11] = curIdx + 6;
-
-        // Increment the current vertex index
-        curIdx += 5;
+        curIdx += 2; // TODO: maybe wrong
     }
 
-    // Add the first two parts of the first point for the last point to connect to
-    std::size_t arrPos = 2 * curIdx; // TODO: opto
-    Point prevPoint = layer.points[pCount - 1];
-    Point curPoint = layer.points[0];
-    Point nextPoint = layer.points[1];
-    AddPointToArray(curFloats, curPoint, arrPos);
-    AddPointToArray(prevFloats, prevPoint, arrPos);
-    AddPointToArray(nextFloats, nextPoint, arrPos);
-    arrPos = curIdx;
-    sides[arrPos + 0] = 0.1f;
-    sides[arrPos + 1] = -0.1f;
-}
-
-float *Toolpath::getCurFloats()
-{
-    //if (curFloats == nullptr)
-      //  CalculateVertices();
-
-    return curFloats;
-}
-
-float *Toolpath::getNextFloats()
-{
-    //if (nextFloats == nullptr)
-      //  CalculateVertices();
-
-    return nextFloats;
-}
-
-float *Toolpath::getPrevFloats()
-{
-    //if (prevFloats == nullptr)
-      //  CalculateVertices();
-
-    return prevFloats;
-}
-
-short *Toolpath::getIndices()
-{
-    //if (indices == nullptr)
-      //  CalculateVertices();
-
-    indicesCopied = true;
-
-    return indices;
-}
-
-float *Toolpath::getSides()
-{
-    //if (sides == nullptr)
-      //  CalculateVertices();
-
-    return sides;
+    return ld;
 }

@@ -26,8 +26,15 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         bool prevValid[2] = {false, false};
 
         Layer *curLayer = nullptr;
+        Island *curIsle = nullptr;
+        Point3 lastPoint[2];
+
         int8_t g = -1;
         bool rel = false;
+
+        // Keep track if the last action was a move or
+        // an extrusion
+        bool lastWasMove = true;
 
         // TODO: add support for comments
         // TODO: add support for home command
@@ -37,6 +44,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         std::string line;
         while (std::getline(is, line))
         {
+            bool extruded = false;
             int type = -1;
 
             // Confirm the line starts wit g and get the code
@@ -74,7 +82,8 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             // Create a point at the last position
             Point p;
-            p.extruded = false;
+            //p.extruded = false;
+            lastPoint[g] = { prevX[g], prevY[g], prevZ[g] };
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces
@@ -147,6 +156,19 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                             tp->layers.emplace_back();
                             curLayer = &(tp->layers.back());
                             curLayer->z = num;
+
+                            if (curIsle != nullptr)
+                            {
+                                curIsle->movePoints.shrink_to_fit();
+                                curIsle->printPoints.shrink_to_fit();
+                            }
+
+                            curLayer->islands.emplace_back();
+                            lastWasMove = true;
+                            curIsle = &(curLayer->islands.back());
+                            curIsle->movePoints.push_back(lastPoint[g]);
+
+                            moved = true;
                         }
 
                         prevZ[g] = num;
@@ -163,7 +185,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
                         // TODO: detect retractions
                         if (prevE[g] != nZ)
-                            p.extruded = true;
+                            extruded = true;
                         break;
                 }
             }
@@ -190,12 +212,49 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             p.x = prevX[g];
             p.y = prevY[g];
 
-            if (curLayer != nullptr)
+            // TODO: points get lost when not on layers
+            if (curLayer == nullptr)
+                continue;
+
+            if (extruded)
+            {
                 curLayer->points.push_back(p);
+                curIsle->printPoints.push_back({prevX[g], prevY[g]});
+
+
+                lastWasMove = false;
+            }
+            else
+            {
+                if (!lastWasMove)
+                {
+                    if (curIsle != nullptr)
+                    {
+                        curIsle->movePoints.shrink_to_fit();
+                        curIsle->printPoints.shrink_to_fit();
+                    }
+
+                    // If the last action was not a move, then we are now starting a new island
+                    curLayer->islands.emplace_back();
+                    curIsle = &(curLayer->islands.back());
+
+                    curIsle->movePoints.push_back(lastPoint[g]);
+                }
+
+                curIsle->movePoints.push_back({prevX[g], prevY[g], prevZ[g]});
+
+                lastWasMove = true;
+            }
         }
 
         if (curLayer != nullptr)
             curLayer->points.shrink_to_fit();
+
+        if (curIsle != nullptr)
+        {
+            curIsle->movePoints.shrink_to_fit();
+            curIsle->printPoints.shrink_to_fit();
+        }
     }
 
     return tp;
