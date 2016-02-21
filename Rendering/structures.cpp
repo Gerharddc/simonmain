@@ -147,26 +147,32 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 
     Layer &layer = layers[layerNum];
 
-    //auto count = layer.points.size();
     short pointCount = 0;
+    short travelCount = 0;
 
     for (Island isle : layer.islands)
+    {
         pointCount += isle.printPoints.size();
+        travelCount += isle.movePoints.size();
+    }
 
     short isleCount = layer.islands.size();
     ld->pointFloatCount = pointCount * 10 + (4 * isleCount);
     ld->sideFloatCount = pointCount * 5 + (2 * isleCount);
     ld->idxCount = pointCount * 12;
+    ld->travelCount = (travelCount + isleCount) * 3;
 
     // We need an up and a down version of each point
-    ld->curFloats   = new float[ld->pointFloatCount];
-    ld->nextFloats  = new float[ld->pointFloatCount];
-    ld->prevFloats  = new float[ld->pointFloatCount];
-    ld->sides       = new float[ld->sideFloatCount];
-    ld->indices     = new short[ld->idxCount];
+    ld->curFloats    = new float[ld->pointFloatCount];
+    ld->nextFloats   = new float[ld->pointFloatCount];
+    ld->prevFloats   = new float[ld->pointFloatCount];
+    ld->sides        = new float[ld->sideFloatCount];
+    ld->indices      = new short[ld->idxCount];
+    ld->travelFloats = new float[ld->travelCount];
 
     short idxPos = 0;
     short saveIdx = 0;
+    short lineIdx = 0;
 
     // TODO: we need to add a way to deal with travel moves
 
@@ -174,77 +180,96 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
     {
         short pCount = isle.printPoints.size();
 
-        if (pCount < 2)
-            continue;
-
-        for (short j = 0; j < pCount; j++)
+        if (pCount > 2)
         {
-            bool isLast = (j == pCount - 1);
-            bool isFirst = (j == 0);
+            for (short j = 0; j < pCount; j++)
+            {
+                bool isLast = (j == pCount - 1);
+                bool isFirst = (j == 0);
 
-            // Get the wrapped points
-            Point2 prevPoint = isFirst ? isle.printPoints[pCount - 1] : isle.printPoints[j - 1];
-            Point2 curPoint = isle.printPoints[j];
-            Point2 nextPoint = isLast ? isle.printPoints[0] : isle.printPoints[j + 1];
+                // Get the wrapped points
+                Point2 prevPoint = isFirst ? isle.printPoints[pCount - 1] : isle.printPoints[j - 1];
+                Point2 curPoint = isle.printPoints[j];
+                Point2 nextPoint = isLast ? isle.printPoints[0] : isle.printPoints[j + 1];
 
-            // Add all the position components
+                // Add all the position components
+                short pointPos = saveIdx * 2;
+                AddPointsToArray(ld->curFloats, curPoint, pointPos);
+                AddPointsToArray(ld->prevFloats, prevPoint, pointPos);
+                AddPointsToArray(ld->nextFloats, nextPoint, pointPos);
+
+                // Make the first point up and the next down
+                // Positive = up, negative = down
+                // abs < 0.6= 2nd point else = 1st point
+                ld->sides[saveIdx + 0] = 0.1f;
+                ld->sides[saveIdx + 1] = -0.1f;
+                ld->sides[saveIdx + 2] = 0.5f;
+                ld->sides[saveIdx + 3] = 1.0f;
+                ld->sides[saveIdx + 4] = -1.0f;
+
+                // We connect the current points with the following ones
+                // The 4 current points form the corner and then we connect
+                // to the next point to come
+                // 0--2--4
+                // | /| /|
+                // |/ |/ |
+                // 1--3--5
+                // Only one of the corner triangles will be visible if any because
+                // two points of the other will be the same when the rectangle
+                // intersections are calculated
+
+                // Connector trigs
+                ld->indices[idxPos + 0] = saveIdx + 0;
+                ld->indices[idxPos + 1] = saveIdx + 3;
+                ld->indices[idxPos + 2] = saveIdx + 2;
+                ld->indices[idxPos + 3] = saveIdx + 1;
+                ld->indices[idxPos + 4] = saveIdx + 2;
+                ld->indices[idxPos + 5] = saveIdx + 4;
+
+                // Rectangle
+                ld->indices[idxPos + 6] = saveIdx + 3;
+                ld->indices[idxPos + 7] = saveIdx + 5;
+                ld->indices[idxPos + 8] = saveIdx + 4;
+                ld->indices[idxPos + 9] = saveIdx + 4;
+                ld->indices[idxPos + 10] = saveIdx + 5;
+                ld->indices[idxPos + 11] = saveIdx + 6;
+
+                idxPos += 12;
+                saveIdx += 5;
+            }
+
+            // Add the first two parts of the first point for the last point to connect to
+            Point2 prevPoint = isle.printPoints[pCount - 1];
+            Point2 curPoint = isle.printPoints[0];
+            Point2 nextPoint = isle.printPoints[1];
             short pointPos = saveIdx * 2;
-            AddPointsToArray(ld->curFloats, curPoint, pointPos);
-            AddPointsToArray(ld->prevFloats, prevPoint, pointPos);
-            AddPointsToArray(ld->nextFloats, nextPoint, pointPos);
-
-            // Make the first point up and the next down
-            // Positive = up, negative = down
-            // abs < 0.6= 2nd point else = 1st point
+            AddPointToArray(ld->curFloats, curPoint, pointPos);
+            AddPointToArray(ld->prevFloats, prevPoint, pointPos);
+            AddPointToArray(ld->nextFloats, nextPoint, pointPos);
             ld->sides[saveIdx + 0] = 0.1f;
             ld->sides[saveIdx + 1] = -0.1f;
-            ld->sides[saveIdx + 2] = 0.5f;
-            ld->sides[saveIdx + 3] = 1.0f;
-            ld->sides[saveIdx + 4] = -1.0f;
 
-            // We connect the current points with the following ones
-            // The 4 current points form the corner and then we connect
-            // to the next point to come
-            // 0--2--4
-            // | /| /|
-            // |/ |/ |
-            // 1--3--5
-            // Only one of the corner triangles will be visible if any because
-            // two points of the other will be the same when the rectangle
-            // intersections are calculated
-
-            // Connector trigs
-            ld->indices[idxPos + 0] = saveIdx + 0;
-            ld->indices[idxPos + 1] = saveIdx + 3;
-            ld->indices[idxPos + 2] = saveIdx + 2;
-            ld->indices[idxPos + 3] = saveIdx + 1;
-            ld->indices[idxPos + 4] = saveIdx + 2;
-            ld->indices[idxPos + 5] = saveIdx + 4;
-
-            // Rectangle
-            ld->indices[idxPos + 6] = saveIdx + 3;
-            ld->indices[idxPos + 7] = saveIdx + 5;
-            ld->indices[idxPos + 8] = saveIdx + 4;
-            ld->indices[idxPos + 9] = saveIdx + 4;
-            ld->indices[idxPos + 10] = saveIdx + 5;
-            ld->indices[idxPos + 11] = saveIdx + 6;
-
-            idxPos += 12;
-            saveIdx += 5;
+            saveIdx += 2;
         }
 
-        // Add the first two parts of the first point for the last point to connect to
-        Point2 prevPoint = isle.printPoints[pCount - 1];
-        Point2 curPoint = isle.printPoints[0];
-        Point2 nextPoint = isle.printPoints[1];
-        short pointPos = saveIdx * 2;
-        AddPointToArray(ld->curFloats, curPoint, pointPos);
-        AddPointToArray(ld->prevFloats, prevPoint, pointPos);
-        AddPointToArray(ld->nextFloats, nextPoint, pointPos);
-        ld->sides[saveIdx + 0] = 0.1f;
-        ld->sides[saveIdx + 1] = -0.1f;
+        short tCount = isle.movePoints.size();
 
-        saveIdx += 2;
+        if (tCount > 2)
+        {
+            for (short j = 0; j < tCount; j++)
+            {
+                Point3 mp = isle.movePoints[j];
+                ld->travelFloats[lineIdx + 0] = mp.x;
+                ld->travelFloats[lineIdx + 1] = mp.y;
+                ld->travelFloats[lineIdx + 2] = mp.z;
+                lineIdx += 3;
+            }
+
+            ld->travelFloats[lineIdx + 0] = -1;
+            ld->travelFloats[lineIdx + 1] = -1;
+            ld->travelFloats[lineIdx + 2] = -1;
+            lineIdx += 3;
+        }
     }
 
     return ld;

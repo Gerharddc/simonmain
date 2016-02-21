@@ -17,6 +17,7 @@ uniform mat4 uModelMatrix;
 uniform mat4 uProjMatrix;
 uniform float uFilamentRadius;
 uniform float uLayerZ;
+uniform bool uLineOnly;
 
 attribute vec2 aCurPos;
 attribute vec2 aNextPos;

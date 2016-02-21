@@ -159,12 +159,13 @@ public:
     float *prevFloats;
     float *nextFloats;
     float *sides;
+    float *travelFloats;
 
-    short pointCount = 0;
     short isleCount = 0;
     short pointFloatCount = 0;
     short sideFloatCount = 0;
     short idxCount = 0;
+    short travelCount = 0;
 
     bool indicesCopied = false;
 
@@ -180,12 +181,7 @@ public:
         delete[] prevFloats;
         delete[] nextFloats;
         delete[] sides;
-
-        curFloats = nullptr;
-        prevFloats = nullptr;
-        nextFloats = nullptr;
-        sides = nullptr;
-        pointCount = 0;
+        delete[] travelFloats;
 
         // The indices won't be copied over to the gpu and will need to remain in existence
         // the renderer will be responsible for freeing the memory used by that array
