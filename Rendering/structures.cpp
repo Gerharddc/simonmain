@@ -174,6 +174,9 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
     {
         short pCount = isle.printPoints.size();
 
+        if (pCount < 2)
+            continue;
+
         for (short j = 0; j < pCount; j++)
         {
             bool isLast = (j == pCount - 1);

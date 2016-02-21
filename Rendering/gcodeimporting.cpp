@@ -18,26 +18,25 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
     if (is)
     {
         // Store the previous values for G0 and G1
-        float prevX[2] = {-1, -1};
-        float prevY[2] = {-1, -1};
-        float prevZ[2] = {-1, -1};
+        float prevX = -1;
+        float prevY = -1;
+        float prevZ = -1;
         float prevF[2] = {-1, -1};
-        float prevE[2] = {0, 0};
-        bool prevValid[2] = {false, false};
+        float prevE = 0;
+        bool prevValid = false;
 
         Layer *curLayer = nullptr;
         Island *curIsle = nullptr;
-        Point3 lastPoint[2];
+        Point3 lastPoint;
 
         int8_t g = -1;
         bool rel = false;
+        bool setPos = false;
 
         // Keep track if the last action was a move or
         // an extrusion
         bool lastWasMove = true;
 
-        // TODO: add support for comments
-        // TODO: add support for home command
         // TODO: add support for set pos command
 
         // Read through each line
@@ -46,6 +45,11 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         {
             bool extruded = false;
             int type = -1;
+
+            // Remove all comments from the line
+            line = line.substr(0, line.find(';') - 1);
+
+            //qDebug() << QString(line.c_str());
 
             // Confirm the line starts wit g and get the code
             if (line[0] != 'G')
@@ -58,6 +62,15 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
                 if (type == 0 || type == 1)
                     g = type;
+                else if (type == SetPos)
+                {
+                    // TODO: maybe wrong
+                    prevX = 0;
+                    prevY = 0;
+                    prevZ = 0;
+                    prevE = 0;
+                    setPos = true;
+                }
                 else
                 {
                     if (type == SetRel)
@@ -66,12 +79,9 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                         rel = false;
                     else if (type == Home)
                     {
-                        prevX[0] = 0;
-                        prevX[1] = 0;
-                        prevY[0] = 0;
-                        prevY[1] = 0;
-                        prevZ[0] = 0;
-                        prevZ[1] = 0;
+                        prevX = 0;
+                        prevY = 0;
+                        prevZ = 0;
                     }
 
                     continue;
@@ -81,7 +91,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             bool moved = false; // Flag if movement occured
 
             // Create a point at the last position
-            lastPoint[g] = { prevX[g], prevY[g], prevZ[g] };
+            lastPoint = { prevX, prevY, prevZ };
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces
@@ -112,14 +122,14 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 switch(c) {
                     case 'X' :
                     {
-                        float old = prevX[g];
+                        float old = prevX;
 
                         if (rel)
-                            prevX[g] += num;
+                            prevX += num;
                         else
-                            prevX[g] = num;
+                            prevX = num;
 
-                        if (!moved && (prevX[g] != old))
+                        if (!moved && (prevX != old))
                         {
                             moved = true;
                         }
@@ -127,14 +137,14 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     }
                     case 'Y' :
                     {
-                        float old = prevY[g];
+                        float old = prevY;
 
                         if (rel)
-                            prevY[g] += num;
+                            prevY += num;
                         else
-                            prevY[g] = num;
+                            prevY = num;
 
-                        if (!moved && (prevY[g] != old))
+                        if (!moved && (prevY != old))
                         {
                             moved = true;
                         }
@@ -142,9 +152,9 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     }
                     case 'Z' :
                     {
-                        float nZ = (rel) ? (prevZ[g] + num) : num;
+                        float nZ = (rel) ? (prevZ + num) : num;
 
-                        if (nZ != prevZ[g])
+                        if (nZ != prevZ)
                         {
                             // Create a new layer when moving to a new z
                             // and optimize the old one
@@ -164,12 +174,12 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                             curLayer->islands.emplace_back();
                             lastWasMove = true;
                             curIsle = &(curLayer->islands.back());
-                            curIsle->movePoints.push_back(lastPoint[g]);
+                            curIsle->movePoints.push_back(lastPoint);
 
                             moved = true;
                         }
 
-                        prevZ[g] = num;
+                        prevZ = num;
                         break;
                     }
                     case 'F' :
@@ -179,10 +189,10 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                             prevF[g] = num;
                         break;
                     case 'E' :
-                        float nZ = (rel) ? (prevZ[g] + num) : num;
+                        float nZ = (rel) ? (prevZ + num) : num;
 
                         // TODO: detect retractions
-                        if (prevE[g] != nZ)
+                        if (prevE != nZ)
                             extruded = true;
                         break;
                 }
@@ -192,17 +202,17 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 #endif
 
             // Skip the line if there was no movement
-            if (!moved)
+            if (!moved || setPos)
             {
                 continue;
             }
 
             // Wait until we have current values to work from
-            if (!prevValid[g])
+            if (!prevValid)
             {
-                prevValid[g] = (prevX[g] != -1) && (prevY[g] != -1) && (prevZ[g] != -1);
+                prevValid = (prevX != -1) && (prevY != -1) && (prevZ != -1);
 
-                if (!prevValid[g])
+                if (!prevValid)
                     continue;
             }
 
@@ -212,7 +222,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             if (extruded)
             {
-                curIsle->printPoints.push_back({prevX[g], prevY[g]});
+                curIsle->printPoints.push_back({prevX, prevY});
 
                 lastWasMove = false;
             }
@@ -230,10 +240,10 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     curLayer->islands.emplace_back();
                     curIsle = &(curLayer->islands.back());
 
-                    curIsle->movePoints.push_back(lastPoint[g]);
+                    curIsle->movePoints.push_back(lastPoint);
                 }
 
-                curIsle->movePoints.push_back({prevX[g], prevY[g], prevZ[g]});
+                curIsle->movePoints.push_back({prevX, prevY, prevZ});
 
                 lastWasMove = true;
             }
