@@ -141,8 +141,13 @@ void Toolpath::CalculateLayerData(std::size_t layerNum)
         dumpVertices();
     indicesCopied = false;
 
-    Layer *layer = layers[layerNum];
-    auto count = layer->points.size();
+    // Check that the layer is in range
+    if ((layerNum + 1) > layers.size())
+        return;
+
+    Layer &layer = layers[layerNum];
+
+    auto count = layer.points.size();
 
     // We need an up and a down version of each point
     curFloats   = new float[count * 10 + 4];
@@ -153,7 +158,7 @@ void Toolpath::CalculateLayerData(std::size_t layerNum)
 
     short curIdx = 0;
 
-    auto pCount = layer->points.size();
+    auto pCount = layer.points.size();
     // TODO: we need to add a way to deal with travel moves
 
     for (uint j = 0; j < pCount; j++)
@@ -162,9 +167,9 @@ void Toolpath::CalculateLayerData(std::size_t layerNum)
         bool isFirst = (j == 0);
 
         // Get the wrapped points
-        Point prevPoint = isFirst ? layer->points[pCount - 1] : layer->points[j - 1];
-        Point curPoint = layer->points[j];
-        Point nextPoint = isLast ? layer->points[0] : layer->points[j + 1];
+        Point prevPoint = isFirst ? layer.points[pCount - 1] : layer.points[j - 1];
+        Point curPoint = layer.points[j];
+        Point nextPoint = isLast ? layer.points[0] : layer.points[j + 1];
 
         // Add all the position components
         std::size_t arrPos = 2 * curIdx;
@@ -222,9 +227,9 @@ void Toolpath::CalculateLayerData(std::size_t layerNum)
 
     // Add the first two parts of the first point for the last point to connect to
     std::size_t arrPos = 2 * curIdx; // TODO: opto
-    Point prevPoint = layer->points[pCount - 1];
-    Point curPoint = layer->points[0];
-    Point nextPoint = layer->points[1];
+    Point prevPoint = layer.points[pCount - 1];
+    Point curPoint = layer.points[0];
+    Point nextPoint = layer.points[1];
     AddPointToArray(curFloats, curPoint, arrPos);
     AddPointToArray(prevFloats, prevPoint, arrPos);
     AddPointToArray(nextFloats, nextPoint, arrPos);

@@ -8,19 +8,6 @@
 
 #include <QDebug>
 
-// This finsihes up a layer so that it can be stored safely
-void PrepForPush(Layer* layer)
-{
-    // Check that the end and start aren't duplicated
-    if (layer->points.back() == layer->points.front())
-        layer->points.pop_back();
-
-    // Shrink the vectors to size
-    layer->points.shrink_to_fit();
-
-    // TODO: this bs is used to skip travel issue
-}
-
 Toolpath* GCodeImporting::ImportGCode(const char *path)
 {
     std::ifstream is(path);
@@ -152,15 +139,13 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
                         if (nZ != prevZ[g])
                         {
+                            // Create a new layer when moving to a new z
+                            // and optimize the old one
                             if (curLayer != nullptr)
-                            {
-                                // We need to clone the pointer because otherwise the main pointer becomes initialized
-                                // I think this is a compiler bug though or is caused by something in pushback
-                                Layer* temp = curLayer;
-                                PrepForPush(temp);
-                                tp->layers.push_back(temp);
-                            }
-                            curLayer = new Layer();
+                                curLayer->points.shrink_to_fit();
+
+                            tp->layers.emplace_back();
+                            curLayer = &(tp->layers.back());
                             curLayer->z = num;
                         }
 
@@ -209,15 +194,8 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 curLayer->points.push_back(p);
         }
 
-        // Store the final layer
         if (curLayer != nullptr)
-        {
-            // We need to clone the pointer because otherwise the main pointer becomes initialized
-            // I think this is a compiler bug though or is caused by something in pushback
-            Layer* temp = curLayer;
-            PrepForPush(temp);
-            tp->layers.push_back(temp);
-        }
+            curLayer->points.shrink_to_fit();
     }
 
     return tp;

@@ -191,9 +191,9 @@ void main(void)
     vec3 lightNorm = normalize(vec3(temp, lift));
 
     // Calculate the lighting and colour
-    //vec3 lightDir = normalize(lightPos);
-    vec3 lightDir = normalize(vec3(1.0, 1.5, 2.0));
-    float diffuse = max(dot(lightNorm, lightDir), 0.1);
+    const vec3 lightDir = vec3(-0.371391, -0.557086, 0.742781); // normalize(vec3(-1.0, -1.5, 2.0));
+    float diffuse = dot(lightNorm, lightDir);
+    diffuse = diffuse * 0.75 + 0.25;
     /*vec3 lightVector = normalize(lightPos - newPos);
     float diffuse = max(dot(lightNorm, lightVector), 0.1);*/
     vColor = vec4(color * diffuse, 1.0);

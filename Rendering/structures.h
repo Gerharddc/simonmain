@@ -127,10 +127,23 @@ enum GType
     SetPos = 92
 };
 
+struct Point3
+{
+    float x,y,z = 0;
+};
+
+struct Island
+{
+    std::vector<Point3> movePoints;
+    std::vector<Point> printPoints;
+};
+
 struct Layer
 {
     float z;
     std::vector<Point> points;
+
+    std::vector<Island> islands;
 };
 
 class Toolpath
@@ -145,13 +158,14 @@ private:
     bool indicesCopied = false;
 
 public:
-    std::vector<Layer*> layers;
+    /*std::vector<Layer*> layers;
 
     ~Toolpath()
     {
         for (Layer* layer : layers)
             delete layer;
-    }
+    }*/
+    std::vector<Layer> layers;
 
     void CalculateLayerData(std::size_t layerNum);
     float *getCurFloats();

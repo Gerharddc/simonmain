@@ -92,7 +92,7 @@ void ToolpathRenderer::LoadPath()
 
     for (std::size_t i = 0; i < layerCount; i++)
     {
-        auto lCount = path->layers[i]->points.size();
+        auto lCount = path->layers[i].points.size();
 
         path->CalculateLayerData(i);
         LayerGLData *ld = layerDatas + i;
@@ -114,7 +114,7 @@ void ToolpathRenderer::LoadPath()
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (lCount * 6 + 2), path->getSides(), GL_STATIC_DRAW);
 
         ld->indices = path->getIndices();
-        ld->layerHeight = path->layers[i]->z;
+        ld->layerHeight = path->layers[i].z;
         ld->idxCount = lCount * 12;
 
         path->dumpVertices();
