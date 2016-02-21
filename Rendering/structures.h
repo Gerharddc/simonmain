@@ -114,33 +114,34 @@ enum GType
     SetPos = 92
 };
 
-struct Point
+struct Point2
 {
-    float x, y = 0;
+    float x = 0;
+    float y = 0;
 
-    Point() {}
-    Point(float _x, float _y) : x(_x), y(_y) {}
+    Point2() {}
+    Point2(float _x, float _y) : x(_x), y(_y) {}
 };
 
 struct Point3
 {
-    float x,y,z = 0;
+    float x = 0;
+    float y = 0;
+    float z = 0;
 
     Point3() {}
-    Point3(float _x, float _y, float _z) : x(_y), y(_y), z(_z) {}
+    Point3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
 };
 
 struct Island
 {
     std::vector<Point3> movePoints;
-    std::vector<Point> printPoints;
+    std::vector<Point2> printPoints;
 };
 
 struct Layer
 {
     float z;
-    std::vector<Point> points;
-
     std::vector<Island> islands;
 };
 

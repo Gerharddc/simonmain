@@ -81,15 +81,13 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             bool moved = false; // Flag if movement occured
 
             // Create a point at the last position
-            Point p;
-            //p.extruded = false;
             lastPoint[g] = { prevX[g], prevY[g], prevZ[g] };
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces
             // Working correctly with the c_str  directly in strtok
             // breaks the std::string a bit and complicates debugging
-#define PRESERVE_LINE_STR
+//#define PRESERVE_LINE_STR
 #ifdef PRESERVE_LINE_STR
             auto temp = line.c_str();
             auto len = strlen(temp);
@@ -151,7 +149,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                             // Create a new layer when moving to a new z
                             // and optimize the old one
                             if (curLayer != nullptr)
-                                curLayer->points.shrink_to_fit();
+                                curLayer->islands.shrink_to_fit();
 
                             tp->layers.emplace_back();
                             curLayer = &(tp->layers.back());
@@ -208,19 +206,13 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     continue;
             }
 
-            // Assign the position
-            p.x = prevX[g];
-            p.y = prevY[g];
-
             // TODO: points get lost when not on layers
             if (curLayer == nullptr)
                 continue;
 
             if (extruded)
             {
-                curLayer->points.push_back(p);
                 curIsle->printPoints.push_back({prevX[g], prevY[g]});
-
 
                 lastWasMove = false;
             }
@@ -248,7 +240,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         }
 
         if (curLayer != nullptr)
-            curLayer->points.shrink_to_fit();
+            curLayer->islands.shrink_to_fit();
 
         if (curIsle != nullptr)
         {

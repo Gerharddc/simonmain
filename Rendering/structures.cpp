@@ -1,5 +1,7 @@
 #include "structures.h"
 
+#include <QDebug>
+
 Mesh::Mesh(std::size_t size)
 {
     trigCount = size;
@@ -116,7 +118,7 @@ float *Mesh::getFlatNorms()
     return normFloats;
 }
 
-void AddPointToArray(float *array, Point &p, std::size_t arrPos)
+void AddPointToArray(float *array, Point2 &p, std::size_t arrPos)
 {
     // We need to add the point twice because one goes up and one down
     array[arrPos + 0] = p.x; // up
@@ -125,7 +127,7 @@ void AddPointToArray(float *array, Point &p, std::size_t arrPos)
     array[arrPos + 3] = p.y;
 }
 
-inline void AddPointsToArray(float *array, Point &p, std::size_t arrPos)
+inline void AddPointsToArray(float *array, Point2 &p, std::size_t arrPos)
 {
     // We add the point twice because one connects to the next and one
     // to the previous
@@ -163,7 +165,8 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
     ld->sides       = new float[ld->sideFloatCount];
     ld->indices     = new short[ld->idxCount];
 
-    short curIdx = 0;
+    short idxPos = 0;
+    short saveIdx = 0;
 
     // TODO: we need to add a way to deal with travel moves
 
@@ -177,25 +180,24 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
             bool isFirst = (j == 0);
 
             // Get the wrapped points
-            Point prevPoint = isFirst ? isle.printPoints[pCount - 1] : isle.printPoints[j - 1];
-            Point curPoint = isle.printPoints[j];
-            Point nextPoint = isLast ? isle.printPoints[0] : isle.printPoints[j + 1];
+            Point2 prevPoint = isFirst ? isle.printPoints[pCount - 1] : isle.printPoints[j - 1];
+            Point2 curPoint = isle.printPoints[j];
+            Point2 nextPoint = isLast ? isle.printPoints[0] : isle.printPoints[j + 1];
 
             // Add all the position components
-            std::size_t arrPos = 2 * curIdx;
-            AddPointsToArray(ld->curFloats, curPoint, arrPos);
-            AddPointsToArray(ld->prevFloats, prevPoint, arrPos);
-            AddPointsToArray(ld->nextFloats, nextPoint, arrPos);
+            short pointPos = saveIdx * 2;
+            AddPointsToArray(ld->curFloats, curPoint, pointPos);
+            AddPointsToArray(ld->prevFloats, prevPoint, pointPos);
+            AddPointsToArray(ld->nextFloats, nextPoint, pointPos);
 
             // Make the first point up and the next down
-            arrPos = curIdx;
             // Positive = up, negative = down
             // abs < 0.6= 2nd point else = 1st point
-            ld->sides[arrPos + 0] = 0.1f;
-            ld->sides[arrPos + 1] = -0.1f;
-            ld->sides[arrPos + 2] = 0.5f;
-            ld->sides[arrPos + 3] = 1.0f;
-            ld->sides[arrPos + 4] = -1.0f;
+            ld->sides[saveIdx + 0] = 0.1f;
+            ld->sides[saveIdx + 1] = -0.1f;
+            ld->sides[saveIdx + 2] = 0.5f;
+            ld->sides[saveIdx + 3] = 1.0f;
+            ld->sides[saveIdx + 4] = -1.0f;
 
             // We connect the current points with the following ones
             // The 4 current points form the corner and then we connect
@@ -207,47 +209,39 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
             // Only one of the corner triangles will be visible if any because
             // two points of the other will be the same when the rectangle
             // intersections are calculated
-            arrPos = curIdx / 5 * 12; // TODO: opto
 
             // Connector trigs
-            /*indices[arrPos + 0] = -1;
-            indices[arrPos + 1] = -1;
-            indices[arrPos + 2] = -1;
-            indices[arrPos + 3] = -1;
-            indices[arrPos + 4] = -1;
-            indices[arrPos + 5] = -1;*/
-            ld->indices[arrPos + 0] = curIdx + 0;
-            ld->indices[arrPos + 1] = curIdx + 3;
-            ld->indices[arrPos + 2] = curIdx + 2;
-            ld->indices[arrPos + 3] = curIdx + 1;
-            ld->indices[arrPos + 4] = curIdx + 2;
-            ld->indices[arrPos + 5] = curIdx + 4;
+            ld->indices[idxPos + 0] = saveIdx + 0;
+            ld->indices[idxPos + 1] = saveIdx + 3;
+            ld->indices[idxPos + 2] = saveIdx + 2;
+            ld->indices[idxPos + 3] = saveIdx + 1;
+            ld->indices[idxPos + 4] = saveIdx + 2;
+            ld->indices[idxPos + 5] = saveIdx + 4;
 
             // Rectangle
-            ld->indices[arrPos + 6] = curIdx + 3;
-            ld->indices[arrPos + 7] = curIdx + 5;
-            ld->indices[arrPos + 8] = curIdx + 4;
-            ld->indices[arrPos + 9] = curIdx + 4;
-            ld->indices[arrPos + 10] = curIdx + 5;
-            ld->indices[arrPos + 11] = curIdx + 6;
+            ld->indices[idxPos + 6] = saveIdx + 3;
+            ld->indices[idxPos + 7] = saveIdx + 5;
+            ld->indices[idxPos + 8] = saveIdx + 4;
+            ld->indices[idxPos + 9] = saveIdx + 4;
+            ld->indices[idxPos + 10] = saveIdx + 5;
+            ld->indices[idxPos + 11] = saveIdx + 6;
 
-            // Increment the current vertex index
-            curIdx += 5;
+            idxPos += 12;
+            saveIdx += 5;
         }
 
         // Add the first two parts of the first point for the last point to connect to
-        std::size_t arrPos = 2 * curIdx; // TODO: opto
-        Point prevPoint = layer.points[pCount - 1];
-        Point curPoint = layer.points[0];
-        Point nextPoint = layer.points[1];
-        AddPointToArray(ld->curFloats, curPoint, arrPos);
-        AddPointToArray(ld->prevFloats, prevPoint, arrPos);
-        AddPointToArray(ld->nextFloats, nextPoint, arrPos);
-        arrPos = curIdx;
-        ld->sides[arrPos + 0] = 0.1f;
-        ld->sides[arrPos + 1] = -0.1f;
+        Point2 prevPoint = isle.printPoints[pCount - 1];
+        Point2 curPoint = isle.printPoints[0];
+        Point2 nextPoint = isle.printPoints[1];
+        short pointPos = saveIdx * 2;
+        AddPointToArray(ld->curFloats, curPoint, pointPos);
+        AddPointToArray(ld->prevFloats, prevPoint, pointPos);
+        AddPointToArray(ld->nextFloats, nextPoint, pointPos);
+        ld->sides[saveIdx + 0] = 0.1f;
+        ld->sides[saveIdx + 1] = -0.1f;
 
-        curIdx += 2; // TODO: maybe wrong
+        saveIdx += 2;
     }
 
     return ld;
