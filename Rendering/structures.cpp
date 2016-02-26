@@ -118,43 +118,25 @@ float *Mesh::getFlatNorms()
     return normFloats;
 }
 
-void AddPointToArray(float *array, Point2 &p, std::size_t arrPos)
+inline void AddPointsToArray(float *array, Point2 &p, short count, std::size_t &arrPos)
 {
-    // We need to add the point twice because one goes up and one down
-    array[arrPos + 0] = p.x; // up
-    array[arrPos + 1] = p.y;
-    array[arrPos + 2] = p.x; // down
-    array[arrPos + 3] = p.y;
+    for (short i = 0; i < count; i++)
+    {
+        array[arrPos + 0] = p.x;
+        array[arrPos + 1] = p.y;
+        arrPos += 2;
+    }
 }
 
-void AddPointZToArray(float *array, Point2 &p, float z, std::size_t arrPos)
+inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, std::size_t &arrPos)
 {
-    // We need to add the point twice because one goes up and one down
-    array[arrPos + 0] = p.x; // up
-    array[arrPos + 1] = p.y;
-    array[arrPos + 2] = z;
-    array[arrPos + 3] = p.x; // down
-    array[arrPos + 4] = p.y;
-    array[arrPos + 5] = z;
-}
-
-inline void AddPointsToArray(float *array, Point2 &p, std::size_t arrPos)
-{
-    // We add the point twice because one connects to the next and one
-    // to the previous
-    AddPointToArray(array, p, arrPos);
-    AddPointToArray(array, p, arrPos + 4);
-    array[arrPos + 8] = p.x;
-    array[arrPos + 9] = p.y;
-}
-
-inline void AddPointZsToArray(float *array, Point2 &p, float z, std::size_t arrPos)
-{
-    AddPointZToArray(array, p, z, arrPos);
-    AddPointZToArray(array, p, z, arrPos + 6);
-    array[arrPos + 12] = p.x;
-    array[arrPos + 13] = p.y;
-    array[arrPos + 14] = z;
+    for (short i = 0; i < count; i++)
+    {
+        array[arrPos + 0] = p.x;
+        array[arrPos + 1] = p.y;
+        array[arrPos + 2] = z;
+        arrPos += 3;
+    }
 }
 
 LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
@@ -193,7 +175,10 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 
     short idxPos = 0;
     short saveIdx = 0;
-    short lineIdx = 0;
+    //short lineIdx = 0;
+    std::size_t curPos = 0;
+    std::size_t prevPos = 0;
+    std::size_t nextPos = 0;
 
     // TODO: we need to add a way to deal with travel moves
 
@@ -201,79 +186,97 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
     {
         short pCount = isle.printPoints.size();
 
-        if (pCount > 2)
+        if (pCount < 2)
+            continue;
+
+        for (short j = 0; j < pCount; j++)
         {
-            for (short j = 0; j < pCount; j++)
+            bool isLast = (j == pCount - 1);
+            bool isFirst = (j == 0);
+
+            Point2 curPoint = isle.printPoints[j];
+            Point2 prevPoint, nextPoint;
+            bool hasPrev = true;
+            bool hasNext = true;
+
+            if (isFirst)
             {
-                bool isLast = (j == pCount - 1);
-                bool isFirst = (j == 0);
+                prevPoint = isle.printPoints[pCount - 1];
+                hasPrev = (prevPoint == curPoint);
+                nextPoint = isle.printPoints[j + 1];
+            }
+            else
+            {
+                prevPoint = isle.printPoints[j - 1];
 
-                // Get the wrapped points
-                Point2 prevPoint = isFirst ? isle.printPoints[pCount - 1] : isle.printPoints[j - 1];
-                Point2 curPoint = isle.printPoints[j];
-                Point2 nextPoint = isLast ? isle.printPoints[0] : isle.printPoints[j + 1];
-
-                // Add all the position components
-                short pointPos = saveIdx * 2;
-                AddPointZsToArray(ld->curFloats, curPoint, layer.z, pointPos * 1.5f);
-                AddPointsToArray(ld->prevFloats, prevPoint, pointPos);
-                AddPointsToArray(ld->nextFloats, nextPoint, pointPos);
-
-                // Make the first point up and the next down
-                // Positive = up, negative = down
-                // abs < 0.6= 2nd point else = 1st point
-                ld->sides[saveIdx + 0] = 0.1f;
-                ld->sides[saveIdx + 1] = -0.1f;
-                ld->sides[saveIdx + 2] = 0.5f;
-                ld->sides[saveIdx + 3] = 1.0f;
-                ld->sides[saveIdx + 4] = -1.0f;
-
-                // We connect the current points with the following ones
-                // The 4 current points form the corner and then we connect
-                // to the next point to come
-                // 0--2--4
-                // | /| /|
-                // |/ |/ |
-                // 1--3--5
-                // Only one of the corner triangles will be visible if any because
-                // two points of the other will be the same when the rectangle
-                // intersections are calculated
-
-                // Connector trigs
-                ld->indices[idxPos + 0] = saveIdx + 0;
-                ld->indices[idxPos + 1] = saveIdx + 3;
-                ld->indices[idxPos + 2] = saveIdx + 2;
-                ld->indices[idxPos + 3] = saveIdx + 1;
-                ld->indices[idxPos + 4] = saveIdx + 2;
-                ld->indices[idxPos + 5] = saveIdx + 4;
-
-                // Rectangle
-                ld->indices[idxPos + 6] = saveIdx + 3;
-                ld->indices[idxPos + 7] = saveIdx + 5;
-                ld->indices[idxPos + 8] = saveIdx + 4;
-                ld->indices[idxPos + 9] = saveIdx + 4;
-                ld->indices[idxPos + 10] = saveIdx + 5;
-                ld->indices[idxPos + 11] = saveIdx + 6;
-
-                idxPos += 12;
-                saveIdx += 5;
+                if (isLast)
+                {
+                    nextPoint = isle.printPoints[0];
+                    hasNext = (nextPoint == curPoint);
+                }
+                else
+                    nextPoint = isle.printPoints[j + 1];
             }
 
-            // Add the first two parts of the first point for the last point to connect to
-            Point2 prevPoint = isle.printPoints[pCount - 1];
-            Point2 curPoint = isle.printPoints[0];
-            Point2 nextPoint = isle.printPoints[1];
-            short pointPos = saveIdx * 2;
-            AddPointZToArray(ld->curFloats, curPoint, layer.z, pointPos * 1.5f);
-            AddPointToArray(ld->prevFloats, prevPoint, pointPos);
-            AddPointToArray(ld->nextFloats, nextPoint, pointPos);
+
+            // Add all the position components
+            AddPointZsToArray(ld->curFloats, curPoint, layer.z, 5, curPos);
+            AddPointsToArray(ld->prevFloats, prevPoint, 5, prevPos);
+            AddPointsToArray(ld->nextFloats, nextPoint, 5, nextPos);
+
+            // Make the first point up and the next down
+            // Positive = up, negative = down
+            // abs < 0.6= 2nd point else = 1st point
             ld->sides[saveIdx + 0] = 0.1f;
             ld->sides[saveIdx + 1] = -0.1f;
+            ld->sides[saveIdx + 2] = 0.5f;
+            ld->sides[saveIdx + 3] = 1.0f;
+            ld->sides[saveIdx + 4] = -1.0f;
 
-            saveIdx += 2;
+            // We connect the current points with the following ones
+            // The 4 current points form the corner and then we connect
+            // to the next point to come
+            // 0--2--4
+            // | /| /|
+            // |/ |/ |
+            // 1--3--5
+            // Only one of the corner triangles will be visible if any because
+            // two points of the other will be the same when the rectangle
+            // intersections are calculated
+
+            // Connector trigs
+            ld->indices[idxPos + 0] = saveIdx + 0;
+            ld->indices[idxPos + 1] = saveIdx + 3;
+            ld->indices[idxPos + 2] = saveIdx + 2;
+            ld->indices[idxPos + 3] = saveIdx + 1;
+            ld->indices[idxPos + 4] = saveIdx + 2;
+            ld->indices[idxPos + 5] = saveIdx + 4;
+
+            // Rectangle
+            ld->indices[idxPos + 6] = saveIdx + 3;
+            ld->indices[idxPos + 7] = saveIdx + 5;
+            ld->indices[idxPos + 8] = saveIdx + 4;
+            ld->indices[idxPos + 9] = saveIdx + 4;
+            ld->indices[idxPos + 10] = saveIdx + 5;
+            ld->indices[idxPos + 11] = saveIdx + 6;
+
+            idxPos += 12;
+            saveIdx += 5;
         }
 
-        short tCount = isle.movePoints.size();
+        // Add the first two parts of the first point for the last point to connect to
+        Point2 prevPoint = isle.printPoints[pCount - 1];
+        Point2 curPoint = isle.printPoints[0];
+        Point2 nextPoint = isle.printPoints[1];
+        AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
+        AddPointsToArray(ld->prevFloats, prevPoint, 2, prevPos);
+        AddPointsToArray(ld->nextFloats, nextPoint, 2, nextPos);
+        ld->sides[saveIdx + 0] = 0.1f;
+        ld->sides[saveIdx + 1] = -0.1f;
+
+        saveIdx += 2;
+
+        /*short tCount = isle.movePoints.size();
 
         if (tCount > 2)
         {
@@ -290,7 +293,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
             ld->travelFloats[lineIdx + 1] = -1;
             ld->travelFloats[lineIdx + 2] = -1;
             lineIdx += 3;
-        }
+        }*/
     }
 
     return ld;

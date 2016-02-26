@@ -121,6 +121,11 @@ struct Point2
 
     Point2() {}
     Point2(float _x, float _y) : x(_x), y(_y) {}
+
+    bool operator== (Point2 &b)
+    {
+        return (x == b.x) && (y == b.y);
+    }
 };
 
 struct Point3

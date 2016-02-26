@@ -23,10 +23,10 @@ ToolpathRenderer::~ToolpathRenderer()
         mProgram = 0;
     }
 
-    if (layerDatas != nullptr)
+    if (groupDatas != nullptr)
     {
-        delete[] layerDatas;
-        layerDatas = nullptr;
+        delete[] groupDatas;
+        groupDatas = nullptr;
     }
 }
 
@@ -46,7 +46,7 @@ void ToolpathRenderer::SetToolpath(Toolpath *tp)
     dirtyPath = true;
 }
 
-LayerGLData::~LayerGLData()
+GroupGLData::~GroupGLData()
 {
     if (mCurPosBuffer != 0)
     {
@@ -83,17 +83,17 @@ void ToolpathRenderer::LoadPath()
 {
     dirtyPath = false;
 
-    if (layerDatas != nullptr)
-        delete[] layerDatas;
+    if (groupDatas != nullptr)
+        delete[] groupDatas;
 
-    layerCount = path->layers.size();
+    groupCount = path->layers.size();
 
-    layerDatas = new LayerGLData[layerCount];
+    groupDatas = new GroupGLData[groupCount];
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    for (std::size_t i = 0; i < groupCount; i++)
     {
         LayerData *cld = path->CalculateLayerData(i);
-        LayerGLData *ld = layerDatas + i;
+        GroupGLData *ld = groupDatas + i;
 
         glGenBuffers(1, &ld->mCurPosBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mCurPosBuffer);
@@ -154,9 +154,9 @@ void ToolpathRenderer::Draw()
     if (dirtyProjMat)
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    for (std::size_t i = 0; i < groupCount; i++)
     {
-        LayerGLData *ld = layerDatas + i;
+        GroupGLData *ld = groupDatas + i;
 
         glBindBuffer(GL_ARRAY_BUFFER, ld->mCurPosBuffer);
         glEnableVertexAttribArray(mCurPosAttribLocation);

@@ -16,7 +16,6 @@ varying float vZOff;*/
 uniform mat4 uModelMatrix;
 uniform mat4 uProjMatrix;
 uniform float uFilamentRadius;
-//uniform float uLayerZ;
 uniform bool uLineOnly;
 
 attribute vec3 aCurPos;
@@ -28,6 +27,13 @@ varying vec4 vColor;
 
 const vec3 color = vec3(0.2, 0.2, 0.8);
 const vec3 lightPos = vec3(50.0, 50.0, 150.0);
+
+// Compare a signed float to an unsigned value whilst
+// allowing for a lot of imprecision
+bool FloatCompare(float a, float b)
+{
+    return (abs(b - abs(a)) < 5.0f);
+}
 
 vec2 GetNormal(vec2 a, vec2 b, bool outside)
 {
@@ -77,6 +83,12 @@ InterPoint Intersection(float x1, float x2, float x3, float x4,
 
     return inter;
 }
+
+const float Cnr = 10.0;
+const float Snd = 20.0;
+const float CurBoth = 30.0;
+const float CurPrev = 40.0;
+const float CurNext = 50.0;
 
 void main(void)
 {

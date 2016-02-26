@@ -10,9 +10,9 @@
 #include <array>
 #include "structures.h"
 
-struct LayerGLData
+struct GroupGLData
 {
-    ~LayerGLData();
+    ~GroupGLData();
 
     GLuint mCurPosBuffer = 0;
     GLuint mNextPosBuffer = 0;
@@ -49,8 +49,8 @@ private:
     GLint mRadiusUniformLocation;
     GLint mProjUniformLocation;
 
-    LayerGLData *layerDatas = nullptr;
-    std::size_t layerCount = 0;
+    GroupGLData *groupDatas = nullptr;
+    std::size_t groupCount = 0;
 
     inline void LoadPath();
     Toolpath *path;
