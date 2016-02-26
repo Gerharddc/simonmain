@@ -16,10 +16,10 @@ varying float vZOff;*/
 uniform mat4 uModelMatrix;
 uniform mat4 uProjMatrix;
 uniform float uFilamentRadius;
-uniform float uLayerZ;
+//uniform float uLayerZ;
 uniform bool uLineOnly;
 
-attribute vec2 aCurPos;
+attribute vec3 aCurPos;
 attribute vec2 aNextPos;
 attribute vec2 aPrevPos;
 attribute float aSide;
@@ -81,9 +81,9 @@ InterPoint Intersection(float x1, float x2, float x3, float x4,
 void main(void)
 {
     // Project the positions into view space
-    vec4 curPos = uModelMatrix * vec4(aCurPos, uLayerZ, 1.0);
-    vec4 prevPos = uModelMatrix * vec4(aPrevPos, uLayerZ, 1.0);
-    vec4 nextPos = uModelMatrix * vec4(aNextPos, uLayerZ, 1.0);
+    vec4 curPos = uModelMatrix * vec4(aCurPos, 1.0);
+    vec4 prevPos = uModelMatrix * vec4(aPrevPos, aCurPos.z, 1.0);
+    vec4 nextPos = uModelMatrix * vec4(aNextPos, aCurPos.z, 1.0);
     vec3 newPos;
 
     bool outsidePoint = (aSide > 0.0);

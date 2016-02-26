@@ -163,6 +163,7 @@ public:
 
     short isleCount = 0;
     short pointFloatCount = 0;
+    short curFloatCount = 0;
     short sideFloatCount = 0;
     short idxCount = 0;
     short travelCount = 0;

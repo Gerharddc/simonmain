@@ -48,7 +48,6 @@ private:
     GLint mModelUniformLocation;
     GLint mRadiusUniformLocation;
     GLint mProjUniformLocation;
-    GLint mZUniformLocation;
 
     LayerGLData *layerDatas = nullptr;
     std::size_t layerCount = 0;

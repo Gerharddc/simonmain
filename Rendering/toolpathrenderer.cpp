@@ -97,7 +97,7 @@ void ToolpathRenderer::LoadPath()
 
         glGenBuffers(1, &ld->mCurPosBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mCurPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->pointFloatCount, cld->curFloats, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->curFloatCount, cld->curFloats, GL_STATIC_DRAW);
 
         glGenBuffers(1, &ld->mNextPosBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, ld->mNextPosBuffer);
@@ -130,7 +130,6 @@ void ToolpathRenderer::Init()
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
     mRadiusUniformLocation = glGetUniformLocation(mProgram, "uFilamentRadius");
-    mZUniformLocation = glGetUniformLocation(mProgram, "uLayerZ");
 
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
     mCurPosAttribLocation = glGetAttribLocation(mProgram, "aCurPos");
@@ -161,7 +160,7 @@ void ToolpathRenderer::Draw()
 
         glBindBuffer(GL_ARRAY_BUFFER, ld->mCurPosBuffer);
         glEnableVertexAttribArray(mCurPosAttribLocation);
-        glVertexAttribPointer(mCurPosAttribLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
+        glVertexAttribPointer(mCurPosAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, ld->mNextPosBuffer);
         glEnableVertexAttribArray(mNextPosAttribLocation);
@@ -176,7 +175,6 @@ void ToolpathRenderer::Draw()
         glVertexAttribPointer(mSideAttribLocation, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
         glUniform1f(mRadiusUniformLocation, 0.5f);
-        glUniform1f(mZUniformLocation, ld->layerHeight);
 
         glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
     }

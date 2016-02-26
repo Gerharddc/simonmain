@@ -127,6 +127,17 @@ void AddPointToArray(float *array, Point2 &p, std::size_t arrPos)
     array[arrPos + 3] = p.y;
 }
 
+void AddPointZToArray(float *array, Point2 &p, float z, std::size_t arrPos)
+{
+    // We need to add the point twice because one goes up and one down
+    array[arrPos + 0] = p.x; // up
+    array[arrPos + 1] = p.y;
+    array[arrPos + 2] = z;
+    array[arrPos + 3] = p.x; // down
+    array[arrPos + 4] = p.y;
+    array[arrPos + 5] = z;
+}
+
 inline void AddPointsToArray(float *array, Point2 &p, std::size_t arrPos)
 {
     // We add the point twice because one connects to the next and one
@@ -135,6 +146,15 @@ inline void AddPointsToArray(float *array, Point2 &p, std::size_t arrPos)
     AddPointToArray(array, p, arrPos + 4);
     array[arrPos + 8] = p.x;
     array[arrPos + 9] = p.y;
+}
+
+inline void AddPointZsToArray(float *array, Point2 &p, float z, std::size_t arrPos)
+{
+    AddPointZToArray(array, p, z, arrPos);
+    AddPointZToArray(array, p, z, arrPos + 6);
+    array[arrPos + 12] = p.x;
+    array[arrPos + 13] = p.y;
+    array[arrPos + 14] = z;
 }
 
 LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
@@ -158,12 +178,13 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 
     short isleCount = layer.islands.size();
     ld->pointFloatCount = pointCount * 10 + (4 * isleCount);
+    ld->curFloatCount = ld->pointFloatCount * 1.5f; // The cur float adds the z value
     ld->sideFloatCount = pointCount * 5 + (2 * isleCount);
     ld->idxCount = pointCount * 12;
     ld->travelCount = (travelCount + isleCount) * 3;
 
     // We need an up and a down version of each point
-    ld->curFloats    = new float[ld->pointFloatCount];
+    ld->curFloats    = new float[ld->curFloatCount];
     ld->nextFloats   = new float[ld->pointFloatCount];
     ld->prevFloats   = new float[ld->pointFloatCount];
     ld->sides        = new float[ld->sideFloatCount];
@@ -194,7 +215,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 
                 // Add all the position components
                 short pointPos = saveIdx * 2;
-                AddPointsToArray(ld->curFloats, curPoint, pointPos);
+                AddPointZsToArray(ld->curFloats, curPoint, layer.z, pointPos * 1.5f);
                 AddPointsToArray(ld->prevFloats, prevPoint, pointPos);
                 AddPointsToArray(ld->nextFloats, nextPoint, pointPos);
 
@@ -243,7 +264,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
             Point2 curPoint = isle.printPoints[0];
             Point2 nextPoint = isle.printPoints[1];
             short pointPos = saveIdx * 2;
-            AddPointToArray(ld->curFloats, curPoint, pointPos);
+            AddPointZToArray(ld->curFloats, curPoint, layer.z, pointPos * 1.5f);
             AddPointToArray(ld->prevFloats, prevPoint, pointPos);
             AddPointToArray(ld->nextFloats, nextPoint, pointPos);
             ld->sides[saveIdx + 0] = 0.1f;
