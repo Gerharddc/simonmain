@@ -1,16 +1,5 @@
 #ifdef GL_ES
   precision mediump float;
-/*#else
-    #define USE_Z
-#endif
-
-#extension EXT_frag_depth: enable
-#ifdef GL_EXT_frag_depth
-    #define USE_Z
-#endif
-
-#ifdef USE_Z
-varying float vZOff;*/
 #endif
 
 uniform mat4 uModelMatrix;
@@ -26,14 +15,6 @@ attribute float aSide;
 varying vec4 vColor;
 
 const vec3 color = vec3(0.2, 0.2, 0.8);
-const vec3 lightPos = vec3(50.0, 50.0, 150.0);
-
-// Compare a signed float to an unsigned value whilst
-// allowing for a lot of imprecision
-bool FloatCompare(float a, float b)
-{
-    return (abs(b - abs(a)) < 5.0f);
-}
 
 vec2 GetNormal(vec2 a, vec2 b, bool outside)
 {
@@ -84,11 +65,18 @@ InterPoint Intersection(float x1, float x2, float x3, float x4,
     return inter;
 }
 
-const float Cnr = 10.0;
-const float Snd = 20.0;
-const float CurBoth = 30.0;
-const float CurPrev = 40.0;
-const float CurNext = 50.0;
+const float Snd = 10.0;
+const float Cnr = 20.0;
+const float Fst = 30.0;
+const float FstOnly = 40.0;
+const float SndOnly = 50.0;
+
+// snd = 10; centre = 20; fst = 30; fstOnly = 40; sndOnly = 50;
+
+/*bool Almost(float a, float b)
+{
+    return (abs(a - b) < 5.0);
+}*/
 
 void main(void)
 {
@@ -110,8 +98,26 @@ void main(void)
     const vec3 ref = vec3(0.0, 0.0, 1.0);
     bool interOut = (dot(crossed, ref) > 0.0);
 
-    bool sndPoint = (abs(aSide) < 0.3);
-    bool cnrPoint = sndPoint ? false : (abs(aSide) < 0.7);
+    float absSide = abs(aSide);
+
+    /*bool sndPoint = (absSide < 15.0);
+    bool cnrPoint = sndPoint ? false : (absSide < 25.0);
+    bool fstPoint = (absSide < 35.0);
+    bool fstOnly = fstPoint ? false : (absSide < 45.0);
+    bool sndOnly = fstOnly ? false : (absSide < 55.0);*/
+    bool sndPoint, cnrPoint, fstPoint, fstOnly, sndOnly;
+    sndPoint = cnrPoint = fstPoint = fstOnly = sndOnly = false;
+    if (absSide < 15.0)
+        sndPoint = true;
+    else if (absSide < 25.0)
+        cnrPoint = true;
+    else if (absSide < 35.0)
+        fstPoint = true;
+    else if (absSide < 45.0)
+        fstPoint = fstOnly = true;
+    else
+        sndPoint = sndOnly = true;
+    // TODO: combine fstonly & sndonly
 
     // Invert the normals for a corner point if it is on the wrong side
     if (cnrPoint && outsidePoint && !interOut)
@@ -134,7 +140,7 @@ void main(void)
 
     // We should only check for an intersection if it can be possible like when the interscetion is
     // on the current side
-    if (cnrPoint || outsidePoint == interOut)
+    if (!fstOnly && !sndOnly && (cnrPoint || outsidePoint == interOut))
     {
         // If the intersection is not on a horizontal edge then it should be on a vertical edge
         InterPoint inter = Intersection(a1.x, a2.x, b1.x, b2.x, a1.y, a2.y, b1.y, b2.y);
@@ -207,24 +213,5 @@ void main(void)
     const vec3 lightDir = vec3(-0.371391, -0.557086, 0.742781); // normalize(vec3(-1.0, -1.5, 2.0));
     float diffuse = dot(lightNorm, lightDir);
     diffuse = diffuse * 0.75 + 0.25;
-    /*vec3 lightVector = normalize(lightPos - newPos);
-    float diffuse = max(dot(lightNorm, lightVector), 0.1);*/
     vColor = vec4(color * diffuse, 1.0);
-
-/*#ifdef USE_Z
-    // We need to calculate what z offset the filament should have
-    // after projection
-    vec4 heightV = vec4(0.0, 0.0, uFilamentRadius, 1.0);
-    heightV = uProjMatrix * heightV;
-
-    // Tell the fragment shader how much z to go back
-    if (cnrPoint)
-    {
-        vZOff = interOut ? heightV.z : -1.0 * heightV.z;
-    }
-    else
-    {
-        vZOff = outsidePoint ? heightV.z : -1.0 * heightV.z;
-    }
-#endif*/
 }

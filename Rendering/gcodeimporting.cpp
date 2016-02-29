@@ -28,6 +28,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         Layer *curLayer = nullptr;
         Island *curIsle = nullptr;
         Point3 lastPoint;
+        Point2 lastPoint2;
 
         int8_t g = -1;
         bool rel = false;
@@ -92,6 +93,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             // Create a point at the last position
             lastPoint = { prevX, prevY, prevZ };
+            lastPoint2 = { prevX, prevY };
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces
@@ -174,6 +176,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                             curLayer->islands.emplace_back();
                             lastWasMove = true;
                             curIsle = &(curLayer->islands.back());
+                            // Move to the island
                             curIsle->movePoints.push_back(lastPoint);
 
                             moved = true;
@@ -222,6 +225,10 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             if (extruded)
             {
+                // Add the first point after moves
+                if (lastWasMove)
+                    curIsle->printPoints.push_back(lastPoint2);
+
                 curIsle->printPoints.push_back({prevX, prevY});
 
                 lastWasMove = false;
@@ -240,6 +247,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     curLayer->islands.emplace_back();
                     curIsle = &(curLayer->islands.back());
 
+                    // Move to the island
                     curIsle->movePoints.push_back(lastPoint);
                 }
 

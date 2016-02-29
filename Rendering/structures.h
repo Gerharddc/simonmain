@@ -126,6 +126,11 @@ struct Point2
     {
         return (x == b.x) && (y == b.y);
     }
+
+    bool operator!= (Point2 &b)
+    {
+        return (x != b.x) && (y != b.y);
+    }
 };
 
 struct Point3
