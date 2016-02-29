@@ -154,7 +154,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 
     for (Island isle : layer.islands)
     {
-        pointCount += isle.printPoints.size() + 1; // TODO: hmmmm
+        pointCount += isle.printPoints.size(); // TODO: hmmmm
         travelCount += isle.movePoints.size();
     }
 
@@ -208,14 +208,12 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
                 if (curPoint == nextPoint)
                 {
                     // Add the first two parts of the first point for the last point to connect to
-                    Point2 prevPoint = isle.printPoints[pCount - 2];
-                    Point2 curPoint = isle.printPoints[0];
-                    Point2 nextPoint = isle.printPoints[1];
+                    nextPoint = isle.printPoints[1];
                     AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
                     AddPointsToArray(ld->prevFloats, prevPoint, 2, prevPos);
                     AddPointsToArray(ld->nextFloats, nextPoint, 2, nextPos);
-                    ld->sides[saveIdx + 0] = 0.1f;
-                    ld->sides[saveIdx + 1] = -0.1f;
+                    ld->sides[saveIdx + 0] = 10.0f;
+                    ld->sides[saveIdx + 1] = -10.0f;
 
                     saveIdx += 2;
 
@@ -254,7 +252,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
             ld->sides[saveIdx + 2] = 0.5f;
             ld->sides[saveIdx + 3] = 1.0f;
             ld->sides[saveIdx + 4] = -1.0f;*/
-            if (true)//hasNext && hasPrev)
+            /*if (true)//hasNext && hasPrev)
             /*{
                 ld->sides[saveIdx + 0] = 10.0f;
                 ld->sides[saveIdx + 1] = -10.0f;
@@ -296,12 +294,12 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
                 ld->sides[saveIdx + 1] = -40.0f;
 
                 // Rectangle only
-                ld->indices[idxPos + 0] = 0;
-                ld->indices[idxPos + 1] = 2;
-                ld->indices[idxPos + 2] = 1;
-                ld->indices[idxPos + 3] = 2;
-                ld->indices[idxPos + 4] = 3;
-                ld->indices[idxPos + 5] = 1;
+                ld->indices[idxPos + 0] = saveIdx + 0;
+                ld->indices[idxPos + 1] = saveIdx + 2;
+                ld->indices[idxPos + 2] = saveIdx + 1;
+                ld->indices[idxPos + 3] = saveIdx + 2;
+                ld->indices[idxPos + 4] = saveIdx + 3;
+                ld->indices[idxPos + 5] = saveIdx + 1;
 
                 idxPos += 6;
                 saveIdx += 2;
@@ -359,7 +357,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
         }
 
         // Add the first two parts of the first point for the last point to connect to
-        /*Point2 prevPoint = isle.printPoints[pCount - 2];//isle.printPoints[pCount - 1];
+        /*Point2 prevPoint = isle.printPoints[pCount - 1];
         Point2 curPoint = isle.printPoints[0];
         Point2 nextPoint = isle.printPoints[1];
         AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
@@ -368,7 +366,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
         ld->sides[saveIdx + 0] = 0.1f;
         ld->sides[saveIdx + 1] = -0.1f;
 
-        saveIdx += 2;*/
+        saveIdx += 2;
 
         /*short tCount = isle.movePoints.size();
 

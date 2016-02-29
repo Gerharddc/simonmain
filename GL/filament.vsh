@@ -65,12 +65,6 @@ InterPoint Intersection(float x1, float x2, float x3, float x4,
     return inter;
 }
 
-const float Snd = 10.0;
-const float Cnr = 20.0;
-const float Fst = 30.0;
-const float FstOnly = 40.0;
-const float SndOnly = 50.0;
-
 // snd = 10; centre = 20; fst = 30; fstOnly = 40; sndOnly = 50;
 
 /*bool Almost(float a, float b)
@@ -99,12 +93,6 @@ void main(void)
     bool interOut = (dot(crossed, ref) > 0.0);
 
     float absSide = abs(aSide);
-
-    /*bool sndPoint = (absSide < 15.0);
-    bool cnrPoint = sndPoint ? false : (absSide < 25.0);
-    bool fstPoint = (absSide < 35.0);
-    bool fstOnly = fstPoint ? false : (absSide < 45.0);
-    bool sndOnly = fstOnly ? false : (absSide < 55.0);*/
     bool sndPoint, cnrPoint, fstPoint, fstOnly, sndOnly;
     sndPoint = cnrPoint = fstPoint = fstOnly = sndOnly = false;
     if (absSide < 15.0)
