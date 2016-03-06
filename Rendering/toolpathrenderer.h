@@ -19,8 +19,7 @@ struct GroupGLData
     GLuint mPrevPosBuffer = 0;
     GLuint mSideBuffer = 0;
 
-    short *indices;
-    float layerHeight = 0.0f;
+    uint16_t *indices;
     short idxCount = 0;
 };
 

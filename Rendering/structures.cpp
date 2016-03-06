@@ -118,7 +118,7 @@ float *Mesh::getFlatNorms()
     return normFloats;
 }
 
-inline void AddPointsToArray(float *array, Point2 &p, short count, std::size_t &arrPos)
+inline void AddPointsToArray(float *array, Point2 &p, short count, uint32_t &arrPos)
 {
     for (short i = 0; i < count; i++)
     {
@@ -128,7 +128,7 @@ inline void AddPointsToArray(float *array, Point2 &p, short count, std::size_t &
     }
 }
 
-inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, std::size_t &arrPos)
+inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, uint32_t &arrPos)
 {
     for (short i = 0; i < count; i++)
     {
@@ -139,42 +139,37 @@ inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, std
     }
 }
 
-// An GLES chunck can have a maximum of 2^16(ushort) indices and we need to divide all the data between that
+// An GLES chunk can have a maximum of 2^16(ushort) indices and we need to divide all the data between that
 // we will do this by creating a maximum size buffer for each set of data here and then shrinking it to only the
 // needed part
-const ushort maxIdx = 65536;
+const uint16_t maxIdx = UINT16_MAX; // TODO: variable data type
 
-inline void NewChunck(ushort &idxPos, ushort &saveIdx, std::vector<TPDataChuck> *chunks, TPDataChuck *dc)
+inline void NewChunk(ushort &idxPos, ushort &saveIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
 {
-    // We need to shrink the previous chunck to size
+    // We need to shrink the previous chunk to size
     if (dc != nullptr)
     {
-        //dc->pointFloatCount = saveIdx * 3;
-        //dc->curFloatCount
+        dc->idxCount = idxPos;
+        dc->sideFloatCount = saveIdx;
+        dc->ShrinkToSize();
     }
 
     idxPos = 0;
     saveIdx = 0;
     chunks->emplace_back();
-    dc = chunks->back();
-
-    dc->curFloats  = new float[maxIdx * 15];
-    dc->nextFloats = new float[maxIdx * 10];
-    dc->prevFloats = new float[maxIdx * 10];
-    dc->sides      = new ushort[maxIdx * 5];
-    dc->indices    = new float[maxIdx * 12];
+    dc = &(chunks->back());
 }
 
-std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
+std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
 {
     ushort idxPos = 0;
     ushort saveIdx = 0;
-    std::vector<TPDataChuck> *chunks = new std::vector<TPDataChuck>();
-    TPDataChuck *dc = nullptr;
+    std::vector<TPDataChunk> *chunks = new std::vector<TPDataChunk>();
+    TPDataChunk *dc = nullptr;
 
-    // Use a MACRO to easily push a new chunck
-    #define NEWCHUNK NewChunck(idxPos, saveIdx, chunks, dc)
-    NEWCHUNK;
+    // Use a MACRO to easily push a new chunk
+    #define NEWCHUNK() NewChunk(idxPos, saveIdx, chunks, dc)
+    NEWCHUNK();
 
     for (Layer layer : layers)
     {
@@ -185,17 +180,17 @@ std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
             bool cut = true;
             auto pCount = isle.printPoints.size();
 
-            // Determine how many points we can still fit in this chunck
-            int fitCount = (maxIdx - saveIdx - 2) / 5;
-            int leftCount = 0;
+            // Determine how many points we can still fit in this chunk
+            uint fitCount = (maxIdx - saveIdx - 2) / 5;
+            uint leftCount = 0;
 
-#define MAXFITCOUNT fitCount = (maxIdx - 2) / 5
+#define MAXFITCOUNT() fitCount = (maxIdx - 2) / 5
 
             // We need to fit at least 3 points
             if (fitCount < 3)
             {
-                NEWCHUNK;
-                MAXFITCOUNT;
+                NEWCHUNK();
+                MAXFITCOUNT();
             }
 
             if (pCount < fitCount)
@@ -209,8 +204,8 @@ std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
                 leftCount = pCount - fitCount;
             }
 
-            auto fitPos = 0;
-            for (auto j = 0; j < pCount; j++)
+            uint fitPos = 0;
+            for (uint j = 0; j < pCount; j++)
             {
                 // Determine the connecting points
                 bool isLast = (j == pCount - 1);
@@ -261,13 +256,13 @@ std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
                     else
                         prevPoint = isle.printPoints[j - 1];
 
-                    // Check if we need to move to a new chunck
+                    // Check if we need to move to a new chunk
                     if (cut)
                     {
                         if (fitPos > (fitCount - 2))
                         {
                             // If this point needs to go to a new chunk then we need to add its first 2
-                            // vertices for the last one in this chunck to connect to
+                            // vertices for the last one in this chunk to connect to
                             AddPointZsToArray(dc->curFloats, curPoint, layer.z, 2, dc->curFloatCount);
                             AddPointsToArray(dc->prevFloats, prevPoint, 2, dc->prevFloatCount);
                             AddPointsToArray(dc->nextFloats, nextPoint, 2, dc->nextFloatCount);
@@ -275,11 +270,11 @@ std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
                             dc->sides[saveIdx + 1] = -10.0f;
                             saveIdx += 2;
 
-                            // We then need to move to a new chucnk
-                            NEWCHUNK;
+                            // We then need to move to a new chunk
+                            NEWCHUNK();
 
                             // We also need to determine if it will have to be cut again
-                            MAXFITCOUNT;
+                            MAXFITCOUNT();
                             if (leftCount < fitCount)
                                 cut = false;
                             else
@@ -376,224 +371,53 @@ std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
             }
         }
     }
+
+    // Finish up the last chunk
+    dc->idxCount = idxPos;
+    dc->sideFloatCount = saveIdx;
+    dc->ShrinkToSize();
+
+    chunks->shrink_to_fit();
+    return chunks;
 }
 
-
-LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
+ushort *TPDataChunk::getIndices()
 {
-    LayerData *ld = new LayerData();
+    indicesCopied = true;
+    return indices;
+}
 
-    // Check that the layer is in range
-    if ((layerNum + 1) > layers.size())
-        return nullptr;
+void TPDataChunk::ShrinkToSize()
+{
+    curFloats   = (float*) realloc (curFloats, curFloatCount * sizeof(float));
+    nextFloats  = (float*) realloc (nextFloats, nextFloatCount * sizeof(float));
+    prevFloats  = (float*) realloc (prevFloats, prevFloatCount * sizeof(float));
+    sides       = (float*) realloc (sides, sideFloatCount * sizeof(float));
+    indices     = (ushort*)realloc (indices, idxCount * sizeof(uint16_t));
+}
 
-    Layer &layer = layers[layerNum];
+TPDataChunk::TPDataChunk()
+{
+    curFloats  = (float*) malloc (maxIdx * 15 * sizeof(float));
+    nextFloats = (float*) malloc (maxIdx * 10 * sizeof(float));
+    prevFloats = (float*) malloc (maxIdx * 10 * sizeof(float));
+    sides      = (float*) malloc (maxIdx * 5 * sizeof(float));
+    indices    = (ushort*)malloc (maxIdx * 12 * sizeof(ushort));
+}
 
-    short pointCount = 0;
-    short travelCount = 0;
+TPDataChunk::~TPDataChunk()
+{
+    if (curFloats != nullptr)
+        free (curFloats);
+    if (prevFloats != nullptr)
+        free (prevFloats);
+    if (nextFloats != nullptr)
+        free (nextFloats);
+    if (sides != nullptr)
+        free (sides);
 
-    for (Island isle : layer.islands)
-    {
-        pointCount += isle.printPoints.size(); // TODO: hmmmm
-        travelCount += isle.movePoints.size();
-    }
-
-    short isleCount = layer.islands.size();
-    ld->pointFloatCount = pointCount * 10 + (4 * isleCount);
-    ld->curFloatCount = ld->pointFloatCount * 1.5f; // The cur float adds the z value
-    ld->sideFloatCount = pointCount * 5 + (2 * isleCount);
-    ld->idxCount = pointCount * 12;
-    ld->travelCount = (travelCount + isleCount) * 3;
-
-    // We need an up and a down version of each point
-    ld->curFloats    = new float[ld->curFloatCount];
-    ld->nextFloats   = new float[ld->pointFloatCount];
-    ld->prevFloats   = new float[ld->pointFloatCount];
-    ld->sides        = new float[ld->sideFloatCount];
-    ld->indices      = new short[ld->idxCount];
-    ld->travelFloats = new float[ld->travelCount];
-
-    short idxPos = 0;
-    short saveIdx = 0;
-    //short lineIdx = 0;
-    std::size_t curPos = 0;
-    std::size_t prevPos = 0;
-    std::size_t nextPos = 0;
-
-    // TODO: we need to add a way to deal with travel moves
-
-    for (Island isle : layer.islands)
-    {
-        //isle.printPoints.pop_back();
-        short pCount = isle.printPoints.size();
-
-        if (pCount < 2)
-            continue;
-
-        for (short j = 0; j < pCount; j++)
-        {
-            bool isLast = (j == pCount - 1);
-            bool isFirst = (j == 0);
-
-            Point2 curPoint = isle.printPoints[j];
-            Point2 prevPoint, nextPoint;
-            bool hasNoPrev = false;
-            bool hasNoNext = false;
-
-            // Last or first points of open ended shapes need to be treated differently
-            // those of closed-ended shapes
-            if (isLast)
-            {
-                prevPoint = isle.printPoints[j - 1];
-                nextPoint = isle.printPoints[0];
-
-                if (curPoint == nextPoint)
-                {
-                    // Add the first two parts of the first point for the last point to connect to
-                    nextPoint = isle.printPoints[1];
-                    AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
-                    AddPointsToArray(ld->prevFloats, prevPoint, 2, prevPos);
-                    AddPointsToArray(ld->nextFloats, nextPoint, 2, nextPos);
-                    ld->sides[saveIdx + 0] = 10.0f;
-                    ld->sides[saveIdx + 1] = -10.0f;
-
-                    saveIdx += 2;
-
-                    continue;
-                }
-                else
-                    hasNoNext = true;
-            }
-            else
-            {
-                nextPoint = isle.printPoints[j + 1];
-
-                if (isFirst)
-                {
-                    prevPoint = isle.printPoints[pCount - 1];
-
-                    if (prevPoint == curPoint)
-                        prevPoint = isle.printPoints[pCount - 2]; // TODO: error maybe?
-                    else
-                        hasNoPrev = true;
-                }
-                else
-                    prevPoint = isle.printPoints[j - 1];
-            }
-
-            // We connect the current points with the following ones
-            // The 4 current points form the corner and then we connect
-            // to the next point to come
-            // Only one of the corner triangles will be visible if any because
-            // two points of the other will be the same when the rectangle
-            // intersections are calculated
-
-            if (hasNoPrev)
-            {
-                // Add only 2 points
-                AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
-                AddPointsToArray(ld->prevFloats, prevPoint, 2, prevPos);
-                AddPointsToArray(ld->nextFloats, nextPoint, 2, nextPos);
-
-                // Point attributes
-                // Forwards only
-                ld->sides[saveIdx + 0] = 40.0f;
-                ld->sides[saveIdx + 1] = -40.0f;
-
-                // Rectangle only
-                ld->indices[idxPos + 0] = saveIdx + 0;
-                ld->indices[idxPos + 1] = saveIdx + 2;
-                ld->indices[idxPos + 2] = saveIdx + 1;
-                ld->indices[idxPos + 3] = saveIdx + 2;
-                ld->indices[idxPos + 4] = saveIdx + 3;
-                ld->indices[idxPos + 5] = saveIdx + 1;
-
-                idxPos += 6;
-                saveIdx += 2;
-            }
-            else if (hasNoNext)
-            {
-                // Add only 2 points
-                AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
-                AddPointsToArray(ld->prevFloats, prevPoint, 2, prevPos);
-                AddPointsToArray(ld->nextFloats, nextPoint, 2, nextPos);
-
-                // Point attributes
-                // Backwards only
-                ld->sides[saveIdx + 0] = 50.0f;
-                ld->sides[saveIdx + 1] = -50.0f;
-
-                // Nothing for the indices
-
-                saveIdx += 2;
-            }
-            else
-            {
-                // Add all the position components
-                AddPointZsToArray(ld->curFloats, curPoint, layer.z, 5, curPos);
-                AddPointsToArray(ld->prevFloats, prevPoint, 5, prevPos);
-                AddPointsToArray(ld->nextFloats, nextPoint, 5, nextPos);
-
-                // Point attributes
-                // Backwards, centre, forwards
-                ld->sides[saveIdx + 0] = 10.0f;
-                ld->sides[saveIdx + 1] = -10.0f;
-                ld->sides[saveIdx + 2] = 20.0f;
-                ld->sides[saveIdx + 3] = 30.0f;
-                ld->sides[saveIdx + 4] = -30.0f;
-
-                // Connector trigs
-                ld->indices[idxPos + 0] = saveIdx + 0;
-                ld->indices[idxPos + 1] = saveIdx + 3;
-                ld->indices[idxPos + 2] = saveIdx + 2;
-                ld->indices[idxPos + 3] = saveIdx + 1;
-                ld->indices[idxPos + 4] = saveIdx + 2;
-                ld->indices[idxPos + 5] = saveIdx + 4;
-
-                // Rectangle
-                ld->indices[idxPos + 6] = saveIdx + 3;
-                ld->indices[idxPos + 7] = saveIdx + 5;
-                ld->indices[idxPos + 8] = saveIdx + 4;
-                ld->indices[idxPos + 9] = saveIdx + 4;
-                ld->indices[idxPos + 10] = saveIdx + 5;
-                ld->indices[idxPos + 11] = saveIdx + 6;
-
-                idxPos += 12;
-                saveIdx += 5;
-            }
-        }
-
-        // Add the first two parts of the first point for the last point to connect to
-        /*Point2 prevPoint = isle.printPoints[pCount - 1];
-        Point2 curPoint = isle.printPoints[0];
-        Point2 nextPoint = isle.printPoints[1];
-        AddPointZsToArray(ld->curFloats, curPoint, layer.z, 2, curPos);
-        AddPointsToArray(ld->prevFloats, prevPoint, 2, prevPos);
-        AddPointsToArray(ld->nextFloats, nextPoint, 2, nextPos);
-        ld->sides[saveIdx + 0] = 0.1f;
-        ld->sides[saveIdx + 1] = -0.1f;
-
-        saveIdx += 2;
-
-        /*short tCount = isle.movePoints.size();
-
-        if (tCount > 2)
-        {
-            for (short j = 0; j < tCount; j++)
-            {
-                Point3 mp = isle.movePoints[j];
-                ld->travelFloats[lineIdx + 0] = mp.x;
-                ld->travelFloats[lineIdx + 1] = mp.y;
-                ld->travelFloats[lineIdx + 2] = mp.z;
-                lineIdx += 3;
-            }
-
-            ld->travelFloats[lineIdx + 0] = -1;
-            ld->travelFloats[lineIdx + 1] = -1;
-            ld->travelFloats[lineIdx + 2] = -1;
-            lineIdx += 3;
-        }*/
-    }
-
-    return ld;
+    // The indices won't be copied over to the gpu and will need to remain in existence
+    // the renderer will be responsible for freeing the memory used by that array
+    if (!indicesCopied && indices != nullptr)
+        free (indices);
 }

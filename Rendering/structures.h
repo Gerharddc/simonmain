@@ -157,54 +157,7 @@ struct Layer
 
 class Toolpath;
 
-class LayerData
-{
-    friend class Toolpath;
-
-private:
-    short *indices;
-
-public:
-    float *curFloats;
-    float *prevFloats;
-    float *nextFloats;
-    float *sides;
-    float *travelFloats;
-
-    short isleCount = 0;
-    short pointFloatCount = 0;
-    short curFloatCount = 0;
-    short sideFloatCount = 0;
-    short idxCount = 0;
-    short travelCount = 0;
-
-    bool indicesCopied = false;
-
-    short *getIndices()
-    {
-        indicesCopied = true;
-        return indices;
-    }
-
-    ~LayerData()
-    {
-        delete[] curFloats;
-        delete[] prevFloats;
-        delete[] nextFloats;
-        delete[] sides;
-        delete[] travelFloats;
-
-        // The indices won't be copied over to the gpu and will need to remain in existence
-        // the renderer will be responsible for freeing the memory used by that array
-        if (!indicesCopied)
-        {
-            delete[] indices;
-            indices = nullptr;
-        }
-    }
-};
-
-class TPDataChuck
+class TPDataChunk
 {
     friend class Toolpath;
 
@@ -217,47 +170,26 @@ public:
     float *nextFloats = nullptr;
     float *sides = nullptr;
 
-    //short isleCount = 0;
-    //uint pointFloatCount = 0;
-    uint curFloatCount = 0;
-    uint prevFloatCount = 0;
-    uint nextFloatCount = 0;
-    uint sideFloatCount = 0;
-    short idxCount = 0;
-    //short travelCount = 0;
+    uint32_t curFloatCount = 0;
+    uint32_t prevFloatCount = 0;
+    uint32_t nextFloatCount = 0;
+    uint32_t sideFloatCount = 0;
+    uint16_t idxCount = 0;
 
     bool indicesCopied = false;
 
-    short *getIndices()
-    {
-        indicesCopied = true;
-        return indices;
-    }
+    ushort *getIndices();
+    void ShrinkToSize();
 
-    ~TPDataChuck()
-    {
-        if (curFloats != nullptr)
-            free (curFloats);
-        if (prevFloats != nullptr)
-            free (prevFloats);
-        if (nextFloats != nullptr)
-            free (nextFloats);
-        if (sides != nullptr)
-            free (sides);
-
-        // The indices won't be copied over to the gpu and will need to remain in existence
-        // the renderer will be responsible for freeing the memory used by that array
-        if (!indicesCopied && indices != nullptr)
-            free (indices);
-    }
+    TPDataChunk();
+    ~TPDataChunk();
 };
 
 struct Toolpath
 {
     std::vector<Layer> layers;
 
-    LayerData *CalculateLayerData(std::size_t layerNum);
-    std::vector<TPDataChuck> *CalculateDataChuncks();
+    std::vector<TPDataChunk> *CalculateDataChunks();
 };
 
 #endif // STRUCTURES

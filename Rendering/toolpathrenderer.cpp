@@ -86,36 +86,35 @@ void ToolpathRenderer::LoadPath()
     if (groupDatas != nullptr)
         delete[] groupDatas;
 
-    groupCount = path->layers.size();
-
+    auto chunks = path->CalculateDataChunks();
+    groupCount = chunks->size();
     groupDatas = new GroupGLData[groupCount];
 
     for (std::size_t i = 0; i < groupCount; i++)
     {
-        LayerData *cld = path->CalculateLayerData(i);
-        GroupGLData *ld = groupDatas + i;
+        TPDataChunk *dc = &chunks->at(i);
+        GroupGLData *gd = groupDatas + i;
 
-        glGenBuffers(1, &ld->mCurPosBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, ld->mCurPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->curFloatCount, cld->curFloats, GL_STATIC_DRAW);
+        glGenBuffers(1, &gd->mCurPosBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, gd->mCurPosBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * dc->curFloatCount, dc->curFloats, GL_STATIC_DRAW);
 
-        glGenBuffers(1, &ld->mNextPosBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, ld->mNextPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->pointFloatCount, cld->nextFloats, GL_STATIC_DRAW);
+        glGenBuffers(1, &gd->mNextPosBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, gd->mNextPosBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * dc->nextFloatCount, dc->nextFloats, GL_STATIC_DRAW);
 
-        glGenBuffers(1, &ld->mPrevPosBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, ld->mPrevPosBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->pointFloatCount, cld->prevFloats, GL_STATIC_DRAW);
+        glGenBuffers(1, &gd->mPrevPosBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, gd->mPrevPosBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * dc->prevFloatCount, dc->prevFloats, GL_STATIC_DRAW);
 
-        glGenBuffers(1, &ld->mSideBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, ld->mSideBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cld->sideFloatCount, cld->sides, GL_STATIC_DRAW);
+        glGenBuffers(1, &gd->mSideBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, gd->mSideBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * dc->sideFloatCount, dc->sides, GL_STATIC_DRAW);
 
-        ld->indices = cld->getIndices();
-        ld->layerHeight = path->layers[i].z;
-        ld->idxCount = cld->idxCount;
+        gd->indices = dc->getIndices();
+        gd->idxCount = dc->idxCount;
 
-        delete cld;
+        delete dc;
     }
 }
 
