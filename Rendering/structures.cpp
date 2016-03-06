@@ -139,6 +139,246 @@ inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, std
     }
 }
 
+// An GLES chunck can have a maximum of 2^16(ushort) indices and we need to divide all the data between that
+// we will do this by creating a maximum size buffer for each set of data here and then shrinking it to only the
+// needed part
+const ushort maxIdx = 65536;
+
+inline void NewChunck(ushort &idxPos, ushort &saveIdx, std::vector<TPDataChuck> *chunks, TPDataChuck *dc)
+{
+    // We need to shrink the previous chunck to size
+    if (dc != nullptr)
+    {
+        //dc->pointFloatCount = saveIdx * 3;
+        //dc->curFloatCount
+    }
+
+    idxPos = 0;
+    saveIdx = 0;
+    chunks->emplace_back();
+    dc = chunks->back();
+
+    dc->curFloats  = new float[maxIdx * 15];
+    dc->nextFloats = new float[maxIdx * 10];
+    dc->prevFloats = new float[maxIdx * 10];
+    dc->sides      = new ushort[maxIdx * 5];
+    dc->indices    = new float[maxIdx * 12];
+}
+
+std::vector<TPDataChuck>* Toolpath::CalculateDataChuncks()
+{
+    ushort idxPos = 0;
+    ushort saveIdx = 0;
+    std::vector<TPDataChuck> *chunks = new std::vector<TPDataChuck>();
+    TPDataChuck *dc = nullptr;
+
+    // Use a MACRO to easily push a new chunck
+    #define NEWCHUNK NewChunck(idxPos, saveIdx, chunks, dc)
+    NEWCHUNK;
+
+    for (Layer layer : layers)
+    {
+        for (Island isle : layer.islands)
+        {
+            // We need to determine the maximum amount of points on the island in order to know if we
+            // will have to cut it up into pieces
+            bool cut = true;
+            auto pCount = isle.printPoints.size();
+
+            // Determine how many points we can still fit in this chunck
+            int fitCount = (maxIdx - saveIdx - 2) / 5;
+            int leftCount = 0;
+
+#define MAXFITCOUNT fitCount = (maxIdx - 2) / 5
+
+            // We need to fit at least 3 points
+            if (fitCount < 3)
+            {
+                NEWCHUNK;
+                MAXFITCOUNT;
+            }
+
+            if (pCount < fitCount)
+            {
+                cut = false;
+                //fitCount = pCount;
+            }
+            else
+            {
+                cut = true;
+                leftCount = pCount - fitCount;
+            }
+
+            auto fitPos = 0;
+            for (auto j = 0; j < pCount; j++)
+            {
+                // Determine the connecting points
+                bool isLast = (j == pCount - 1);
+                bool isFirst = (j == 0);
+
+                Point2 curPoint = isle.printPoints[j];
+                Point2 prevPoint, nextPoint;
+                bool hasNoPrev = false;
+                bool hasNoNext = false;
+
+                // Last or first points of open ended shapes need to be treated differently
+                // those of closed-ended shapes
+                // It is not possible to place the last point alone on the next chunk so we need to ensure it is never needed
+                if (isLast)
+                {
+                    prevPoint = isle.printPoints[j - 1];
+                    nextPoint = isle.printPoints[0];
+
+                    if (curPoint == nextPoint)
+                    {
+                        // Add the first two parts of the first point for the last point to connect to
+                        nextPoint = isle.printPoints[1];
+                        AddPointZsToArray(dc->curFloats, curPoint, layer.z, 2, dc->curFloatCount);
+                        AddPointsToArray(dc->prevFloats, prevPoint, 2, dc->prevFloatCount);
+                        AddPointsToArray(dc->nextFloats, nextPoint, 2, dc->nextFloatCount);
+                        dc->sides[saveIdx + 0] = 10.0f;
+                        dc->sides[saveIdx + 1] = -10.0f;
+                        saveIdx += 2;
+
+                        continue;
+                    }
+                    else
+                        hasNoNext = true;
+                }
+                else
+                {
+                    nextPoint = isle.printPoints[j + 1];
+
+                    if (isFirst)
+                    {
+                        prevPoint = isle.printPoints[pCount - 1];
+
+                        if (prevPoint == curPoint)
+                            prevPoint = isle.printPoints[pCount - 2]; // TODO: error maybe?
+                        else
+                            hasNoPrev = true;
+                    }
+                    else
+                        prevPoint = isle.printPoints[j - 1];
+
+                    // Check if we need to move to a new chunck
+                    if (cut)
+                    {
+                        if (fitPos > (fitCount - 2))
+                        {
+                            // If this point needs to go to a new chunk then we need to add its first 2
+                            // vertices for the last one in this chunck to connect to
+                            AddPointZsToArray(dc->curFloats, curPoint, layer.z, 2, dc->curFloatCount);
+                            AddPointsToArray(dc->prevFloats, prevPoint, 2, dc->prevFloatCount);
+                            AddPointsToArray(dc->nextFloats, nextPoint, 2, dc->nextFloatCount);
+                            dc->sides[saveIdx + 0] = 10.0f;
+                            dc->sides[saveIdx + 1] = -10.0f;
+                            saveIdx += 2;
+
+                            // We then need to move to a new chucnk
+                            NEWCHUNK;
+
+                            // We also need to determine if it will have to be cut again
+                            MAXFITCOUNT;
+                            if (leftCount < fitCount)
+                                cut = false;
+                            else
+                            {
+                                leftCount -= fitCount;
+                                fitPos = 0;
+                            }
+                        }
+                        else
+                            fitPos++;
+                    }
+                }
+
+                // We connect the current points with the following ones
+                // The 4 current points form the corner and then we connect
+                // to the next point to come
+                // Only one of the corner triangles will be visible if any because
+                // two points of the other will be the same when the rectangle
+                // intersections are calculated
+
+                if (hasNoPrev)
+                {
+                    // Add only 2 points
+                    AddPointZsToArray(dc->curFloats, curPoint, layer.z, 2, dc->curFloatCount);
+                    AddPointsToArray(dc->prevFloats, prevPoint, 2, dc->prevFloatCount);
+                    AddPointsToArray(dc->nextFloats, nextPoint, 2, dc->nextFloatCount);
+
+                    // Point attributes
+                    // Forwards only
+                    dc->sides[saveIdx + 0] = 40.0f;
+                    dc->sides[saveIdx + 1] = -40.0f;
+
+                    // Rectangle only
+                    dc->indices[idxPos + 0] = saveIdx + 0;
+                    dc->indices[idxPos + 1] = saveIdx + 2;
+                    dc->indices[idxPos + 2] = saveIdx + 1;
+                    dc->indices[idxPos + 3] = saveIdx + 2;
+                    dc->indices[idxPos + 4] = saveIdx + 3;
+                    dc->indices[idxPos + 5] = saveIdx + 1;
+
+                    idxPos += 6;
+                    saveIdx += 2;
+                }
+                else if (hasNoNext)
+                {
+                    // Add only 2 points
+                    AddPointZsToArray(dc->curFloats, curPoint, layer.z, 2, dc->curFloatCount);
+                    AddPointsToArray(dc->prevFloats, prevPoint, 2, dc->prevFloatCount);
+                    AddPointsToArray(dc->nextFloats, nextPoint, 2, dc->nextFloatCount);
+
+                    // Point attributes
+                    // Backwards only
+                    dc->sides[saveIdx + 0] = 50.0f;
+                    dc->sides[saveIdx + 1] = -50.0f;
+
+                    // Nothing for the indices
+
+                    saveIdx += 2;
+                }
+                else
+                {
+                    // Add all the position components
+                    AddPointZsToArray(dc->curFloats, curPoint, layer.z, 5, dc->curFloatCount);
+                    AddPointsToArray(dc->prevFloats, prevPoint, 5, dc->prevFloatCount);
+                    AddPointsToArray(dc->nextFloats, nextPoint, 5, dc->nextFloatCount);
+
+                    // Point attributes
+                    // Backwards, centre, forwards
+                    dc->sides[saveIdx + 0] = 10.0f;
+                    dc->sides[saveIdx + 1] = -10.0f;
+                    dc->sides[saveIdx + 2] = 20.0f;
+                    dc->sides[saveIdx + 3] = 30.0f;
+                    dc->sides[saveIdx + 4] = -30.0f;
+
+                    // Connector trigs
+                    dc->indices[idxPos + 0] = saveIdx + 0;
+                    dc->indices[idxPos + 1] = saveIdx + 3;
+                    dc->indices[idxPos + 2] = saveIdx + 2;
+                    dc->indices[idxPos + 3] = saveIdx + 1;
+                    dc->indices[idxPos + 4] = saveIdx + 2;
+                    dc->indices[idxPos + 5] = saveIdx + 4;
+
+                    // Rectangle
+                    dc->indices[idxPos + 6] = saveIdx + 3;
+                    dc->indices[idxPos + 7] = saveIdx + 5;
+                    dc->indices[idxPos + 8] = saveIdx + 4;
+                    dc->indices[idxPos + 9] = saveIdx + 4;
+                    dc->indices[idxPos + 10] = saveIdx + 5;
+                    dc->indices[idxPos + 11] = saveIdx + 6;
+
+                    idxPos += 12;
+                    saveIdx += 5;
+                }
+            }
+        }
+    }
+}
+
+
 LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 {
     LayerData *ld = new LayerData();
@@ -184,7 +424,7 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
 
     for (Island isle : layer.islands)
     {
-        isle.printPoints.pop_back();
+        //isle.printPoints.pop_back();
         short pCount = isle.printPoints.size();
 
         if (pCount < 2)
@@ -200,6 +440,8 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
             bool hasNoPrev = false;
             bool hasNoNext = false;
 
+            // Last or first points of open ended shapes need to be treated differently
+            // those of closed-ended shapes
             if (isLast)
             {
                 prevPoint = isle.printPoints[j - 1];
@@ -238,41 +480,6 @@ LayerData* Toolpath::CalculateLayerData(std::size_t layerNum)
                 else
                     prevPoint = isle.printPoints[j - 1];
             }
-
-            // Add all the position components
-            /*AddPointZsToArray(ld->curFloats, curPoint, layer.z, 5, curPos);
-            AddPointsToArray(ld->prevFloats, prevPoint, 5, prevPos);
-            AddPointsToArray(ld->nextFloats, nextPoint, 5, nextPos);*/
-
-            // Make the first point up and the next down
-            // Positive = up, negative = down
-            // abs < 0.6= 2nd point else = 1st point
-            /*ld->sides[saveIdx + 0] = 0.1f;
-            ld->sides[saveIdx + 1] = -0.1f;
-            ld->sides[saveIdx + 2] = 0.5f;
-            ld->sides[saveIdx + 3] = 1.0f;
-            ld->sides[saveIdx + 4] = -1.0f;*/
-            /*if (true)//hasNext && hasPrev)
-            /*{
-                ld->sides[saveIdx + 0] = 10.0f;
-                ld->sides[saveIdx + 1] = -10.0f;
-                ld->sides[saveIdx + 2] = 20.0f;
-                ld->sides[saveIdx + 3] = 30.0f;
-                ld->sides[saveIdx + 4] = -30.0f;
-            }
-            else if (hasNoNext)
-            {
-                ld->sides[saveIdx + 0] = 10.0f;
-                ld->sides[saveIdx + 1] = -10.0f; // uhm
-            }
-            else
-            {
-                ld->sides[saveIdx + 0] = 0.1f;
-                ld->sides[saveIdx + 1] = -0.1f;
-                ld->sides[saveIdx + 2] = 0.5f;
-                ld->sides[saveIdx + 3] = 1.0f;
-                ld->sides[saveIdx + 4] = -1.0f;
-            }*/
 
             // We connect the current points with the following ones
             // The 4 current points form the corner and then we connect
