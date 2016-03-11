@@ -160,9 +160,11 @@ class Toolpath;
 class TPDataChunk
 {
     friend class Toolpath;
+    //friend class TPDataChunk;
 
 private:
     ushort *indices = nullptr;
+    void NullPtrs();
 
 public:
     float *curFloats = nullptr;
@@ -182,6 +184,7 @@ public:
     void ShrinkToSize();
 
     TPDataChunk();
+    TPDataChunk(TPDataChunk &&copier);
     ~TPDataChunk();
 };
 

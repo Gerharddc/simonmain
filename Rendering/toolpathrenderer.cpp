@@ -113,9 +113,9 @@ void ToolpathRenderer::LoadPath()
 
         gd->indices = dc->getIndices();
         gd->idxCount = dc->idxCount;
-
-        delete dc;
     }
+
+    delete chunks;
 }
 
 void ToolpathRenderer::Init()
@@ -173,7 +173,7 @@ void ToolpathRenderer::Draw()
         glEnableVertexAttribArray(mSideAttribLocation);
         glVertexAttribPointer(mSideAttribLocation, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
-        glUniform1f(mRadiusUniformLocation, 0.5f);
+        glUniform1f(mRadiusUniformLocation, 0.25f);
 
         glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
     }

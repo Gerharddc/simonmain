@@ -142,7 +142,7 @@ inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, uin
 // An GLES chunk can have a maximum of 2^16(ushort) indices and we need to divide all the data between that
 // we will do this by creating a maximum size buffer for each set of data here and then shrinking it to only the
 // needed part
-const uint16_t maxIdx = UINT16_MAX; // TODO: variable data type
+const uint16_t maxIdx = 10000;//UINT16_MAX; // TODO: variable data type
 
 inline void NewChunk(ushort &idxPos, ushort &saveIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
 {
@@ -381,6 +381,11 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     return chunks;
 }
 
+void TPDataChunk::NullPtrs()
+{
+
+}
+
 ushort *TPDataChunk::getIndices()
 {
     indicesCopied = true;
@@ -403,6 +408,28 @@ TPDataChunk::TPDataChunk()
     prevFloats = (float*) malloc (maxIdx * 10 * sizeof(float));
     sides      = (float*) malloc (maxIdx * 5 * sizeof(float));
     indices    = (ushort*)malloc (maxIdx * 12 * sizeof(ushort));
+}
+
+TPDataChunk::TPDataChunk(TPDataChunk &&copier)
+{
+    curFloats = copier.curFloats;
+    prevFloats = copier.prevFloats;
+    nextFloats = copier.nextFloats;
+    sides = copier.sides;
+    indices = copier.indices;
+
+    curFloatCount = copier.curFloatCount;
+    prevFloatCount = copier.prevFloatCount;
+    nextFloatCount = copier.nextFloatCount;
+    sideFloatCount = copier.sideFloatCount;
+    idxCount = copier.idxCount;
+    indicesCopied = copier.indicesCopied;
+
+    copier.curFloats = nullptr;
+    copier.prevFloats = nullptr;
+    copier.nextFloats = nullptr;
+    copier.sides = nullptr;
+    copier.indices = nullptr;
 }
 
 TPDataChunk::~TPDataChunk()
