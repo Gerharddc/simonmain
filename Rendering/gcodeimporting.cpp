@@ -8,6 +8,18 @@
 
 #include <QDebug>
 
+inline void ShrinkIsle(Island *isle)
+{
+    if (isle != nullptr)
+    {
+        if (isle->movePoints.size() > 0)
+            isle->movePoints.shrink_to_fit();
+
+        if (isle->printPoints.size() > 0)
+            isle->printPoints.shrink_to_fit();
+    }
+}
+
 Toolpath* GCodeImporting::ImportGCode(const char *path)
 {
     std::ifstream is(path);
@@ -32,7 +44,6 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
         int8_t g = -1;
         bool rel = false;
-        bool setPos = false;
 
         // Keep track if the last action was a move or
         // an extrusion
@@ -45,6 +56,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         while (std::getline(is, line))
         {
             bool extruded = false;
+            bool setPos = false;
             int type = -1;
 
             // Remove all comments from the line
@@ -64,14 +76,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 if (type == 0 || type == 1)
                     g = type;
                 else if (type == SetPos)
-                {
-                    // TODO: maybe wrong
-                    prevX = 0;
-                    prevY = 0;
-                    prevZ = 0;
-                    prevE = 0;
                     setPos = true;
-                }
                 else
                 {
                     if (type == SetRel)
@@ -124,6 +129,13 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 switch(c) {
                     case 'X' :
                     {
+                        if (setPos)
+                        {
+                            prevX = num;
+                            moved = true;
+                            break;
+                        }
+
                         float old = prevX;
 
                         if (rel)
@@ -139,6 +151,13 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     }
                     case 'Y' :
                     {
+                        if (setPos)
+                        {
+                            prevY = num;
+                            moved = true;
+                            break;
+                        }
+
                         float old = prevY;
 
                         if (rel)
@@ -154,24 +173,27 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     }
                     case 'Z' :
                     {
+                        if (setPos)
+                        {
+                            prevZ = num;
+                            moved = true;
+                            break;
+                        }
+
                         float nZ = (rel) ? (prevZ + num) : num;
 
                         if (nZ != prevZ)
                         {
                             // Create a new layer when moving to a new z
                             // and optimize the old one
-                            if (curLayer != nullptr)
+                            if (curLayer != nullptr && curLayer->islands.size() > 0)
                                 curLayer->islands.shrink_to_fit();
 
                             tp->layers.emplace_back();
                             curLayer = &(tp->layers.back());
                             curLayer->z = num;
 
-                            if (curIsle != nullptr)
-                            {
-                                curIsle->movePoints.shrink_to_fit();
-                                curIsle->printPoints.shrink_to_fit();
-                            }
+                            ShrinkIsle(curIsle);
 
                             curLayer->islands.emplace_back();
                             lastWasMove = true;
@@ -186,26 +208,52 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                         break;
                     }
                     case 'F' :
+                    {
+                        // G92 doesn't have an F parameter
                         if (rel)
                             prevF[g] += num;
                         else
                             prevF[g] = num;
                         break;
+                    }
                     case 'E' :
-                        float nZ = (rel) ? (prevZ + num) : num;
+                    {
+                        if (setPos)
+                        {
+                            prevE = num;
+                            moved = true;
+                            break;
+                        }
+
+                        float nE = (rel) ? (prevE + num) : num;
 
                         // TODO: detect retractions
-                        if (prevE != nZ)
+                        if (prevE != nE)
                             extruded = true;
                         break;
+                    }
                 }
             }
 #ifdef PRESERVE_LINE_STR
             delete[] lineCpy;
 #endif
 
+            // If no parameters were given for G92 then everything becomes 0
+            if (setPos)
+            {
+                if (!moved)
+                {
+                    prevX = 0.0f;
+                    prevY = 0.0f;
+                    prevZ = 0.0f;
+                    prevE = 0.0f;
+                }
+
+                continue;
+            }
+
             // Skip the line if there was no movement
-            if (!moved || setPos)
+            if (!moved)
             {
                 continue;
             }
@@ -237,11 +285,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             {
                 if (!lastWasMove)
                 {
-                    if (curIsle != nullptr)
-                    {
-                        curIsle->movePoints.shrink_to_fit();
-                        curIsle->printPoints.shrink_to_fit();
-                    }
+                    ShrinkIsle(curIsle);
 
                     // If the last action was not a move, then we are now starting a new island
                     curLayer->islands.emplace_back();
@@ -257,7 +301,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             }
         }
 
-        if (curLayer != nullptr)
+        if (curLayer != nullptr && curLayer->islands.size() > 0)
             curLayer->islands.shrink_to_fit();
 
         if (curIsle != nullptr)

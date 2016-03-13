@@ -1,3 +1,28 @@
+M109 S210.000000
+;Sliced at: Sun 21-02-2016 13:21:51
+;Basic settings: Layer height: 0.1 Walls: 1 Fill: 20
+;Print time: 44 minutes
+;Filament used: 0.741m 5.0g
+;Filament cost: None
+;M190 S70 ;Uncomment to add your own bed temperature line
+;M109 S210 ;Uncomment to add your own temperature line
+G21        ;metric values
+G90        ;absolute positioning
+M82        ;set extruder to absolute mode
+M107       ;start with the fan off
+G28 X0 Y0  ;move X/Y to min endstops
+G28 Z0     ;move Z to min endstops
+G1 Z15.0 F9000 ;move the platform down 15mm
+G92 E0                  ;zero the extruded length
+;G1 F200 E3              ;extrude 3mm of feed stock
+G92 E0                  ;zero the extruded length again
+G1 F9000
+;Put printing message on LCD screen
+M117 Printing...
+
+;Layer count: 172
+;LAYER:0
+M107
 G0 F9000 X39.434 Y44.973 Z0.300
 ;TYPE:SKIRT
 G1 F1200 X40.893 Y43.950 E0.04190
