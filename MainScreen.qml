@@ -42,11 +42,45 @@ Rectangle {
     Renderer {
         id: renderer
         width: parent.width
-        height: parent.height - bottomDrawer.iClosedHeight - topDrawer.iClosedHeight
+        height: parent.height - bottomDrawer.iClosedHeight
         anchors.bottom: parent.bottom
         anchors.bottomMargin: bottomDrawer.isExpanded ? 0 : bottomDrawer.iClosedHeight
         Behavior on anchors.bottomMargin {
             PropertyAnimation {}
+        }
+
+        // Move the view down a bit after creation
+        Component.onCompleted: {
+            renderer.panView(0, renderer.height / 3);
+        }
+
+        Toggle {
+            id: toggler
+            anchors.top: parent.top
+            anchors.topMargin: 7 + topDrawer.iClosedHeight
+            anchors.left: parent.left
+            anchors.leftMargin: 7
+            width: 150
+            opacity: 0.6
+            nameA: 'Pan'
+            nameB: 'Rotate'
+            z: 200
+        }
+
+        Button {
+            anchors.top: toggler.top
+            anchors.right: parent.right
+            anchors.rightMargin: 7
+            opacity: 0.6
+            text: "Reset view"
+            width: 150
+            z: 200
+
+            onClicked: {
+                renderer.resetView(true)
+                renderer.panView(0, renderer.height / 3)
+                //renderer.rotateView(1, 1)
+            }
         }
 
         PinchArea {
@@ -61,7 +95,6 @@ Rectangle {
             onPinchUpdated: {
                 var scale = pinch.scale / lastScale
                 lastScale = pinch.scale
-                console.log(scale)
                 renderer.zoomView(scale)
             }
 
@@ -72,7 +105,6 @@ Rectangle {
                 property real lastX: 0
                 property real lastY: 0
                 property bool started: false
-                property bool panning: false
 
                 onPressed: {
                     lastX = mouseX
@@ -90,7 +122,7 @@ Rectangle {
 
                     if ((deltaX != 0) || (deltaY != 0))
                     {
-                        if (panning)
+                        if (toggler.toggled)
                             renderer.panView(deltaX, deltaY);
                         else
                             renderer.rotateView(deltaX, deltaY);
@@ -105,32 +137,6 @@ Rectangle {
                         renderer.zoomView(1.1)
                     else if (wheel.angleDelta.y < 0)
                         renderer.zoomView(0.9)
-                }
-
-                Button {
-                    z: 10
-                    width: 100
-                    height: 40
-                    text: "Drag"
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-
-                    onClicked: {
-                        parent.panning = true
-                    }
-                }
-
-                Button {
-                    z: 10
-                    width: 100
-                    height: 40
-                    text: "Rotate"
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-
-                    onClicked: {
-                        parent.panning = false
-                    }
                 }
             }
         }

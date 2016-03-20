@@ -114,10 +114,14 @@ void STLRenderer::Draw()
         glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
         glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE,
                            glm::value_ptr(glm::inverse(ComboRendering::sceneTrans)));
+        dirtySceneMat = false;
     }
 
     if (dirtyProjMat)
+    {
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
+        dirtyProjMat = false;
+    }
 
     glDrawArrays(GL_TRIANGLES, 0, mesher->trigCount * 3);
 }

@@ -46,6 +46,7 @@ public:
     void ApplyRot(float x, float y);
     void Move(float x, float y);
     void Zoom(float scale);
+    void ResetView();
 };
 
 #endif // COMBORENDERING_H

@@ -9,6 +9,8 @@
 #include "gcodeimporting.h"
 
 // Init
+const float DefaultZoom = 3.0f;
+
 float ComboRendering::viewWidth = 0.0f;
 float ComboRendering::viewHeight = 0.0f;
 float ComboRendering::centreX = 0.0f;
@@ -18,7 +20,7 @@ float ComboRendering::aimY = 50.0f;
 float ComboRendering::sizeX = 100.0f;
 float ComboRendering::sizeY = 100.0f;
 float ComboRendering::sizeZ = 100.0f;
-float ComboRendering::zoom = 3.0f;
+float ComboRendering::zoom = DefaultZoom;
 glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
 GridRenderer ComboRendering::gridRen = GridRenderer(100, 100, 100, 10);
@@ -88,7 +90,7 @@ void ComboRendering::UpdateProjection()
     sceneProj = glm::ortho(left, right, bottom, top, -sizeZ * 10, sizeZ * 10);
 
     // Flag the renderers to update their proj matrices
-    gridRen.dirtyProjMat = true;
+    gridRen.ProjMatDirty();
     stlRen.ProjMatDirty();
     tpRen.ProjMatDirty();
 }
@@ -112,8 +114,8 @@ void ComboRendering::ApplyRot(float x, float y)
     // TODO: add dpi scaling
     // For some reason the x rot is in the inverse direction of the mouse movement
     // TODO: 3.0 ?
-    float yAng = (x / sizeX * 1.1) / 3.0;// / zoom;
-    float xAng = -(y / sizeY * (1.1 * sizeY / sizeX)) / 3.0;// / zoom;
+    float yAng = (x / sizeX * 1.1) / 3.0;
+    float xAng = -(y / sizeY * (1.1 * sizeY / sizeX)) / 3.0;
     glm::vec2 axis = glm::vec2(xAng, yAng);
     auto l = glm::length(axis); // doesnt work
     if (l == 0) // This is important to avoid normaliztion disasters ahead
@@ -133,7 +135,7 @@ void ComboRendering::ApplyRot(float x, float y)
     sceneTrans *= rotOrgInv;
 
     // Flag the renderers to update their scene matrices
-    gridRen.dirtySceneMat = true;
+    gridRen.SceneMatDirty();
     stlRen.SceneMatDirty();
     tpRen.SceneMatDirty();
 }
@@ -155,6 +157,19 @@ void ComboRendering::Zoom(float scale)
 {
     zoom *= scale;
     UpdateProjection();
+}
+
+void ComboRendering::ResetView()
+{
+    zoom = DefaultZoom;
+
+    SetViewSize(viewWidth, viewHeight);
+    aimX = sizeX / 2.0f;
+    aimY = sizeY / 2.0f;
+
+    gridRen.SceneMatDirty();
+    stlRen.SceneMatDirty();
+    tpRen.SceneMatDirty();
 }
 
 void ComboRendering::Init()

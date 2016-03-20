@@ -148,10 +148,16 @@ void ToolpathRenderer::Draw()
         LoadPath();
 
     if (dirtySceneMat)
+    {
         glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
+        dirtySceneMat = false;
+    }
 
     if (dirtyProjMat)
+    {
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
+        dirtyProjMat = false;
+    }
 
     for (std::size_t i = 0; i < groupCount; i++)
     {

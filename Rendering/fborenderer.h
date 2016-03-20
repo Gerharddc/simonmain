@@ -17,6 +17,7 @@ public:
     Q_INVOKABLE void rotateView(float x, float y);
     Q_INVOKABLE void panView(float x, float y);
     Q_INVOKABLE void zoomView(float scale);
+    Q_INVOKABLE void resetView(bool updateNow = true);
 };
 
 #endif // FBORENDERER_H

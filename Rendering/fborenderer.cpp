@@ -70,3 +70,11 @@ void FBORenderer::zoomView(float scale)
     comb.Zoom(scale);
     update();
 }
+
+void FBORenderer::resetView(bool updateNow)
+{
+    comb.ResetView();
+
+    if (updateNow)
+        update();
+}

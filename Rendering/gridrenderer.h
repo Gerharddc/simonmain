@@ -15,13 +15,14 @@ class ComboRendering;
 
 class GridRenderer
 {
-    friend class ComboRendering;
-
 public:
     GridRenderer(uint xSize, uint ySize, uint zSize, uint interval);
     ~GridRenderer();
     void Draw();
     void Init();
+
+    void ProjMatDirty();
+    void SceneMatDirty();
 
 private:
     GLuint mProgram = 0;

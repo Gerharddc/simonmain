@@ -48,6 +48,16 @@ void GridRenderer::Init()
     delete grid;
 }
 
+void GridRenderer::ProjMatDirty()
+{
+    dirtyProjMat = true;
+}
+
+void GridRenderer::SceneMatDirty()
+{
+    dirtySceneMat = true;
+}
+
 void GridRenderer::Draw()
 {
     if (mProgram == 0)
@@ -61,16 +71,16 @@ void GridRenderer::Draw()
 
     // Apply the scene tranformation matrix if it has changed
     if (dirtySceneMat)
-    {
-        dirtySceneMat = false;
+    {        
         glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
+        dirtySceneMat = false;
     }
 
     // Apply the new projection matrix if it has changed
     if (dirtyProjMat)
-    {
-        dirtyProjMat = false;
+    {  
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
+        dirtyProjMat = false;
     }
 
     glDrawArrays(GL_LINES, 0, vertCount);
