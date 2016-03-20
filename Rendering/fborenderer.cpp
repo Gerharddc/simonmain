@@ -36,7 +36,6 @@ public:
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
-        update();
     }
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) {
@@ -57,14 +56,17 @@ QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 void FBORenderer::rotateView(float x, float y)
 {
     comb.ApplyRot(x, y);
+    update();
 }
 
 void FBORenderer::panView(float x, float y)
 {
     comb.Move(x, y);
+    update();
 }
 
 void FBORenderer::zoomView(float scale)
 {
     comb.Zoom(scale);
+    update();
 }

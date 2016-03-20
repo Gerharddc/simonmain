@@ -67,12 +67,11 @@ void ComboRendering::SetViewSize(float width, float height)
     RecalculateCentre();
     sceneTrans = rotOrg;
     sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    //sceneRot = glm::angleAxis(glm::radians(180.0f + 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::quat inv = sceneRot;
     inv.w *= -1; // Invert the angle
     glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
     xDir = inv * xDir;
-    //sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
+    sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
     sceneTrans *= glm::mat4_cast(sceneRot);
     sceneTrans *= rotOrgInv;
 }
@@ -112,8 +111,9 @@ void ComboRendering::ApplyRot(float x, float y)
     // We also need to scale the roation to the screen size and aspect ratio
     // TODO: add dpi scaling
     // For some reason the x rot is in the inverse direction of the mouse movement
-    float yAng = (x / sizeX * 1.1) / zoom;
-    float xAng = -(y / sizeY * (1.1 * sizeY / sizeX)) / zoom;
+    // TODO: 3.0 ?
+    float yAng = (x / sizeX * 1.1) / 3.0;// / zoom;
+    float xAng = -(y / sizeY * (1.1 * sizeY / sizeX)) / 3.0;// / zoom;
     glm::vec2 axis = glm::vec2(xAng, yAng);
     auto l = glm::length(axis); // doesnt work
     if (l == 0) // This is important to avoid normaliztion disasters ahead
