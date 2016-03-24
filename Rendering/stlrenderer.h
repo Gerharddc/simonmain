@@ -9,6 +9,21 @@
 
 #include "structures.h"
 
+struct MeshGroupData
+{
+    const char *name = "Mesh";
+    Mesh *meshPtr = nullptr;
+    bool meshDirty = false;
+
+    GLuint mVertexPositionBuffer = 0;
+    GLuint mVertexNormalBuffer = 0;
+
+    float centreX = 0.0f;
+    float centreY = 0.0f;
+
+    void Destroy();
+};
+
 class STLRenderer
 {
 public:
@@ -33,13 +48,8 @@ private:
     GLint mProjUniformLocation;
     GLint mNormUniformLocation;
 
-    GLuint mVertexPositionBuffer = 0;
-    GLuint mVertexNormalBuffer = 0;
-
-    void LoadMesh(Mesh* mesh);
-    Mesh *mesher = nullptr;
-
-    float x, y = 0.0f;
+    void LoadMesh(MeshGroupData &mg);
+    std::vector<MeshGroupData> meshGroups;
 
     // We need flags to determine when matrices have changed as
     // to be able to give new ones to opengl

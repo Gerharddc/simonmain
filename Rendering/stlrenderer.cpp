@@ -15,13 +15,14 @@ STLRenderer::STLRenderer()
 
 }
 
-STLRenderer::~STLRenderer()
+void MeshGroupData::Destroy()
 {
-    if (mProgram != 0)
-    {
-        glDeleteProgram(mProgram);
-        mProgram = 0;
-    }
+    // A destroy function is used instead of a destructor because
+    // the std::vector will be constantly moving this thing around
+    // and it's way too much effort to use move constructors for this
+    // limited scope class
+
+    // Delete the buffers
 
     if (mVertexPositionBuffer != 0)
     {
@@ -33,6 +34,20 @@ STLRenderer::~STLRenderer()
     {
         glDeleteBuffers(1, &mVertexNormalBuffer);
         mVertexNormalBuffer = 0;
+    }
+}
+
+STLRenderer::~STLRenderer()
+{
+    // Delete all the meshes on the heap
+    for (MeshGroupData &mg : meshGroups)
+        mg.Destroy();
+
+    // Delete the program
+    if (mProgram != 0)
+    {
+        glDeleteProgram(mProgram);
+        mProgram = 0;
     }
 }
 
@@ -48,28 +63,37 @@ void STLRenderer::SceneMatDirty()
 
 int STLRenderer::AddMesh(Mesh *_mesh)
 {
-    mesher = _mesh;
+    // Add a new mesh data group to the vector that contains all the metadata and helpers
+    meshGroups.emplace_back();
+    MeshGroupData &mg = meshGroups.back();
+    mg.meshPtr = _mesh;
+    mg.name = "Random mesh"; // TODO: get name
+    mg.meshDirty = true;
+
+    // Signal the global dirty mesh flag
     dirtyMesh = true;
-    return 0; // TODO
+
+    // TODO: we need to use keys because the vector can shrink
+    return meshGroups.size() - 1;
 }
 
-// TODO: implement multi-mesh support and management
-void STLRenderer::LoadMesh(Mesh *mesh)
+void STLRenderer::LoadMesh(MeshGroupData &mg)
 {
-    glGenBuffers(1, &mVertexPositionBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatVerts(), GL_STATIC_DRAW);
-    mesh->dumpFlatVerts();
+    glGenBuffers(1, &mg.mVertexPositionBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mg.meshPtr->trigCount * 9, mg.meshPtr->getFlatVerts(), GL_STATIC_DRAW);
+    mg.meshPtr->dumpFlatVerts();
 
-    glGenBuffers(1, &mVertexNormalBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexNormalBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
-    mesh->dumpFlatNorms();
+    glGenBuffers(1, &mg.mVertexNormalBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexNormalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mg.meshPtr->trigCount * 9, mg.meshPtr->getFlatNorms(), GL_STATIC_DRAW);
+    mg.meshPtr->dumpFlatNorms();
 
-    x = (mesh->MinVec.x + mesh->MaxVec.x) / 2;
-    y = (mesh->MinVec.y + mesh->MaxVec.y) / 2;
+    // TODO: move the mesh somewhere
+    mg.centreX = (mg.meshPtr->MinVec.x + mg.meshPtr->MaxVec.x) / 2;
+    mg.centreY = (mg.meshPtr->MinVec.y + mg.meshPtr->MaxVec.y) / 2;
 
-    dirtyMesh = false;
+    mg.meshDirty = false;
 }
 
 void STLRenderer::Init()
@@ -95,18 +119,15 @@ void STLRenderer::Draw()
     glUseProgram(mProgram);
 
     if (dirtyMesh)
-        LoadMesh(mesher);
+    {
+        for (MeshGroupData &mg : meshGroups)
+        {
+            if (mg.meshDirty)
+                LoadMesh(mg);
+        }
 
-    if (mVertexPositionBuffer == 0 || mVertexNormalBuffer == 0)
-        return;
-
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glEnableVertexAttribArray(mPositionAttribLocation);
-    glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexNormalBuffer);
-    glEnableVertexAttribArray(mNormalAttribLocation);
-    glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        dirtyMesh = false;
+    }
 
     if (dirtySceneMat)
     {
@@ -123,6 +144,19 @@ void STLRenderer::Draw()
         dirtyProjMat = false;
     }
 
-    glDrawArrays(GL_TRIANGLES, 0, mesher->trigCount * 3);
-}
+    for (MeshGroupData &mg : meshGroups)
+    {
+        if (mg.mVertexPositionBuffer == 0 || mg.mVertexNormalBuffer == 0)
+            continue;
 
+        glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
+        glEnableVertexAttribArray(mPositionAttribLocation);
+        glVertexAttribPointer(mPositionAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexNormalBuffer);
+        glEnableVertexAttribArray(mNormalAttribLocation);
+        glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+        glDrawArrays(GL_TRIANGLES, 0, mg.meshPtr->trigCount * 3);
+    }
+}
