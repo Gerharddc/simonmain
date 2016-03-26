@@ -15,6 +15,39 @@ STLRenderer::STLRenderer()
 
 }
 
+// We use pointers to the flags because the MeshGroupData object can potentially
+// die before the end of the thread
+void SyncMesh(Mesh *mesh, MeshGroupData *mg, bool *syncFlag, bool *delayFlag)
+{
+    // Terminate the thread if indicated
+    while (*syncFlag)
+    {
+        if (*delayFlag)
+        {
+            std::this_thread::sleep_for (std::chrono::seconds(15));
+            *delayFlag = false;
+        }
+        else
+        {
+            *delayFlag = true;
+
+
+        }
+    }
+
+    delete syncFlag;
+    delete delayFlag;
+}
+
+void MeshGroupData::StartThread(Mesh *mesh)
+{
+    syncFlag = new bool(true);
+    delayFlag = new bool(true);
+
+    syncThread = new std::thread(SyncMesh, mesh, this, syncFlag, delayFlag);
+    //syncThread = new std::thread(Dinger);
+}
+
 void MeshGroupData::Destroy()
 {
     // A destroy function is used instead of a destructor because
@@ -35,6 +68,9 @@ void MeshGroupData::Destroy()
         glDeleteBuffers(1, &mVertexNormalBuffer);
         mVertexNormalBuffer = 0;
     }
+
+    // Kill the syncing thread
+    *syncFlag = false;
 }
 
 STLRenderer::~STLRenderer()
@@ -61,22 +97,86 @@ void STLRenderer::SceneMatDirty()
     dirtySceneMat = true;
 }
 
-void STLRenderer::AddMesh(Mesh *_mesh)
+void STLRenderer::AddMesh(Mesh *mesh)
 {
     // Add a new mesh data group to the vector that contains all the metadata and helpers
     MeshGroupData mg;
     mg.meshDirty = true;
-    meshGroups.emplace(_mesh, mg);
+    meshGroups.emplace(mesh, mg);
 
     // Signal the global dirty mesh flag
     dirtyMesh = true;
 }
 
-void STLRenderer::RemoveMesh(Mesh *_mesh)
+void STLRenderer::RemoveMesh(Mesh *mesh)
 {
     // Destroy the mesh and then remove it
-    meshGroups[_mesh].Destroy();
-    meshGroups.erase(_mesh);
+    meshGroups[mesh].Destroy();
+    meshGroups.erase(mesh);
+}
+
+// Delay syncing with the mesh
+inline void DelaySync(MeshGroupData &mg)
+{
+    bool *df = mg.delayFlag;
+
+    if (df != nullptr)
+        *df = true;
+}
+
+// Update the meshdatagroup matrix
+inline void UpdateTempMat(MeshGroupData &mg)
+{
+    // TODO: optomize ?
+    mg.tempMat = glm::translate(glm::mat4(1.0f), mg.moveOnMat);
+    mg.tempMat = glm::scale(mg.tempMat, glm::vec3(mg.scaleOnMat));
+    mg.tempMat = mg.tempMat * glm::mat4(glm::quat(mg.rotOnMat));
+    mg.tempMat = glm::translate(mg.tempMat, mg.meshCentre);
+}
+
+// This method applies an absolute scale to the original mesh
+void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
+{
+    MeshGroupData &mg = meshGroups[mesh];
+    DelaySync(mg);
+
+    mg.scaleOnMat = absScale - mg.scaleOnMesh;
+
+    UpdateTempMat(mg);
+}
+
+// This method centres the mesh around the current coordinates
+void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
+{
+    MeshGroupData &mg = meshGroups[mesh];
+    DelaySync(mg);
+
+    mg.moveOnMat.x = absX - mg.moveOnMesh.x;
+    mg.moveOnMat.y = absY - mg.moveOnMesh.y;
+
+    UpdateTempMat(mg);
+}
+
+// This method places the mesh an absolute height above the bed
+void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
+{
+    MeshGroupData &mg = meshGroups[mesh];
+    DelaySync(mg);
+
+    mg.moveOnMat.z = absZ - mg.moveOnMesh.z;
+
+    UpdateTempMat(mg);
+}
+
+// This method applies an absolute rotation to the original mesh
+void STLRenderer::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
+{
+    MeshGroupData &mg = meshGroups[mesh];
+    DelaySync(mg);
+
+    mg.rotOnMat = glm::vec3(absX, absY, absZ) - mg.rotOnMesh;
+
+    UpdateTempMat(mg);
 }
 
 void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
