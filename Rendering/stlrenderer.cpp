@@ -40,8 +40,8 @@ void MeshGroupData::Destroy()
 STLRenderer::~STLRenderer()
 {
     // Delete all the meshes on the heap
-    for (MeshGroupData &mg : meshGroups)
-        mg.Destroy();
+    for (auto &gPair : meshGroups)
+        gPair.second.Destroy();
 
     // Delete the program
     if (mProgram != 0)
@@ -61,37 +61,39 @@ void STLRenderer::SceneMatDirty()
     dirtySceneMat = true;
 }
 
-int STLRenderer::AddMesh(Mesh *_mesh)
+void STLRenderer::AddMesh(Mesh *_mesh)
 {
     // Add a new mesh data group to the vector that contains all the metadata and helpers
-    meshGroups.emplace_back();
-    MeshGroupData &mg = meshGroups.back();
-    mg.meshPtr = _mesh;
-    mg.name = "Random mesh"; // TODO: get name
+    MeshGroupData mg;
     mg.meshDirty = true;
+    meshGroups.emplace(_mesh, mg);
 
     // Signal the global dirty mesh flag
     dirtyMesh = true;
-
-    // TODO: we need to use keys because the vector can shrink
-    return meshGroups.size() - 1;
 }
 
-void STLRenderer::LoadMesh(MeshGroupData &mg)
+void STLRenderer::RemoveMesh(Mesh *_mesh)
+{
+    // Destroy the mesh and then remove it
+    meshGroups[_mesh].Destroy();
+    meshGroups.erase(_mesh);
+}
+
+void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
 {
     glGenBuffers(1, &mg.mVertexPositionBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mg.meshPtr->trigCount * 9, mg.meshPtr->getFlatVerts(), GL_STATIC_DRAW);
-    mg.meshPtr->dumpFlatVerts();
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatVerts(), GL_STATIC_DRAW);
+    mesh->dumpFlatVerts();
 
     glGenBuffers(1, &mg.mVertexNormalBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexNormalBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mg.meshPtr->trigCount * 9, mg.meshPtr->getFlatNorms(), GL_STATIC_DRAW);
-    mg.meshPtr->dumpFlatNorms();
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
+    mesh->dumpFlatNorms();
 
     // TODO: move the mesh somewhere
-    mg.centreX = (mg.meshPtr->MinVec.x + mg.meshPtr->MaxVec.x) / 2;
-    mg.centreY = (mg.meshPtr->MinVec.y + mg.meshPtr->MaxVec.y) / 2;
+    mg.centreX = (mesh->MinVec.x + mesh->MaxVec.x) / 2;
+    mg.centreY = (mesh->MinVec.y + mesh->MaxVec.y) / 2;
 
     mg.meshDirty = false;
 }
@@ -120,10 +122,10 @@ void STLRenderer::Draw()
 
     if (dirtyMesh)
     {
-        for (MeshGroupData &mg : meshGroups)
+        for (auto &gPair : meshGroups)
         {
-            if (mg.meshDirty)
-                LoadMesh(mg);
+            if (gPair.second.meshDirty)
+                LoadMesh(gPair.second, gPair.first);
         }
 
         dirtyMesh = false;
@@ -144,8 +146,9 @@ void STLRenderer::Draw()
         dirtyProjMat = false;
     }
 
-    for (MeshGroupData &mg : meshGroups)
+    for (auto &gPair : meshGroups)
     {
+        MeshGroupData &mg = gPair.second;
         if (mg.mVertexPositionBuffer == 0 || mg.mVertexNormalBuffer == 0)
             continue;
 
@@ -157,6 +160,6 @@ void STLRenderer::Draw()
         glEnableVertexAttribArray(mNormalAttribLocation);
         glVertexAttribPointer(mNormalAttribLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-        glDrawArrays(GL_TRIANGLES, 0, mg.meshPtr->trigCount * 3);
+        glDrawArrays(GL_TRIANGLES, 0, gPair.first->trigCount * 3);
     }
 }

@@ -7,12 +7,11 @@
 #include "loadedgl.h"
 #endif
 
+#include <map>
 #include "structures.h"
 
 struct MeshGroupData
 {
-    const char *name = "Mesh";
-    Mesh *meshPtr = nullptr;
     bool meshDirty = false;
 
     GLuint mVertexPositionBuffer = 0;
@@ -31,7 +30,8 @@ public:
     ~STLRenderer();
     void Draw();
     void Init();
-    int AddMesh(Mesh *_mesh);
+    void AddMesh(Mesh *_mesh);
+    void RemoveMesh(Mesh *_mesh);
 
     void ProjMatDirty();
     void SceneMatDirty();
@@ -48,8 +48,8 @@ private:
     GLint mProjUniformLocation;
     GLint mNormUniformLocation;
 
-    void LoadMesh(MeshGroupData &mg);
-    std::vector<MeshGroupData> meshGroups;
+    void LoadMesh(MeshGroupData &mg, Mesh *mesh);
+    std::map<Mesh*, MeshGroupData> meshGroups;
 
     // We need flags to determine when matrices have changed as
     // to be able to give new ones to opengl
