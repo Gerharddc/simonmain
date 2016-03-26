@@ -31,7 +31,31 @@ void SyncMesh(Mesh *mesh, MeshGroupData *mg, bool *syncFlag, bool *delayFlag)
         {
             *delayFlag = true;
 
+            //Apply the matrix to the mesh
+            for (std::size_t i = 0; i < mesh->vertexCount; i++)
+            {
+                // TODO: optomize...
+                auto idx = i * 3;
+                glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
+                v = mg->tempMat * v;
+                mesh->vertexFloats[idx + 0] = v.x;
+                mesh->vertexFloats[idx + 1] = v.y;
+                mesh->vertexFloats[idx + 2] = v.z;
+            }
 
+            // Update the parameters
+
+            mg->rotOnMesh *= mg->rotOnMat;
+            mg->rotOnMat = glm::vec3(0.0f);
+
+            mg->scaleOnMesh *= mg->scaleOnMat;
+            mg->scaleOnMat = 1.0f;
+
+            mg->moveOnMesh += mg->moveOnMat;
+            mg->moveOnMat = glm::vec3(0.0f);
+
+            // TODO: maybe just do this from the start
+            mg->meshCentre = glm::vec3(0.0f);
         }
     }
 
@@ -45,7 +69,6 @@ void MeshGroupData::StartThread(Mesh *mesh)
     delayFlag = new bool(true);
 
     syncThread = new std::thread(SyncMesh, mesh, this, syncFlag, delayFlag);
-    //syncThread = new std::thread(Dinger);
 }
 
 void MeshGroupData::Destroy()
