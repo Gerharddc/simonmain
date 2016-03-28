@@ -129,6 +129,7 @@ void ToolpathRenderer::Init()
     mProgram = GLHelper::CompileProgramFromFile(vs, fs);
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
     mRadiusUniformLocation = glGetUniformLocation(mProgram, "uFilamentRadius");
+    mColorUniformLocation = glGetUniformLocation(mProgram, "uColor");
 
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
     mCurPosAttribLocation = glGetAttribLocation(mProgram, "aCurPos");
@@ -159,6 +160,12 @@ void ToolpathRenderer::Draw()
         dirtyProjMat = false;
     }
 
+    if (dirtyColor)
+    {
+        glUniform4fv(mColorUniformLocation, 1, glm::value_ptr(glm::vec4(_color, opacity)));
+        dirtyColor = false;
+    }
+
     for (std::size_t i = 0; i < groupCount; i++)
     {
         GroupGLData *ld = groupDatas + i;
@@ -183,4 +190,21 @@ void ToolpathRenderer::Draw()
 
         glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
     }
+}
+
+void ToolpathRenderer::SetOpacity(float alpha)
+{
+    opacity = alpha;
+    dirtyColor = true;
+}
+
+float ToolpathRenderer::GetOpacity()
+{
+    return opacity;
+}
+
+void ToolpathRenderer::SetColor(glm::vec3 color)
+{
+    _color = color;
+    dirtyColor = true;
 }

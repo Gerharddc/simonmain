@@ -36,8 +36,8 @@ private:
     Mesh *stlMesh = nullptr;
     Toolpath *gcodePath = nullptr;
 
+    // TODO: remove this
     static float meshOpacity;
-    static float tpOpacity;
 
 public:
     ComboRendering();

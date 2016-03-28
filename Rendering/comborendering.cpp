@@ -30,7 +30,6 @@ glm::mat4 ComboRendering::rotOrg = glm::mat4();
 glm::mat4 ComboRendering::rotOrgInv = glm::mat4();
 glm::quat ComboRendering::sceneRot = glm::quat();
 float ComboRendering::meshOpacity = 1.0f;
-float ComboRendering::tpOpacity = 0.0f;
 
 ComboRendering::ComboRendering()
 {
@@ -193,7 +192,7 @@ void ComboRendering::Draw()
     if (meshOpacity != 0.0f)
         stlRen.Draw();
 
-    if (tpOpacity != 0.0f)
+    if (TpOpacity() != 0.0f)
         tpRen.Draw();
 }
 
@@ -206,7 +205,8 @@ float ComboRendering::MeshOpacity()
 
 float ComboRendering::TpOpacity()
 {
-    return tpOpacity;
+    return tpRen.GetOpacity();
+    //return tpOpacity;
 }
 
 void ComboRendering::SetMeshOpacity(float opacity)
@@ -217,6 +217,7 @@ void ComboRendering::SetMeshOpacity(float opacity)
 
 void ComboRendering::SetTpOpacity(float opacity)
 {
-    tpOpacity = opacity;
+    //tpOpacity = opacity;
     // TODO: implement this
+    tpRen.SetOpacity(opacity);
 }

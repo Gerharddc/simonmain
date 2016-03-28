@@ -54,6 +54,17 @@ Rectangle {
             renderer.panView(0, renderer.height / 3);
         }
 
+        meshOpacity: (bottomDrawer.activeTabNum == 0) ? 1 : 0
+        tpOpacity: (bottomDrawer.activeTabNum == 1) ? 1 : 0
+
+        Behavior on meshOpacity {
+            PropertyAnimation {}
+        }
+
+        Behavior on tpOpacity {
+            PropertyAnimation {}
+        }
+
         Toggle {
             id: toggler
             anchors.top: parent.top

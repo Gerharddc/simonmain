@@ -6,6 +6,7 @@ uniform mat4 uModelMatrix;
 uniform mat4 uProjMatrix;
 uniform float uFilamentRadius;
 uniform bool uLineOnly;
+uniform vec4 uColor;
 
 attribute vec3 aCurPos;
 attribute vec2 aNextPos;
@@ -13,8 +14,6 @@ attribute vec2 aPrevPos;
 attribute float aSide;
 
 varying vec4 vColor;
-
-const vec3 color = vec3(0.2, 0.2, 0.8);
 
 vec2 GetNormal(vec2 a, vec2 b, bool outside)
 {
@@ -201,5 +200,5 @@ void main(void)
     const vec3 lightDir = vec3(-0.371391, -0.557086, 0.742781); // normalize(vec3(-1.0, -1.5, 2.0));
     float diffuse = dot(lightNorm, lightDir);
     diffuse = diffuse * 0.75 + 0.25;
-    vColor = vec4(color * diffuse, 1.0);
+    vColor = vec4(uColor.xyz * diffuse, uColor.w);
 }

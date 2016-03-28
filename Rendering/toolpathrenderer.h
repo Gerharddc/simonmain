@@ -34,6 +34,10 @@ public:
     void ProjMatDirty();
     void SceneMatDirty();
 
+    void SetOpacity(float alpha);
+    float GetOpacity();
+    void SetColor(glm::vec3 color);
+
 private:
     GLuint mProgram = 0;
     GLsizei mWindowWidth = 0;
@@ -47,6 +51,7 @@ private:
     GLint mModelUniformLocation;
     GLint mRadiusUniformLocation;
     GLint mProjUniformLocation;
+    GLint mColorUniformLocation;
 
     GroupGLData *groupDatas = nullptr;
     std::size_t groupCount = 0;
@@ -59,6 +64,10 @@ private:
     bool dirtyProjMat = true;
     bool dirtySceneMat = true;
     bool dirtyPath = false;
+    bool dirtyColor = true;
+
+    glm::vec3 _color = glm::vec3(0.2f, 0.2f, 0.8f);
+    float opacity = 1.0f;
 };
 
 #endif // TOOLPATHRENDERER_H
