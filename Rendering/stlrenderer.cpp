@@ -147,6 +147,8 @@ inline void DelaySync(MeshGroupData &mg)
         *df = true;
 }
 
+// TODO: these transofrmations hould probably be applied in a bg thread
+
 // Update the meshdatagroup matrix
 inline void UpdateTempMat(MeshGroupData &mg)
 {
@@ -155,6 +157,8 @@ inline void UpdateTempMat(MeshGroupData &mg)
     mg.tempMat = glm::scale(mg.tempMat, glm::vec3(mg.scaleOnMat));
     mg.tempMat = mg.tempMat * glm::mat4(glm::quat(mg.rotOnMat));
     mg.tempMat = glm::translate(mg.tempMat, mg.meshCentre);
+
+    mg.sceneMatsDirty = true;
 }
 
 // This method applies an absolute scale to the original mesh
@@ -221,6 +225,39 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     mg.meshDirty = false;
 }
 
+void STLRenderer::ColorMesh(Mesh *mesh, glm::vec4 colorAlpha)
+{
+    meshGroups[mesh].color = colorAlpha;
+}
+
+void STLRenderer::ColorMesh(Mesh *mesh, glm::vec3 color)
+{
+    meshGroups[mesh].color = glm::vec4(color, meshGroups[mesh].color.w);
+}
+
+void STLRenderer::ColorMesh(Mesh *mesh, float alpha)
+{
+    meshGroups[mesh].color.w = alpha;
+}
+
+void STLRenderer::ColorAll(glm::vec4 colorAlpha)
+{
+    for (auto &pair : meshGroups)
+        pair.second.color = colorAlpha;
+}
+
+void STLRenderer::ColorAll(glm::vec3 color)
+{
+    for (auto &pair : meshGroups)
+        pair.second.color = glm::vec4(color, pair.second.color.w);
+}
+
+void STLRenderer::ColorAll(float alpha)
+{
+    for (auto &pair : meshGroups)
+        pair.second.color.w = alpha;
+}
+
 void STLRenderer::Init()
 {
     // Shader source files
@@ -234,6 +271,7 @@ void STLRenderer::Init()
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
     mNormalAttribLocation = glGetAttribLocation(mProgram, "aNormal");
     mNormUniformLocation = glGetUniformLocation(mProgram, "uNormMatrix");
+    mColorUniformLocation = glGetUniformLocation(mProgram, "uMeshColor");
 }
 
 void STLRenderer::Draw()
@@ -254,15 +292,6 @@ void STLRenderer::Draw()
         dirtyMesh = false;
     }
 
-    if (dirtySceneMat)
-    {
-        // Update the model and normal matrices
-        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
-        glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE,
-                           glm::value_ptr(glm::inverse(ComboRendering::sceneTrans)));
-        dirtySceneMat = false;
-    }
-
     if (dirtyProjMat)
     {
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
@@ -272,8 +301,23 @@ void STLRenderer::Draw()
     for (auto &gPair : meshGroups)
     {
         MeshGroupData &mg = gPair.second;
+
         if (mg.mVertexPositionBuffer == 0 || mg.mVertexNormalBuffer == 0)
             continue;
+
+        // Set the matrices to those of this mesh, update if needed first
+        if (mg.sceneMatsDirty || dirtySceneMat)
+        {
+            mg.sceneMat = ComboRendering::sceneTrans * mg.tempMat;
+            mg.normalMat = glm::inverse(mg.sceneMat);
+            mg.sceneMatsDirty = false;
+            dirtySceneMat = false;
+        }
+        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(mg.sceneMat));
+        glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE, glm::value_ptr(mg.normalMat));
+
+        // Set the colour for the mesh
+        glUniform4fv(mColorUniformLocation, 1, glm::value_ptr(mg.color));
 
         glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
         glEnableVertexAttribArray(mPositionAttribLocation);

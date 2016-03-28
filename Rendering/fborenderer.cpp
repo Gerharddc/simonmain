@@ -78,3 +78,25 @@ void FBORenderer::resetView(bool updateNow)
     if (updateNow)
         update();
 }
+
+void FBORenderer::setMeshOpacity(float o)
+{
+    if (o != comb.MeshOpacity())
+    {
+        comb.SetMeshOpacity(o);
+        update();
+
+        emit meshOpacityChanged();
+    }
+}
+
+void FBORenderer::setTpOpacity(float o)
+{
+    if (o != comb.TpOpacity())
+    {
+        comb.SetTpOpacity(o);
+        update();
+
+        emit tpOpacityChanged();
+    }
+}

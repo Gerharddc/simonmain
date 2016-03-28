@@ -36,6 +36,9 @@ private:
     Mesh *stlMesh = nullptr;
     Toolpath *gcodePath = nullptr;
 
+    static float meshOpacity;
+    static float tpOpacity;
+
 public:
     ComboRendering();
     ~ComboRendering();
@@ -47,6 +50,11 @@ public:
     void Move(float x, float y);
     void Zoom(float scale);
     void ResetView();
+
+    void SetMeshOpacity(float opacity);
+    void SetTpOpacity(float opacity);
+    float MeshOpacity();
+    float TpOpacity();
 };
 
 #endif // COMBORENDERING_H

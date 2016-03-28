@@ -31,6 +31,13 @@ struct MeshGroupData
     // The matrix that is currently being GPU-applied to the mesh
     glm::mat4 tempMat;
 
+    // Thes matrices and flag are used to store the combined mesh and scene matrices
+    glm::mat4 sceneMat, normalMat;
+    bool sceneMatsDirty = true;
+
+    // The colour of the mesh with transparency
+    glm::vec4 color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
     // The rotation that the actual mesh currently has
     glm::vec3 rotOnMesh;
     // The rotation that the matrix is applying to the mesh
@@ -71,6 +78,14 @@ public:
     void LiftMesh(Mesh *mesh, float absZ);
     void RotateMesh(Mesh *mesh, float absX, float absY, float absZ);
 
+    void ColorMesh(Mesh *mesh, glm::vec4 colorAlpha);
+    void ColorMesh(Mesh *mesh, glm::vec3 color);
+    void ColorMesh(Mesh *mesh, float alpha);
+
+    void ColorAll(glm::vec4 colorAlpha);
+    void ColorAll(glm::vec3 color);
+    void ColorAll(float alpha);
+
     void ProjMatDirty();
     void SceneMatDirty();
 
@@ -85,6 +100,7 @@ private:
     GLint mModelUniformLocation;
     GLint mProjUniformLocation;
     GLint mNormUniformLocation;
+    GLint mColorUniformLocation;
 
     void LoadMesh(MeshGroupData &mg, Mesh *mesh);
     std::map<Mesh*, MeshGroupData> meshGroups;

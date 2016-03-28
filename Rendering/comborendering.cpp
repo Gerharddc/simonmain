@@ -29,6 +29,8 @@ ToolpathRenderer ComboRendering::tpRen = ToolpathRenderer();
 glm::mat4 ComboRendering::rotOrg = glm::mat4();
 glm::mat4 ComboRendering::rotOrgInv = glm::mat4();
 glm::quat ComboRendering::sceneRot = glm::quat();
+float ComboRendering::meshOpacity = 1.0f;
+float ComboRendering::tpOpacity = 0.0f;
 
 ComboRendering::ComboRendering()
 {
@@ -187,6 +189,34 @@ void ComboRendering::Draw()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     gridRen.Draw();
-    stlRen.Draw();
-    //tpRen.Draw();
+
+    if (meshOpacity != 0.0f)
+        stlRen.Draw();
+
+    if (tpOpacity != 0.0f)
+        tpRen.Draw();
+}
+
+// TODO: maybe working with this local copy is dangerous...
+
+float ComboRendering::MeshOpacity()
+{
+    return meshOpacity;
+}
+
+float ComboRendering::TpOpacity()
+{
+    return tpOpacity;
+}
+
+void ComboRendering::SetMeshOpacity(float opacity)
+{
+    meshOpacity = opacity;
+    stlRen.ColorAll(opacity);
+}
+
+void ComboRendering::SetTpOpacity(float opacity)
+{
+    tpOpacity = opacity;
+    // TODO: implement this
 }
