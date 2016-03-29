@@ -19,7 +19,6 @@ private:
     static float viewWidth, viewHeight;
     static float centreX, centreY;
     static float aimX, aimY;
-    static float sizeX, sizeY, sizeZ;
     static float zoom;
 
     static void UpdateProjection();

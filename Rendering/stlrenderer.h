@@ -19,17 +19,15 @@ struct MeshGroupData
     GLuint mVertexPositionBuffer = 0;
     GLuint mVertexNormalBuffer = 0;
 
-    // TODO
-    float centreX = 0.0f;
-    float centreY = 0.0f;
-
     // The scale that the actual mesh is currently on
     float scaleOnMesh = 1.0f;
     // The scale that the matrix is applying to the mesh
     float scaleOnMat = 1.0f;
 
     // The matrix that is currently being GPU-applied to the mesh
-    glm::mat4 tempMat;
+    glm::mat4 gpuMat;
+    // The matrix that has already been applied to the mesh as seen by the cpu'
+    glm::mat4 meshMat;
 
     // Thes matrices and flag are used to store the combined mesh and scene matrices
     glm::mat4 sceneMat, normalMat;
@@ -49,15 +47,6 @@ struct MeshGroupData
     glm::vec3 moveOnMesh;
     // The offset that the matrix is applying to the mesh
     glm::vec3 moveOnMat;
-
-    // This thread will be used to move transformations to the mesh
-    std::thread *syncThread = nullptr;
-    // Flag pointer used to terminate the syncing thread
-    bool *syncFlag = nullptr;
-    // Flag used to delay syncing thread
-    bool *delayFlag = nullptr;
-    // This function will spawn the syncing thread
-    void StartThread(Mesh *mesh);
 
     void Destroy();
 };

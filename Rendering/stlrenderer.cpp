@@ -9,66 +9,34 @@
 #include "mathhelper.h"
 #include "stlimporting.h"
 #include "comborendering.h"
+#include "Misc/globalsettings.h"
 
 STLRenderer::STLRenderer()
 {
 
 }
 
-// We use pointers to the flags because the MeshGroupData object can potentially
-// die before the end of the thread
-void SyncMesh(Mesh *mesh, MeshGroupData *mg, bool *syncFlag, bool *delayFlag)
+// This updates the Mesh in normal memory for saving but does not
+// affect the mesh loaded in GPU memory
+void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
 {
-    // Terminate the thread if indicated
-    while (*syncFlag)
+    //Apply the matrix to the mesh
+    for (std::size_t i = 0; i < mesh->vertexCount; i++)
     {
-        if (*delayFlag)
-        {
-            std::this_thread::sleep_for (std::chrono::seconds(15));
-            *delayFlag = false;
-        }
-        else
-        {
-            *delayFlag = true;
-
-            //Apply the matrix to the mesh
-            for (std::size_t i = 0; i < mesh->vertexCount; i++)
-            {
-                // TODO: optomize...
-                auto idx = i * 3;
-                glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
-                v = mg->tempMat * v;
-                mesh->vertexFloats[idx + 0] = v.x;
-                mesh->vertexFloats[idx + 1] = v.y;
-                mesh->vertexFloats[idx + 2] = v.z;
-            }
-
-            // Update the parameters
-
-            mg->rotOnMesh *= mg->rotOnMat;
-            mg->rotOnMat = glm::vec3(0.0f);
-
-            mg->scaleOnMesh *= mg->scaleOnMat;
-            mg->scaleOnMat = 1.0f;
-
-            mg->moveOnMesh += mg->moveOnMat;
-            mg->moveOnMat = glm::vec3(0.0f);
-
-            // TODO: maybe just do this from the start
-            mg->meshCentre = glm::vec3(0.0f);
-        }
+        // TODO: optomize...
+        auto idx = i * 3;
+        glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
+        v = mg->gpuMat * glm::inverse(mg->meshMat) * v;
+        mesh->vertexFloats[idx + 0] = v.x;
+        mesh->vertexFloats[idx + 1] = v.y;
+        mesh->vertexFloats[idx + 2] = v.z;
     }
 
-    delete syncFlag;
-    delete delayFlag;
-}
-
-void MeshGroupData::StartThread(Mesh *mesh)
-{
-    syncFlag = new bool(true);
-    delayFlag = new bool(true);
-
-    syncThread = new std::thread(SyncMesh, mesh, this, syncFlag, delayFlag);
+    // Update the parameters
+    mg->rotOnMesh = mg->rotOnMat;
+    mg->scaleOnMesh = mg->scaleOnMat;
+    mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
+    mg->meshMat = mg->gpuMat;
 }
 
 void MeshGroupData::Destroy()
@@ -91,9 +59,6 @@ void MeshGroupData::Destroy()
         glDeleteBuffers(1, &mVertexNormalBuffer);
         mVertexNormalBuffer = 0;
     }
-
-    // Kill the syncing thread
-    *syncFlag = false;
 }
 
 STLRenderer::~STLRenderer()
@@ -138,25 +103,16 @@ void STLRenderer::RemoveMesh(Mesh *mesh)
     meshGroups.erase(mesh);
 }
 
-// Delay syncing with the mesh
-inline void DelaySync(MeshGroupData &mg)
-{
-    bool *df = mg.delayFlag;
-
-    if (df != nullptr)
-        *df = true;
-}
-
 // TODO: these transofrmations hould probably be applied in a bg thread
 
 // Update the meshdatagroup matrix
 inline void UpdateTempMat(MeshGroupData &mg)
 {
     // TODO: optomize ?
-    mg.tempMat = glm::translate(glm::mat4(1.0f), mg.moveOnMat);
-    mg.tempMat = glm::scale(mg.tempMat, glm::vec3(mg.scaleOnMat));
-    mg.tempMat = mg.tempMat * glm::mat4(glm::quat(mg.rotOnMat));
-    mg.tempMat = glm::translate(mg.tempMat, mg.meshCentre);
+    mg.gpuMat = glm::translate(glm::mat4(1.0f), mg.moveOnMat);
+    mg.gpuMat = glm::scale(mg.gpuMat, glm::vec3(mg.scaleOnMat));
+    mg.gpuMat = mg.gpuMat * glm::mat4(glm::quat(mg.rotOnMat));
+    mg.gpuMat = glm::translate(mg.gpuMat, mg.meshCentre);
 
     mg.sceneMatsDirty = true;
 }
@@ -165,9 +121,8 @@ inline void UpdateTempMat(MeshGroupData &mg)
 void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 {
     MeshGroupData &mg = meshGroups[mesh];
-    DelaySync(mg);
 
-    mg.scaleOnMat = absScale - mg.scaleOnMesh;
+    mg.scaleOnMat = absScale;
 
     UpdateTempMat(mg);
 }
@@ -176,10 +131,9 @@ void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
 {
     MeshGroupData &mg = meshGroups[mesh];
-    DelaySync(mg);
 
-    mg.moveOnMat.x = absX - mg.moveOnMesh.x;
-    mg.moveOnMat.y = absY - mg.moveOnMesh.y;
+    mg.moveOnMat.x = absX;
+    mg.moveOnMat.y = absY;
 
     UpdateTempMat(mg);
 }
@@ -188,9 +142,8 @@ void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
 void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
 {
     MeshGroupData &mg = meshGroups[mesh];
-    DelaySync(mg);
 
-    mg.moveOnMat.z = absZ - mg.moveOnMesh.z;
+    mg.moveOnMat.z = absZ;
 
     UpdateTempMat(mg);
 }
@@ -199,9 +152,8 @@ void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
 void STLRenderer::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
 {
     MeshGroupData &mg = meshGroups[mesh];
-    DelaySync(mg);
 
-    mg.rotOnMat = glm::vec3(absX, absY, absZ) - mg.rotOnMesh;
+    mg.rotOnMat = glm::vec3(absX, absY, absZ);
 
     UpdateTempMat(mg);
 }
@@ -218,9 +170,11 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
     mesh->dumpFlatNorms();
 
-    // TODO: move the mesh somewhere
-    mg.centreX = (mesh->MinVec.x + mesh->MaxVec.x) / 2;
-    mg.centreY = (mesh->MinVec.y + mesh->MaxVec.y) / 2;
+    float x = (mesh->MaxVec.x + mesh->MinVec.x) / 2.0f;
+    float y = (mesh->MaxVec.y + mesh->MinVec.y) / 2.0f;
+    mg.meshCentre = glm::vec3(GlobalSettings::BedWidth.Get() / 2 - x, GlobalSettings::BedLength.Get() / 2 - y, -mesh->MinVec.z);
+
+    UpdateTempMat(mg);
 
     mg.meshDirty = false;
 }
@@ -308,7 +262,7 @@ void STLRenderer::Draw()
         // Set the matrices to those of this mesh, update if needed first
         if (mg.sceneMatsDirty || dirtySceneMat)
         {
-            mg.sceneMat = ComboRendering::sceneTrans * mg.tempMat;
+            mg.sceneMat = ComboRendering::sceneTrans * mg.gpuMat;
             mg.normalMat = glm::inverse(mg.sceneMat);
             mg.sceneMatsDirty = false;
             dirtySceneMat = false;

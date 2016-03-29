@@ -7,6 +7,7 @@
 
 #include "stlimporting.h"
 #include "gcodeimporting.h"
+#include "Misc/globalsettings.h"
 
 // Init
 const float DefaultZoom = 3.0f;
@@ -17,9 +18,6 @@ float ComboRendering::centreX = 0.0f;
 float ComboRendering::centreY = 0.0f;
 float ComboRendering::aimX = 50.0f;
 float ComboRendering::aimY = 50.0f;
-float ComboRendering::sizeX = 100.0f;
-float ComboRendering::sizeY = 100.0f;
-float ComboRendering::sizeZ = 100.0f;
 float ComboRendering::zoom = DefaultZoom;
 glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
@@ -88,7 +86,7 @@ void ComboRendering::UpdateProjection()
     float top = aimY + (centreY / zoom);
 
     // With the orthographic system we need a negative and positive clip plane of enough distance
-    sceneProj = glm::ortho(left, right, bottom, top, -sizeZ * 10, sizeZ * 10);
+    sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10, GlobalSettings::BedHeight.Get() * 10);
 
     // Flag the renderers to update their proj matrices
     gridRen.ProjMatDirty();
@@ -99,8 +97,8 @@ void ComboRendering::UpdateProjection()
 void ComboRendering::RecalculateCentre()
 {
     // We need to translate the centre of the box to the origin for rotation
-    float midX = sizeX / 2.0f;
-    float midY = sizeY / 2.0f;
+    float midX = GlobalSettings::BedWidth.Get() / 2.0f;
+    float midY = GlobalSettings::BedLength.Get() / 2.0f;
 
     rotOrg = glm::translate(glm::mat4(), glm::vec3(midX, midY, 0.0f));
     rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-midX, -midY, 0.0f));
@@ -115,8 +113,8 @@ void ComboRendering::ApplyRot(float x, float y)
     // TODO: add dpi scaling
     // For some reason the x rot is in the inverse direction of the mouse movement
     // TODO: 3.0 ?
-    float yAng = (x / sizeX * 1.1) / 3.0;
-    float xAng = -(y / sizeY * (1.1 * sizeY / sizeX)) / 3.0;
+    float yAng = (x / GlobalSettings::BedWidth.Get() * 1.1) / 3.0;
+    float xAng = -(y / GlobalSettings::BedLength.Get() * (1.1 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / 3.0;
     glm::vec2 axis = glm::vec2(xAng, yAng);
     auto l = glm::length(axis); // doesnt work
     if (l == 0) // This is important to avoid normaliztion disasters ahead
@@ -148,8 +146,8 @@ void ComboRendering::Move(float x, float y)
     // We want a constant move distance for a viewport length and take
     // aspect ration into account
     // TODO: add dpi support
-    aimX -= (x / sizeX * 65) / zoom;
-    aimY -= (y / sizeY * (65 * sizeY / sizeX)) / zoom;
+    aimX -= (x / GlobalSettings::BedWidth.Get() * 65) / zoom;
+    aimY -= (y / GlobalSettings::BedLength.Get() * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
 
     UpdateProjection();
 }
@@ -165,8 +163,8 @@ void ComboRendering::ResetView()
     zoom = DefaultZoom;
 
     SetViewSize(viewWidth, viewHeight);
-    aimX = sizeX / 2.0f;
-    aimY = sizeY / 2.0f;
+    aimX = GlobalSettings::BedWidth.Get() / 2.0f;
+    aimY = GlobalSettings::BedLength.Get() / 2.0f;
 
     gridRen.SceneMatDirty();
     stlRen.SceneMatDirty();
@@ -206,7 +204,6 @@ float ComboRendering::MeshOpacity()
 float ComboRendering::TpOpacity()
 {
     return tpRen.GetOpacity();
-    //return tpOpacity;
 }
 
 void ComboRendering::SetMeshOpacity(float opacity)
@@ -217,7 +214,5 @@ void ComboRendering::SetMeshOpacity(float opacity)
 
 void ComboRendering::SetTpOpacity(float opacity)
 {
-    //tpOpacity = opacity;
-    // TODO: implement this
     tpRen.SetOpacity(opacity);
 }
