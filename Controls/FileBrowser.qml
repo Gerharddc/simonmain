@@ -75,7 +75,16 @@ Rectangle {
                         anchors.fill: parent
 
                         onClicked: {
-                            // TODO: alert C++
+                            if (model.modelData.open !== "")
+                            {
+                                renderer.loadMesh(model.modelData.open)
+                                fbRect.close()
+                                fileBrowser.reset()
+                            }
+                            else
+                                fileBrowser.selectItem(model.modelData.cd)
+
+                            //fileBrowser.selectItem(model.modelData.cd, model.modelData.open)
                         }
                     }
                 }
@@ -92,15 +101,6 @@ Rectangle {
 
                 Component.onCompleted: {
                     fileBrowser.getRootDirectory()
-                }
-
-                onModelChanged: {
-                    console.log("Changed")
-                    console.log(model)
-
-                    for (var i = 0; i < model.length; i++)
-                        for (var prop in model[i])
-                            console.log("Object item:", prop, "=", model[i][prop])
                 }
             }
         }

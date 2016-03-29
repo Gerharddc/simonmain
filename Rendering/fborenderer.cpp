@@ -79,6 +79,12 @@ void FBORenderer::resetView(bool updateNow)
         update();
 }
 
+void FBORenderer::loadMesh(QString path)
+{
+    comb.LoadMesh(path.toStdString().c_str());
+    update();
+}
+
 void FBORenderer::setMeshOpacity(float o)
 {
     if (o != comb.MeshOpacity())

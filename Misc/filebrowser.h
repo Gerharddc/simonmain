@@ -23,7 +23,7 @@ public:
 
     Q_INVOKABLE void getRootDirectory();
     Q_INVOKABLE void reset();
-    Q_INVOKABLE void selectItem(QString cd, QString open);
+    Q_INVOKABLE void selectItem(QString cd);//, QString open);
 
     Q_PROPERTY(QVariantList fileModel READ fileModel NOTIFY fileModelChanged)
     QVariantList fileModel() { return m_fileModel; }

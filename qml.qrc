@@ -22,6 +22,7 @@
         <file alias="STL.png">Controls/STL.png</file>
         <file alias="USB.png">Controls/USB.png</file>
         <file alias="Archive.png">Controls/Archive.png</file>
+        <file alias="Up.png">Controls/Up.png</file>
     </qresource>
     <qresource prefix="/Keyboard">
         <file alias="KeyboardButton.qml">Keyboard/KeyboardButton.qml</file>

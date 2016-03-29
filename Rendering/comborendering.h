@@ -2,6 +2,7 @@
 #define COMBORENDERING_H
 
 #include <glm/glm.hpp>
+#include <vector>
 
 #include "stlrenderer.h"
 #include "toolpathrenderer.h"
@@ -32,7 +33,9 @@ private:
     static ToolpathRenderer tpRen;
     static GridRenderer gridRen;
 
-    Mesh *stlMesh = nullptr;
+    std::vector<Mesh*> stlMeshes;
+    std::vector<Toolpath*> gcodePaths;
+
     Toolpath *gcodePath = nullptr;
 
     // TODO: remove this
@@ -49,6 +52,7 @@ public:
     void Move(float x, float y);
     void Zoom(float scale);
     void ResetView();
+    void LoadMesh(const char* path);
 
     void SetMeshOpacity(float opacity);
     void SetTpOpacity(float opacity);

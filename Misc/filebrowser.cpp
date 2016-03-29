@@ -25,9 +25,9 @@ void FileBrowser::GetFilesForDir()
     {
         QVariantMap mp;
         mp.insert("displayName", str);
-        mp.insert("glyph", "Folder.png");
+        mp.insert("glyph", "STL.png");
         mp.insert("cd", "");
-        mp.insert("open", str + ".stl");
+        mp.insert("open", curDir.absoluteFilePath(str));
         m_fileModel.append(mp);
     }
 }
@@ -63,12 +63,13 @@ void FileBrowser::getRootDirectory()
 
 void FileBrowser::reset()
 {
-
+    // TODO: maybe something else?
+    getRootDirectory();
 }
 
-void FileBrowser::selectItem(QString cd, QString open)
+void FileBrowser::selectItem(QString cd)//, QString open)
 {
-    if (cd == "" && open != "")
+    /*if (cd == "" && open != "")
     {
         // Open file
         // TODO: open the file
@@ -76,10 +77,10 @@ void FileBrowser::selectItem(QString cd, QString open)
         emit fileOpened();
     }
     else
-    {
+    {*/
         // Open dir
         curDir.cd(cd);
-        if (curDir.absolutePath() == rootDir)
+        if (curDir.absolutePath() == rootDir || curDir.dirName() == ".mnt")
             getRootDirectory();
         else
         {
@@ -88,7 +89,7 @@ void FileBrowser::selectItem(QString cd, QString open)
             // Add the aprent directory entry
             QVariantMap mp;
             mp.insert("displayName", "Back");
-            mp.insert("glyph", "Folder.png");
+            mp.insert("glyph", "Up.png");
             mp.insert("cd", "../");
             mp.insert("open", "");
             m_fileModel.append(mp);
@@ -97,5 +98,5 @@ void FileBrowser::selectItem(QString cd, QString open)
 
             emit fileModelChanged();
         }
-    }
+    //}
 }

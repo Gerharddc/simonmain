@@ -33,8 +33,8 @@ ComboRendering::ComboRendering()
 {
     // Load the initial models and set the grid up
 
-    stlMesh = STLImporting::ImportSTL("bin.stl");
-    stlRen.AddMesh(stlMesh);
+    stlMeshes.push_back(STLImporting::ImportSTL("bin.stl"));
+    stlRen.AddMesh(stlMeshes.back());
 
     gcodePath = GCodeImporting::ImportGCode("test.gcode");
     tpRen.SetToolpath(gcodePath);
@@ -44,10 +44,13 @@ ComboRendering::ComboRendering()
 
 ComboRendering::~ComboRendering()
 {
-    if (stlMesh != nullptr)
+    for (Mesh *mesh : stlMeshes)
     {
-        delete stlMesh;
-        stlMesh = nullptr;
+        if (mesh != nullptr)
+        {
+            delete mesh;
+            mesh = nullptr;
+        }
     }
 
     if (gcodePath != nullptr)
@@ -55,6 +58,13 @@ ComboRendering::~ComboRendering()
         delete gcodePath;
         gcodePath = nullptr;
     }
+}
+
+void ComboRendering::LoadMesh(const char *path)
+{
+    stlMeshes.push_back(STLImporting::ImportSTL(path));
+    stlRen.AddMesh(stlMeshes.back());
+    //stlRen.CentreMesh(stlMeshes.back(), 0.0f, 0.0f);
 }
 
 void ComboRendering::SetViewSize(float width, float height)
