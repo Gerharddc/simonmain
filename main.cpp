@@ -6,6 +6,7 @@
 
 #include "Keyboard/keyboard.h"
 #include "Rendering/fborenderer.h"
+#include "Misc/filebrowser.h"
 
 #include <QFile>
 #include <QString>
@@ -42,6 +43,9 @@ int main(int argc, char *argv[])
 
     Keyboard keyboard;
     view.rootContext()->setContextProperty("keyboard", &keyboard);
+
+    FileBrowser fb;
+    view.rootContext()->setContextProperty("fileBrowser", &fb);
 
 #ifdef ROTATE_SCREEN
 #define ROOTQML "qrc:/Rotated.qml"

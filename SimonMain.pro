@@ -15,7 +15,8 @@ SOURCES += main.cpp \
     Rendering/structures.cpp \
     Rendering/gridrenderer.cpp \
     Rendering/comborendering.cpp \
-    Misc/globalsettings.cpp
+    Misc/globalsettings.cpp \
+    Misc/filebrowser.cpp
 
 RESOURCES += qml.qrc
 
@@ -40,7 +41,8 @@ HEADERS += \
     Rendering/toolpathrenderer.h \
     Rendering/gridrenderer.h \
     Rendering/comborendering.h \
-    Misc/globalsettings.h
+    Misc/globalsettings.h \
+    Misc/filebrowser.h
 
 INCLUDEPATH += $$PWD/glm
 

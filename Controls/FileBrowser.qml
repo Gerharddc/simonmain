@@ -44,16 +44,6 @@ Rectangle {
             border.color: Style.accentColor
             border.width: 2
 
-            ListModel {
-                id: filesModel
-                ListElement { displayName: "Zipped up"; glyph: "Archive.png" }
-                ListElement { displayName: "Random folder"; glyph: "Folder.png" }
-                ListElement { displayName: "Stupid folder"; glyph: "Folder.png" }
-                ListElement { displayName: "MyModel"; glyph: "STL.png" }
-                ListElement { displayName: "USB Drive"; glyph: "USB.png" }
-                ListElement { displayName: "SD Card"; glyph: "SD.png" }
-            }
-
             Component {
                 id: fileDelegate
 
@@ -65,7 +55,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: displayName
+                        text: model.modelData.displayName
                         font.family: 'Nevis'
                         font.pixelSize: 20
                         color: Style.textColor
@@ -77,7 +67,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 50
                         height: 50
-                        source: glyph
+                        source: model.modelData.glyph
                     }
 
                     MouseArea {
@@ -96,9 +86,22 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: 7
                 clip: true
-                model: filesModel
+                model: fileBrowser.fileModel
                 delegate: fileDelegate
                 spacing: 5
+
+                Component.onCompleted: {
+                    fileBrowser.getRootDirectory()
+                }
+
+                onModelChanged: {
+                    console.log("Changed")
+                    console.log(model)
+
+                    for (var i = 0; i < model.length; i++)
+                        for (var prop in model[i])
+                            console.log("Object item:", prop, "=", model[i][prop])
+                }
             }
         }
 

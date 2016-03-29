@@ -13,7 +13,7 @@ Rectangle {
     color: Style.bgMain
 
     function addStl() {
-        fileBrowser.open()
+        qmlFileBrowser.open()
     }
 
     TopDrawer {
@@ -25,7 +25,7 @@ Rectangle {
     }
 
     FileBrowser {
-        id: fileBrowser
+        id: qmlFileBrowser
         height: parent.height - topDrawer.iClosedHeight
         anchors.left: parent.left
         anchors.right: parent.right
