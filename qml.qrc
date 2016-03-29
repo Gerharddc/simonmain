@@ -17,6 +17,11 @@
         <file alias="TextBox.qml">Controls/TextBox.qml</file>
         <file alias="Toggle.qml">Controls/Toggle.qml</file>
         <file alias="FileBrowser.qml">Controls/FileBrowser.qml</file>
+        <file alias="Folder.png">Controls/Folder.png</file>
+        <file alias="SD.png">Controls/SD.png</file>
+        <file alias="STL.png">Controls/STL.png</file>
+        <file alias="USB.png">Controls/USB.png</file>
+        <file alias="Archive.png">Controls/Archive.png</file>
     </qresource>
     <qresource prefix="/Keyboard">
         <file alias="KeyboardButton.qml">Keyboard/KeyboardButton.qml</file>
