@@ -83,8 +83,6 @@ Rectangle {
                             }
                             else
                                 fileBrowser.selectItem(model.modelData.cd)
-
-                            //fileBrowser.selectItem(model.modelData.cd, model.modelData.open)
                         }
                     }
                 }
@@ -102,6 +100,11 @@ Rectangle {
                 Component.onCompleted: {
                     fileBrowser.getRootDirectory()
                 }
+
+                populate: Transition {
+                    NumberAnimation { property: "opacity"; from: 0; to: 1.0; duration: 100 }
+                    NumberAnimation { property: "scale"; from: 0.5; to: 1.0; duration: 100 }
+                }
             }
         }
 
@@ -113,7 +116,6 @@ Rectangle {
             anchors.bottom: parent.bottom
 
             onClicked: {
-                // TODO: alert C++
                 fbRect.close()
             }
         }

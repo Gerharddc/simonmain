@@ -265,7 +265,6 @@ void STLRenderer::Draw()
             mg.sceneMat = ComboRendering::sceneTrans * mg.gpuMat;
             mg.normalMat = glm::inverse(mg.sceneMat);
             mg.sceneMatsDirty = false;
-            dirtySceneMat = false;
         }
         glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(mg.sceneMat));
         glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE, glm::value_ptr(mg.normalMat));
@@ -283,4 +282,6 @@ void STLRenderer::Draw()
 
         glDrawArrays(GL_TRIANGLES, 0, gPair.first->trigCount * 3);
     }
+
+    dirtySceneMat = false;
 }

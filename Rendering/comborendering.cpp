@@ -64,7 +64,7 @@ void ComboRendering::LoadMesh(const char *path)
 {
     stlMeshes.push_back(STLImporting::ImportSTL(path));
     stlRen.AddMesh(stlMeshes.back());
-    //stlRen.CentreMesh(stlMeshes.back(), 0.0f, 0.0f);
+    stlRen.CentreMesh(stlMeshes.back(), -30.0f, -30.0f);
 }
 
 void ComboRendering::SetViewSize(float width, float height)
