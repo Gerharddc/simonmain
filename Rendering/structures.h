@@ -73,9 +73,9 @@ public:
     void ShrinkVertices(std::size_t vertCount);
     void ShrinkTrigs(std::size_t newSize);
 
-    Vec3 Centre()
+    glm::vec3 Centre()
     {
-        Vec3 centre;
+        glm::vec3 centre;
         centre.x = (MinVec.x + MaxVec.x) / 2;
         centre.y = (MinVec.y + MaxVec.y) / 2;
         centre.z = (MinVec.z + MaxVec.z) / 2;

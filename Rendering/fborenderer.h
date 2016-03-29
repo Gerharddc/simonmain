@@ -12,6 +12,7 @@ class FBORenderer : public QQuickFramebufferObject
     Q_OBJECT
 private:
     ComboRendering comb;
+    bool m_meshesSelected = false;
 
 public:
     Renderer *createRenderer() const;
@@ -20,6 +21,7 @@ public:
     Q_INVOKABLE void zoomView(float scale);
     Q_INVOKABLE void resetView(bool updateNow = true);
     Q_INVOKABLE void loadMesh(QString path);
+    Q_INVOKABLE void testMouseIntersection(float x, float y);
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
     bool meshOpacity() { return comb.MeshOpacity(); }
@@ -29,9 +31,13 @@ public:
     bool tpOpacity() { return comb.TpOpacity(); }
     void setTpOpacity(float o);
 
+    Q_PROPERTY(bool meshesSelected READ meshesSelected NOTIFY meshesSelectedChanged)
+    bool meshesSelected() { return m_meshesSelected; }
+
 signals:
    void meshOpacityChanged();
    void tpOpacityChanged();
+   void meshesSelectedChanged();
 };
 
 #endif // FBORENDERER_H

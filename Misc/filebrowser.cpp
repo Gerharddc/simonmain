@@ -67,36 +67,26 @@ void FileBrowser::reset()
     getRootDirectory();
 }
 
-void FileBrowser::selectItem(QString cd)//, QString open)
+void FileBrowser::selectItem(QString cd)
 {
-    /*if (cd == "" && open != "")
-    {
-        // Open file
-        // TODO: open the file
-
-        emit fileOpened();
-    }
+    // Open dir
+    curDir.cd(cd);
+    if (curDir.absolutePath() == rootDir || curDir.dirName() == ".mnt")
+        getRootDirectory();
     else
-    {*/
-        // Open dir
-        curDir.cd(cd);
-        if (curDir.absolutePath() == rootDir || curDir.dirName() == ".mnt")
-            getRootDirectory();
-        else
-        {
-            m_fileModel.clear();
+    {
+        m_fileModel.clear();
 
-            // Add the aprent directory entry
-            QVariantMap mp;
-            mp.insert("displayName", "Back");
-            mp.insert("glyph", "Up.png");
-            mp.insert("cd", "../");
-            mp.insert("open", "");
-            m_fileModel.append(mp);
+        // Add the aprent directory entry
+        QVariantMap mp;
+        mp.insert("displayName", "Back");
+        mp.insert("glyph", "Up.png");
+        mp.insert("cd", "../");
+        mp.insert("open", "");
+        m_fileModel.append(mp);
 
-            GetFilesForDir();
+        GetFilesForDir();
 
-            emit fileModelChanged();
-        }
-    //}
+        emit fileModelChanged();
+    }
 }

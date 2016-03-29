@@ -26,7 +26,7 @@ struct MeshGroupData
 
     // The matrix that is currently being GPU-applied to the mesh
     glm::mat4 gpuMat;
-    // The matrix that has already been applied to the mesh as seen by the cpu'
+    // The matrix that has already been applied to the mesh as seen by the cpu
     glm::mat4 meshMat;
 
     // Thes matrices and flag are used to store the combined mesh and scene matrices
@@ -47,6 +47,11 @@ struct MeshGroupData
     glm::vec3 moveOnMesh;
     // The offset that the matrix is applying to the mesh
     glm::vec3 moveOnMat;
+
+    // The centre of the bounding sphere
+    glm::vec3 bSphereCentre;
+    // The squared (performance) radius of the bounding sphere
+    double bSphereRadius2;
 
     void Destroy();
 };
@@ -74,6 +79,8 @@ public:
     void ColorAll(glm::vec4 colorAlpha);
     void ColorAll(glm::vec3 color);
     void ColorAll(float alpha);
+
+    bool TestMeshIntersection(Mesh *mesh, float screenX, float screenY, float &screenZ);
 
     void ProjMatDirty();
     void SceneMatDirty();

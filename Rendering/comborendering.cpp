@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <limits>
 
 #include "stlimporting.h"
 #include "gcodeimporting.h"
@@ -218,6 +219,40 @@ float ComboRendering::MeshOpacity()
 float ComboRendering::TpOpacity()
 {
     return tpRen.GetOpacity();
+}
+
+unsigned short ComboRendering::TestMouseIntersection(float x, float y)
+{
+    // TODO: this should only run if the STLs are visible
+    qDebug() << "x: " << x << " y: " << y;
+
+    // Normalized screen coordinates
+    float screenX = (2.0f * x) / viewWidth - 1.0f;
+    float screenY = 1.0f - (2.0 * y) / viewHeight;
+
+    // 4d Homogeneous Clip Coordinates
+    /*glm::vec4 ray_clip = glm::vec4(screenX, screenY, -1.0f, 1.0f);
+
+    // 4d Eye (Camera) Coordinates
+    glm::vec4 ray_eye = glm::inverse(sceneProj) * ray_clip;
+    ray_eye.z = -1.0;
+    ray_eye.w = 0.0;*/
+
+    Mesh *highestMesh;
+    float z = std::numeric_limits<float>::lowest();
+
+    // Find the mesh with the 'highest' intersection
+    for (Mesh *mesh : stlMeshes)
+    {
+        float nZ;
+        stlRen.TestMeshIntersection(mesh, screenX, screenY, nZ);
+
+        if (nZ > z)
+        {
+            highestMesh = mesh;
+            z = nZ;
+        }
+    }
 }
 
 void ComboRendering::SetMeshOpacity(float opacity)

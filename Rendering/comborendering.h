@@ -58,6 +58,7 @@ public:
     void SetTpOpacity(float opacity);
     float MeshOpacity();
     float TpOpacity();
+    unsigned short TestMouseIntersection(float x, float y);
 };
 
 #endif // COMBORENDERING_H

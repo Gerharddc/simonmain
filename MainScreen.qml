@@ -33,133 +33,146 @@ Rectangle {
         z: 90
     }
 
-    Keyboard {
-        objectName: "keyboard"
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-    }
+    Item {
+        anchors.fill: parent
+        visible: !qmlFileBrowser.visible
 
-    BottomDrawer {
-        id: bottomDrawer
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-
-        anchors.bottomMargin: keyboard.uiOffset
-
-        Behavior on anchors.bottomMargin {
-            PropertyAnimation { }
-        }
-    }
-
-    Renderer {
-        id: renderer
-        width: parent.width
-        height: parent.height - bottomDrawer.iClosedHeight
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: bottomDrawer.isExpanded ? 0 : bottomDrawer.iClosedHeight
-        Behavior on anchors.bottomMargin {
-            PropertyAnimation {}
-        }
-
-        // Move the view down a bit after creation
-        Component.onCompleted: {
-            renderer.panView(0, renderer.height / 3);
-        }
-
-        meshOpacity: (bottomDrawer.activeTabNum == 0) ? 1 : 0
-        tpOpacity: (bottomDrawer.activeTabNum == 1) ? 1 : 0
-
-        Behavior on meshOpacity {
-            PropertyAnimation {}
-        }
-
-        Behavior on tpOpacity {
-            PropertyAnimation {}
-        }
-
-        Toggle {
-            id: toggler
-            anchors.top: parent.top
-            anchors.topMargin: 7 + topDrawer.iClosedHeight
+        Keyboard {
+            objectName: "keyboard"
             anchors.left: parent.left
-            anchors.leftMargin: 7
-            width: 150
-            opacity: 0.6
-            nameA: 'Pan'
-            nameB: 'Rotate'
-            z: 200
+            anchors.bottom: parent.bottom
         }
 
-        Button {
-            anchors.top: toggler.top
+        BottomDrawer {
+            id: bottomDrawer
+            anchors.left: parent.left
             anchors.right: parent.right
-            anchors.rightMargin: 7
-            opacity: 0.6
-            text: "Reset view"
-            width: 150
-            z: 200
+            anchors.bottom: parent.bottom
 
-            onClicked: {
-                renderer.resetView(true)
-                renderer.panView(0, renderer.height / 3)
+            anchors.bottomMargin: keyboard.uiOffset
+
+            Behavior on anchors.bottomMargin {
+                PropertyAnimation { }
             }
         }
 
-        PinchArea {
-            anchors.fill: parent
-
-            property real lastScale: 1
-
-            onPinchStarted: {
-                lastScale = pinch.scale
+        Renderer {
+            id: renderer
+            width: parent.width
+            height: parent.height - bottomDrawer.iClosedHeight
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: bottomDrawer.isExpanded ? 0 : bottomDrawer.iClosedHeight
+            Behavior on anchors.bottomMargin {
+                PropertyAnimation {}
             }
 
-            onPinchUpdated: {
-                var scale = pinch.scale / lastScale
-                lastScale = pinch.scale
-                renderer.zoomView(scale)
+            // Move the view down a bit after creation
+            Component.onCompleted: {
+                renderer.panView(0, renderer.height / 3);
             }
 
-            MouseArea {
-                id: mouser
+            meshOpacity: (bottomDrawer.activeTabNum == 0) ? 1 : 0
+            tpOpacity: (bottomDrawer.activeTabNum == 1) ? 1 : 0
+
+            Behavior on meshOpacity {
+                PropertyAnimation {}
+            }
+
+            Behavior on tpOpacity {
+                PropertyAnimation {}
+            }
+
+            Toggle {
+                id: toggler
+                anchors.top: parent.top
+                anchors.topMargin: 7 + topDrawer.iClosedHeight
+                anchors.left: parent.left
+                anchors.leftMargin: 7
+                width: 150
+                opacity: 0.6
+                nameA: 'Pan'
+                nameB: 'Rotate'
+                z: 200
+            }
+
+            Button {
+                anchors.top: toggler.top
+                anchors.right: parent.right
+                anchors.rightMargin: 7
+                opacity: 0.6
+                text: "Reset view"
+                width: 150
+                z: 200
+
+                onClicked: {
+                    renderer.resetView(true)
+                    renderer.panView(0, renderer.height / 3)
+                }
+            }
+
+            PinchArea {
                 anchors.fill: parent
 
-                property real lastX: 0
-                property real lastY: 0
-                property bool started: false
+                property real lastScale: 1
 
-                onPressed: {
-                    lastX = mouseX
-                    lastY = mouseY
-                    started = true
+                onPinchStarted: {
+                    lastScale = pinch.scale
                 }
 
-                onReleased: {
-                    started = false
+                onPinchUpdated: {
+                    var scale = pinch.scale / lastScale
+                    lastScale = pinch.scale
+                    renderer.zoomView(scale)
                 }
 
-                onPositionChanged: {
-                    var deltaX = mouseX - lastX
-                    var deltaY = mouseY - lastY
+                MouseArea {
+                    id: mouser
+                    anchors.fill: parent
+                    //scrollGestureEnabled: true // Qt 5.5
 
-                    if ((deltaX != 0) || (deltaY != 0))
-                    {
-                        if (toggler.toggled)
-                            renderer.panView(deltaX, deltaY);
-                        else
-                            renderer.rotateView(deltaX, deltaY);
+                    property real lastX: 0
+                    property real lastY: 0
+                    property bool started: false
+                    property bool click: true
+
+                    onPressed: {
+                        lastX = mouseX
+                        lastY = mouseY
+                        started = true
+                        click = true
                     }
 
-                    lastX = mouseX
-                    lastY = mouseY
-                }
+                    onReleased: {
+                        started = false
 
-                onWheel: {
-                    if (wheel.angleDelta.y > 0)
-                        renderer.zoomView(1.1)
-                    else if (wheel.angleDelta.y < 0)
-                        renderer.zoomView(0.9)
+                        // Normal onclicked includes drags
+                        if (click)
+                            renderer.testMouseIntersection(lastX, lastY)
+                    }
+
+                    onPositionChanged: {
+                        var deltaX = mouseX - lastX
+                        var deltaY = mouseY - lastY
+
+                        if ((deltaX != 0) || (deltaY != 0))
+                        {
+                            if (toggler.toggled)
+                                renderer.panView(deltaX, deltaY);
+                            else
+                                renderer.rotateView(deltaX, deltaY);
+                        }
+
+                        lastX = mouseX
+                        lastY = mouseY
+                        click = false
+                    }
+
+                    onWheel: {
+                        if (wheel.angleDelta.y > 0)
+                            renderer.zoomView(1.1)
+                        else if (wheel.angleDelta.y < 0)
+                            renderer.zoomView(0.9)
+                    }
                 }
             }
         }

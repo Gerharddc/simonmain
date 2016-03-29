@@ -85,6 +85,19 @@ void FBORenderer::loadMesh(QString path)
     update();
 }
 
+void FBORenderer::testMouseIntersection(float x, float y)
+{
+    // Test for mouse intersection with objects and alert the gui
+    // if we have moved between a point of no or any mesh selection
+    bool anySelection = (comb.TestMouseIntersection(x, y) != 0);
+
+    if (anySelection != m_meshesSelected)
+    {
+        m_meshesSelected = anySelection;
+        emit meshesSelectedChanged();
+    }
+}
+
 void FBORenderer::setMeshOpacity(float o)
 {
     if (o != comb.MeshOpacity())
