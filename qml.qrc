@@ -16,6 +16,7 @@
         <file alias="Slider.qml">Controls/Slider.qml</file>
         <file alias="TextBox.qml">Controls/TextBox.qml</file>
         <file alias="Toggle.qml">Controls/Toggle.qml</file>
+        <file alias="FileBrowser.qml">Controls/FileBrowser.qml</file>
     </qresource>
     <qresource prefix="/Keyboard">
         <file alias="KeyboardButton.qml">Keyboard/KeyboardButton.qml</file>

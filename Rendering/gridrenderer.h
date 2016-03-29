@@ -16,13 +16,14 @@ class ComboRendering;
 class GridRenderer
 {
 public:
-    GridRenderer(uint xSize, uint ySize, uint zSize, uint interval);
+    GridRenderer();
     ~GridRenderer();
     void Draw();
     void Init();
 
     void ProjMatDirty();
     void SceneMatDirty();
+    void GridDirty();
 
 private:
     GLuint mProgram = 0;
@@ -36,13 +37,15 @@ private:
 
     GLuint mVertexPositionBuffer;
 
-    GridGeneration::Grid *grid;
-    unsigned int vertCount;
+    GridGeneration::Grid *grid = nullptr;
+    unsigned int vertCount = 0;
 
     // We need flags to determine when matrices have changed as
     // to be able to give new ones to opengl
     bool dirtyProjMat = true;
     bool dirtySceneMat = true;
+    bool dirtyGrid = false;
+    bool gridLoaded = false;
 };
 
 #endif // GRIDRENDERER_H

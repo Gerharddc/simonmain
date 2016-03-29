@@ -99,8 +99,8 @@ template<typename T> T GlobalSetting<T>::Get()
 
 // Init the settings
 GlobalSetting<float> GlobalSettings::BedWidth = GlobalSetting<float>("BedWidth", 100.0f);
-GlobalSetting<float> GlobalSettings::BedLength = GlobalSetting<float>("Bedlength", 200.0f);
-GlobalSetting<float> GlobalSettings::BedHeight = GlobalSetting<float>("BedHeight", 150.0f);
+GlobalSetting<float> GlobalSettings::BedLength = GlobalSetting<float>("Bedlength", 100.0f);
+GlobalSetting<float> GlobalSettings::BedHeight = GlobalSetting<float>("BedHeight", 100.0f);
 
 // Explicitly specialize the GS classes
 template class GlobalSetting<float>;

@@ -105,7 +105,7 @@ namespace GridGeneration {
         }
 
         // Calculate the vertical back lines
-        for (unsigned int i = 0; i < xCount; i++)
+        for (unsigned int i = 0; i < yCount; i++)
         {
             float y = yInt * i;
 

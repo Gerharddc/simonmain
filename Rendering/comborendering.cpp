@@ -21,7 +21,7 @@ float ComboRendering::aimY = 50.0f;
 float ComboRendering::zoom = DefaultZoom;
 glm::mat4 ComboRendering::sceneTrans = glm::mat4();
 glm::mat4 ComboRendering::sceneProj = glm::mat4();
-GridRenderer ComboRendering::gridRen = GridRenderer(100, 100, 100, 10);
+GridRenderer ComboRendering::gridRen = GridRenderer();
 STLRenderer ComboRendering::stlRen = STLRenderer();
 ToolpathRenderer ComboRendering::tpRen = ToolpathRenderer();
 glm::mat4 ComboRendering::rotOrg = glm::mat4();
@@ -31,11 +31,15 @@ float ComboRendering::meshOpacity = 1.0f;
 
 ComboRendering::ComboRendering()
 {
+    // Load the initial models and set the grid up
+
     stlMesh = STLImporting::ImportSTL("bin.stl");
     stlRen.AddMesh(stlMesh);
 
     gcodePath = GCodeImporting::ImportGCode("test.gcode");
     tpRen.SetToolpath(gcodePath);
+
+    gridRen.GridDirty();
 }
 
 ComboRendering::~ComboRendering()

@@ -8,11 +8,11 @@
 #include "glhelper.h"
 #include "mathhelper.h"
 #include "comborendering.h"
+#include "Misc/globalsettings.h"
 
-GridRenderer::GridRenderer(uint xSize, uint ySize, uint zSize, uint interval)
+GridRenderer::GridRenderer()
 {
-    grid = GridGeneration::GenerateGrids(xSize, ySize, zSize, interval);
-    vertCount = grid->floatCount / 3;
+
 }
 
 GridRenderer::~GridRenderer()
@@ -28,6 +28,9 @@ GridRenderer::~GridRenderer()
         glDeleteBuffers(1, &mVertexPositionBuffer);
         mVertexPositionBuffer = 0;
     }
+
+    if (grid != nullptr)
+        delete grid;
 }
 
 void GridRenderer::Init()
@@ -43,9 +46,6 @@ void GridRenderer::Init()
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
 
     glGenBuffers(1, &mVertexPositionBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * grid->floatCount, grid->floats, GL_STATIC_DRAW);
-    delete grid;
 }
 
 void GridRenderer::ProjMatDirty()
@@ -56,6 +56,18 @@ void GridRenderer::ProjMatDirty()
 void GridRenderer::SceneMatDirty()
 {
     dirtySceneMat = true;
+}
+
+void GridRenderer::GridDirty()
+{
+    if (grid != nullptr)
+        delete grid;
+
+
+    grid = GridGeneration::GenerateGrids(GlobalSettings::BedWidth.Get(), GlobalSettings::BedLength.Get(), GlobalSettings::BedHeight.Get(), 10.0f);
+    vertCount = grid->floatCount / 3;
+
+    dirtyGrid = true;
 }
 
 void GridRenderer::Draw()
@@ -81,6 +93,19 @@ void GridRenderer::Draw()
     {  
         glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
         dirtyProjMat = false;
+    }
+
+    if (vertCount == 0)
+        return;
+
+    if (dirtyGrid)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, mVertexPositionBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * grid->floatCount, grid->floats, GL_STATIC_DRAW);
+
+        delete grid;
+        grid = nullptr;
+        dirtyGrid = false;
     }
 
     glDrawArrays(GL_LINES, 0, vertCount);

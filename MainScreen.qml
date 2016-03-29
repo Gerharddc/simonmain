@@ -12,12 +12,31 @@ Rectangle {
     height: 800
     color: Style.bgMain
 
+    function addStl() {
+        fileBrowser.open()
+    }
+
     TopDrawer {
         id: topDrawer
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
         z: 100;
+    }
+
+    FileBrowser {
+        id: fileBrowser
+        height: parent.height - topDrawer.iClosedHeight
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        z: 90
+    }
+
+    Keyboard {
+        objectName: "keyboard"
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
     }
 
     BottomDrawer {
@@ -31,12 +50,6 @@ Rectangle {
         Behavior on anchors.bottomMargin {
             PropertyAnimation { }
         }
-    }
-
-    Keyboard {
-        objectName: "keyboard"
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
     }
 
     Renderer {
@@ -90,7 +103,6 @@ Rectangle {
             onClicked: {
                 renderer.resetView(true)
                 renderer.panView(0, renderer.height / 3)
-                //renderer.rotateView(1, 1)
             }
         }
 
