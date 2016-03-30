@@ -51,10 +51,10 @@ struct MeshGroupData
     // The offset that the matrix is applying to the mesh
     glm::vec3 moveOnMat;
 
-    // The radius of the bounding sphere
+    // The radius of the bounding sphere (scaled)
     float bSphereRadius;
 
-    // Dimensions
+    // Dimensions (scaled)
     float length, width, height;
 
     void Destroy();
@@ -104,6 +104,7 @@ private:
 
     void LoadMesh(MeshGroupData &mg, Mesh *mesh);
     std::map<Mesh*, MeshGroupData> meshGroups;
+    void PackMeshes();
 
     // We need flags to determine when matrices have changed as
     // to be able to give new ones to opengl

@@ -101,16 +101,21 @@ inline void UpdateTempMat(MeshGroupData &mg)
     mg.sceneMatsDirty = true;
 }
 
-void STLRenderer::AddMesh(Mesh *mesh)
+void STLRenderer::PackMeshes()
 {
-    // Add a new mesh data group to the vector that contains all the metadata and helpers
-    MeshGroupData mg;
-    mg.meshDirty = true;
-    meshGroups.emplace(mesh, mg);
-
-    // Now we need to try and arrange all the meshes equally
     // TODO: this can probably be improved
     // TODO: run this async
+
+    // If there is only one mesh then centre it
+    if (meshGroups.size() == 1)
+    {
+        auto &pair = *meshGroups.begin();
+        MeshGroupData &mg = pair.second;
+        mg.moveOnMat.x = GlobalSettings::BedWidth.Get() / 2.0f;
+        mg.moveOnMat.y = GlobalSettings::BedLength.Get() / 2.0f;
+        UpdateTempMat(mg);
+        return;
+    }
 
     // Create a list of those that still need placing
     std::vector<MeshGroupData*> mgsLeft;
@@ -121,17 +126,20 @@ void STLRenderer::AddMesh(Mesh *mesh)
     // Start by packing according to the bed length, we will try to fill the length with the longest object first,
     // continue filling the length with objects almost as wide as the first until the length is full and then move
     // on to a new row that will do the same
-    std::vector<std::vector<MeshGroupData*>> grid;
+    std::vector<std::vector<std::tuple<MeshGroupData*, float, float>>> grid;
+    std::vector<float> rowWidths; // TODO: combine maybe
+    std::vector<float> rowLefts;
+    float gridWidth = 0.0f;
     while (mgsLeft.size() != 0)
     {
         // Start a new row
-        std::vector<MeshGroupData*> row;
+        std::vector<std::tuple<MeshGroupData*, float, float>> row;
         float lLeft = GlobalSettings::BedLength.Get();
 
         // Add the longest element
         MeshGroupData* longestMg;
         float longestL = 0.0f;
-        float width = 0.0f;
+        float longestW = 0.0f;
         bool turned = false;
         unsigned int i = 0;
         for (i = 0; i < mgsLeft.size(); i++)
@@ -140,14 +148,14 @@ void STLRenderer::AddMesh(Mesh *mesh)
             if (mg->length > mg->width && mg->length > longestL)
             {
                 longestL = mg->length;
-                width = mg->width;
+                longestW = mg->width;
                 turned = false;
                 longestMg = mg;
             }
             else if (mg->width > longestL)
             {
                 longestL = mg->width;
-                width = mg->length;
+                longestW = mg->length;
                 turned = true;
                 longestMg = mg;
             }
@@ -157,12 +165,12 @@ void STLRenderer::AddMesh(Mesh *mesh)
         if (turned)
         {
             longestMg->rotOnMat.z = 90.0f;
-            UpdateTempMat(*longestMg);
+            //UpdateTempMat(*longestMg);
         }
 
         // Add to row
-        row.push_back(longestMg);
-        mgsLeft.erase(mgsLeft.begin() + i);
+        row.push_back(std::make_tuple(longestMg, longestW, longestL));
+        mgsLeft.erase(mgsLeft.begin() + i - 1);
 
         lLeft -= longestL;
 
@@ -178,8 +186,8 @@ void STLRenderer::AddMesh(Mesh *mesh)
 
             {
                 MeshGroupData* mg = mgsLeft[i];
-                float wDif = std::abs(width - mg->width);
-                float lDif = std::abs(width - mg->length);
+                float wDif = std::abs(longestW - mg->width);
+                float lDif = std::abs(longestW - mg->length);
 
 
                 if (wDif < lDif)
@@ -197,8 +205,8 @@ void STLRenderer::AddMesh(Mesh *mesh)
             for (j = i + 1; j < mgsLeft.size(); j++)
             {
                 MeshGroupData* mg = mgsLeft[j];
-                float wDif = std::abs(width - mg->width);
-                float lDif = std::abs(width - mg->length);
+                float wDif = std::abs(longestW - mg->width);
+                float lDif = std::abs(longestW - mg->length);
 
                 if (wDif < lDif)
                 {
@@ -229,26 +237,76 @@ void STLRenderer::AddMesh(Mesh *mesh)
         for (i = 0; i < temp.size(); i++)
         {
             MeshGroupData* mg = temp[i];
-            float space = (turneds[i]) ? mg->length : mg->width;
-            if ((lLeft - space) > 0)
+            float width, length;
+
+            if (turneds[i])
             {
-                lLeft -= space;
+                width = mg->length;
+                length = mg->width;
+            }
+            else
+            {
+                length = mg->length;
+                width = mg->width;
+            }
+
+            if ((lLeft - length) > 0)
+            {
+                lLeft -= length;
 
                 // Turn 90 degs if needed
                 if (turneds[i])
                 {
                     mg->rotOnMat.z = 90.0f;
-                    UpdateTempMat(*mg);
+                    //UpdateTempMat(*mg);
                 }
 
                 // Add to row
-                row.push_back(mg);
+                row.push_back(std::make_tuple(mg, width, length));
                 mgsLeft.erase(std::remove(mgsLeft.begin(), mgsLeft.end(), mg));
+
+                // Update the row width
+                longestW = std::max(longestW, width);
             }
         }
 
         grid.push_back(row);
+        rowWidths.push_back(longestW);
+        gridWidth += longestW;
+        rowLefts.push_back(lLeft);
     }
+
+    // Now we can place the items according to the grid
+    // If the bed is too small then go over it to alert the user
+    float xSpacing = std::max((GlobalSettings::BedWidth.Get() - gridWidth) / (grid.size() + 1), 5.0f);
+    float curX = 0.0f;
+    float curY = 0.0f;
+    for (unsigned int i = 0; i < grid.size(); i++)
+    {
+        std::vector<std::tuple<MeshGroupData*, float, float>> &row = grid[i];
+        curX += xSpacing + rowWidths[i];
+        float rowX = curX - (rowWidths[i] / 2.0f);
+
+        for (std::tuple<MeshGroupData*, float, float> item : row)
+        {
+            MeshGroupData* mg;
+            float width, length;
+            std::tie(mg, width, length) = item;
+            float ySpacing = rowLefts[i] / (row.size() + 1);
+            curY += ySpacing + length;
+            mg->moveOnMat.x = rowX;
+            mg->moveOnMat.y = curY - (length / 2.0f);
+            UpdateTempMat(*mg);
+        }
+    }
+}
+
+void STLRenderer::AddMesh(Mesh *mesh)
+{
+    // Add a new mesh data group to the vector that contains all the metadata and helpers
+    MeshGroupData mg;
+    mg.meshDirty = true;
+    meshGroups.emplace(mesh, mg);
 
     // Signal the global dirty mesh flag
     dirtyMesh = true;
@@ -267,6 +325,12 @@ void STLRenderer::RemoveMesh(Mesh *mesh)
 void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 {
     MeshGroupData &mg = meshGroups[mesh];
+
+    // Update the dimension
+    mg.bSphereRadius *= absScale / mg.scaleOnMat;
+    mg.length *= absScale / mg.scaleOnMat;
+    mg.width *= absScale / mg.scaleOnMat;
+    mg.height *= absScale / mg.scaleOnMat;
 
     mg.scaleOnMat = absScale;
 
@@ -322,7 +386,8 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     mg.height = mesh->MaxVec.z - mesh->MinVec.z;
 
     mg.meshCentre = glm::vec3(-(mesh->MaxVec.x + mesh->MinVec.x) / 2.0f, -(mesh->MaxVec.y + mesh->MinVec.y) / 2.0f, -(mesh->MaxVec.z + mesh->MinVec.z) / 2.0f);
-    mg.moveOnMat = glm::vec3(GlobalSettings::BedWidth.Get() / 2.0f, GlobalSettings::BedLength.Get() / 2.0f, mg.height / 2.0f);
+    //mg.moveOnMat = glm::vec3(GlobalSettings::BedWidth.Get() / 2.0f, GlobalSettings::BedLength.Get() / 2.0f, mg.height / 2.0f);
+    mg.moveOnMat.z = mg.height / 2.0f;
 
     // Create a bounding sphere around the centre of the mesh using the largest distance as radius
     mg.bSphereRadius = std::max(mg.length, std::max(mg.width, mg.height)) / 2.0f;
@@ -342,7 +407,7 @@ bool STLRenderer::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const 
     auto &mg = meshGroups[mesh];
 
     glm::vec3 sect, norm, sect2, norm2;
-    if (glm::intersectLineSphere(near, far, mg.moveOnMat, mg.bSphereRadius * mg.scaleOnMat, sect, norm, sect2, norm2))
+    if (glm::intersectLineSphere(near, far, mg.moveOnMat, mg.bSphereRadius, sect, norm, sect2, norm2))
     {
         glm::vec4 s1 = MV * glm::vec4(sect, 1.0f);
         glm::vec4 s2 = MV * glm::vec4(sect2, 1.0f);
@@ -417,6 +482,8 @@ void STLRenderer::Draw()
             if (gPair.second.meshDirty)
                 LoadMesh(gPair.second, gPair.first);
         }
+
+        PackMeshes(); // TODO: async
 
         dirtyMesh = false;
     }
