@@ -43,13 +43,8 @@ void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
     mg->meshMat = mg->gpuMat;
 }
 
-void MeshGroupData::Destroy()
+MeshGroupData::~MeshGroupData()
 {
-    // A destroy function is used instead of a destructor because
-    // the std::vector will be constantly moving this thing around
-    // and it's way too much effort to use move constructors for this
-    // limited scope class
-
     // Delete the buffers
 
     if (mVertexPositionBuffer != 0)
@@ -69,7 +64,9 @@ STLRenderer::~STLRenderer()
 {
     // Delete all the meshes on the heap
     for (auto &gPair : meshGroups)
-        gPair.second.Destroy();
+    {
+        delete gPair.second;
+    }
 
     // Delete the program
     if (mProgram != 0)
@@ -107,7 +104,7 @@ void STLRenderer::PackMeshes()
     // TODO: run this async
 
     // If there is only one mesh then centre it
-    if (meshGroups.size() == 1)
+    /*if (meshGroups.size() == 1)
     {
         auto &pair = *meshGroups.begin();
         MeshGroupData &mg = pair.second;
@@ -115,13 +112,16 @@ void STLRenderer::PackMeshes()
         mg.moveOnMat.y = GlobalSettings::BedLength.Get() / 2.0f;
         UpdateTempMat(mg);
         return;
-    }
+    }*/
 
     // Create a list of those that still need placing
     std::vector<MeshGroupData*> mgsLeft;
     mgsLeft.reserve(meshGroups.size());
     for (auto pair : meshGroups)
-        mgsLeft.push_back(&pair.second);
+    {
+        //MeshGroupData &mg = pair.second;
+        mgsLeft.push_back(pair.second);
+    }
 
     // Start by packing according to the bed length, we will try to fill the length with the longest object first,
     // continue filling the length with objects almost as wide as the first until the length is full and then move
@@ -130,6 +130,7 @@ void STLRenderer::PackMeshes()
     std::vector<float> rowWidths; // TODO: combine maybe
     std::vector<float> rowLefts;
     float gridWidth = 0.0f;
+
     while (mgsLeft.size() != 0)
     {
         // Start a new row
@@ -141,8 +142,8 @@ void STLRenderer::PackMeshes()
         float longestL = 0.0f;
         float longestW = 0.0f;
         bool turned = false;
-        unsigned int i = 0;
-        for (i = 0; i < mgsLeft.size(); i++)
+        int i = 0;
+        for (i = 0; i < (int)mgsLeft.size(); i++)
         {
             MeshGroupData* mg = mgsLeft[i];
             if (mg->length > mg->width && mg->length > longestL)
@@ -179,7 +180,7 @@ void STLRenderer::PackMeshes()
 
         // Start by sorting according to closest match
         bool turneds[mgsLeft.size()];
-        for (i = 0; i < mgsLeft.size() - 1; i++)
+        for (i = 0; i < ((int)mgsLeft.size() - 1); i++)
         {
             float dif, dif2;
             unsigned int j;
@@ -234,7 +235,7 @@ void STLRenderer::PackMeshes()
 
         // Try to fit the thinnest until full
         auto temp = mgsLeft;
-        for (i = 0; i < temp.size(); i++)
+        for (i = 0; i < (int)temp.size(); i++)
         {
             MeshGroupData* mg = temp[i];
             float width, length;
@@ -296,6 +297,7 @@ void STLRenderer::PackMeshes()
             curY += ySpacing + length;
             mg->moveOnMat.x = rowX;
             mg->moveOnMat.y = curY - (length / 2.0f);
+            qDebug() << "x: " << mg->moveOnMat.x << " y: " << mg->moveOnMat.y;
             UpdateTempMat(*mg);
         }
     }
@@ -304,8 +306,8 @@ void STLRenderer::PackMeshes()
 void STLRenderer::AddMesh(Mesh *mesh)
 {
     // Add a new mesh data group to the vector that contains all the metadata and helpers
-    MeshGroupData mg;
-    mg.meshDirty = true;
+    MeshGroupData *mg = new MeshGroupData;
+    mg->meshDirty = true;
     meshGroups.emplace(mesh, mg);
 
     // Signal the global dirty mesh flag
@@ -315,7 +317,7 @@ void STLRenderer::AddMesh(Mesh *mesh)
 void STLRenderer::RemoveMesh(Mesh *mesh)
 {
     // Destroy the mesh and then remove it
-    meshGroups[mesh].Destroy();
+    delete meshGroups[mesh];
     meshGroups.erase(mesh);
 }
 
@@ -324,7 +326,7 @@ void STLRenderer::RemoveMesh(Mesh *mesh)
 // This method applies an absolute scale to the original mesh
 void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 {
-    MeshGroupData &mg = meshGroups[mesh];
+    MeshGroupData &mg = *meshGroups[mesh];
 
     // Update the dimension
     mg.bSphereRadius *= absScale / mg.scaleOnMat;
@@ -340,7 +342,7 @@ void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 // This method centres the mesh around the current coordinates
 void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
 {
-    MeshGroupData &mg = meshGroups[mesh];
+    MeshGroupData &mg = *meshGroups[mesh];
 
     mg.moveOnMat.x = absX;
     mg.moveOnMat.y = absY;
@@ -351,7 +353,7 @@ void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
 // This method places the mesh an absolute height above the bed
 void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
 {
-    MeshGroupData &mg = meshGroups[mesh];
+    MeshGroupData &mg = *meshGroups[mesh];
 
     // The model has its 0 z at its centre so we need to account for that
     mg.moveOnMat.z = absZ + (mg.height / 2.0f);
@@ -362,7 +364,7 @@ void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
 // This method applies an absolute rotation to the original mesh
 void STLRenderer::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
 {
-    MeshGroupData &mg = meshGroups[mesh];
+    MeshGroupData &mg = *meshGroups[mesh];
 
     mg.rotOnMat = glm::vec3(absX, absY, absZ);
 
@@ -404,7 +406,7 @@ inline void debugVec(QString name, glm::vec3 &v)
 
 bool STLRenderer::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ)
 {
-    auto &mg = meshGroups[mesh];
+    auto &mg = *meshGroups[mesh];
 
     glm::vec3 sect, norm, sect2, norm2;
     if (glm::intersectLineSphere(near, far, mg.moveOnMat, mg.bSphereRadius, sect, norm, sect2, norm2))
@@ -421,35 +423,35 @@ bool STLRenderer::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const 
 
 void STLRenderer::ColorMesh(Mesh *mesh, glm::vec4 colorAlpha)
 {
-    meshGroups[mesh].color = colorAlpha;
+    meshGroups[mesh]->color = colorAlpha;
 }
 
 void STLRenderer::ColorMesh(Mesh *mesh, glm::vec3 color)
 {
-    meshGroups[mesh].color = glm::vec4(color, meshGroups[mesh].color.w);
+    meshGroups[mesh]->color = glm::vec4(color, meshGroups[mesh]->color.w);
 }
 
 void STLRenderer::ColorMesh(Mesh *mesh, float alpha)
 {
-    meshGroups[mesh].color.w = alpha;
+    meshGroups[mesh]->color.w = alpha;
 }
 
 void STLRenderer::ColorAll(glm::vec4 colorAlpha)
 {
     for (auto &pair : meshGroups)
-        pair.second.color = colorAlpha;
+        pair.second->color = colorAlpha;
 }
 
 void STLRenderer::ColorAll(glm::vec3 color)
 {
     for (auto &pair : meshGroups)
-        pair.second.color = glm::vec4(color, pair.second.color.w);
+        pair.second->color = glm::vec4(color, pair.second->color.w);
 }
 
 void STLRenderer::ColorAll(float alpha)
 {
     for (auto &pair : meshGroups)
-        pair.second.color.w = alpha;
+        pair.second->color.w = alpha;
 }
 
 void STLRenderer::Init()
@@ -479,8 +481,8 @@ void STLRenderer::Draw()
     {
         for (auto &gPair : meshGroups)
         {
-            if (gPair.second.meshDirty)
-                LoadMesh(gPair.second, gPair.first);
+            if (gPair.second->meshDirty)
+                LoadMesh(*gPair.second, gPair.first);
         }
 
         PackMeshes(); // TODO: async
@@ -496,7 +498,7 @@ void STLRenderer::Draw()
 
     for (auto &gPair : meshGroups)
     {
-        MeshGroupData &mg = gPair.second;
+        MeshGroupData &mg = *gPair.second;
 
         if (mg.mVertexPositionBuffer == 0 || mg.mVertexNormalBuffer == 0)
             continue;

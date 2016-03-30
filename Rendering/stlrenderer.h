@@ -57,7 +57,7 @@ struct MeshGroupData
     // Dimensions (scaled)
     float length, width, height;
 
-    void Destroy();
+    ~MeshGroupData();
 };
 
 class STLRenderer
@@ -103,7 +103,7 @@ private:
     GLint mColorUniformLocation;
 
     void LoadMesh(MeshGroupData &mg, Mesh *mesh);
-    std::map<Mesh*, MeshGroupData> meshGroups;
+    std::map<Mesh*, MeshGroupData*> meshGroups;
     void PackMeshes();
 
     // We need flags to determine when matrices have changed as
