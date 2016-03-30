@@ -36,7 +36,6 @@ struct Triangle;
 struct Vertex
 {
     std::vector<std::size_t> trigIdxs;
-    //std::size_t trigIdxs[10];
 };
 
 struct Triangle
@@ -160,7 +159,6 @@ class Toolpath;
 class TPDataChunk
 {
     friend class Toolpath;
-    //friend class TPDataChunk;
 
 private:
     ushort *indices = nullptr;

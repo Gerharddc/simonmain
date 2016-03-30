@@ -470,6 +470,7 @@ void STLRenderer::Draw()
         delete meshGroups[mesh];
         meshGroups.erase(mesh);
         toDelete.pop();
+        dirtyMesh = true;
     }
 
     if (dirtyMesh)

@@ -140,8 +140,10 @@ void FBORenderer::setCurMeshPos(QPointF pos)
 
 void FBORenderer::removeSelectedMeshes()
 {
-    for (Mesh *mesh : comb.getSelectedMeshes())
+    for (Mesh *mesh : std::set<Mesh*>(comb.getSelectedMeshes()))
         comb.RemoveMesh(mesh);
+
+    emit meshesSelectedChanged();
 
     update();
 }

@@ -70,6 +70,7 @@ void ComboRendering::RemoveMesh(Mesh *mesh)
 {
     stlRen.RemoveMesh(mesh);
     stlMeshes.erase(mesh);
+    selectedMeshes.erase(mesh);
     delete mesh;
 }
 
