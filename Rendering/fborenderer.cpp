@@ -83,6 +83,8 @@ void FBORenderer::loadMesh(QString path)
 {
     comb.LoadMesh(path.toStdString().c_str());
     update();
+
+    emit curMeshPosChanged();
 }
 
 void FBORenderer::testMouseIntersection(float x, float y)
@@ -98,6 +100,9 @@ void FBORenderer::testMouseIntersection(float x, float y)
 
     if (count != old)
         emit meshesSelectedChanged();
+
+    if (old != 1 && count == 1)
+        emit curMeshPosChanged();
 }
 
 void FBORenderer::setMeshOpacity(float o)
@@ -135,7 +140,18 @@ QPointF FBORenderer::curMeshPos()
 
 void FBORenderer::setCurMeshPos(QPointF pos)
 {
-    comb.SetMeshPos(*comb.getSelectedMeshes().begin(), pos.x(), pos.y());
+    if (meshesSelected() == 1)
+    {
+        auto old = curMeshPos();
+
+        // Filter out some noise
+        if (std::abs((pos - old).manhattanLength()) > 0.1)
+        {
+            comb.SetMeshPos(*comb.getSelectedMeshes().begin(), pos.x(), pos.y());
+            emit curMeshPosChanged();
+            update();
+        }
+    }
 }
 
 void FBORenderer::removeSelectedMeshes()
@@ -144,6 +160,7 @@ void FBORenderer::removeSelectedMeshes()
         comb.RemoveMesh(mesh);
 
     emit meshesSelectedChanged();
+    emit curMeshPosChanged();
 
     update();
 }

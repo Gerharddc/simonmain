@@ -108,7 +108,7 @@ private:
     void LoadMesh(MeshGroupData &mg, Mesh *mesh);
     std::map<Mesh*, MeshGroupData*> meshGroups;
     void PackMeshes();
-    std::queue<Mesh*> toDelete;
+    std::queue<MeshGroupData*> toDelete;
 
     // We need flags to determine when matrices have changed as
     // to be able to give new ones to opengl

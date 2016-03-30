@@ -82,6 +82,12 @@ Rectangle {
                 PropertyAnimation {}
             }
 
+            Behavior on curMeshPos {
+                PropertyAnimation {
+                    id: curMeshPosAnimation
+                }
+            }
+
             Toggle {
                 id: toggler
                 anchors.top: parent.top

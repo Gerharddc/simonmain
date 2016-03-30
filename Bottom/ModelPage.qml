@@ -22,7 +22,7 @@ BottomPage {
         }
 
         Text {
-            id: _text
+            id: txtSelect
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: btnAdd.bottom
             anchors.topMargin: 15
@@ -45,6 +45,130 @@ BottomPage {
 
             onClicked: {
                 renderer.removeSelectedMeshes()
+            }
+        }
+
+        Item {
+            anchors.top: btnRemove.bottom
+            anchors.topMargin: 15
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            visible: renderer.meshesSelected === 1
+
+            Label {
+                id: txtPos
+                text: 'Selected model position'
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                isDimmable: true
+            }
+
+            Row {
+                spacing: 10
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: txtPos.bottom
+                anchors.topMargin: 15
+
+                Item {
+                    width: (parent.width - 20) / 3
+                    height: childrenRect.height
+
+                    Label {
+                        id: txtX
+                        text: 'X'
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        isDimmable: true
+                    }
+
+                    TextBox {
+                        id: tboxX
+                        anchors.top: txtX.bottom
+                        anchors.topMargin: 5
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        isDimmable: true
+
+                        Binding on text {
+                            when: !tboxX.isActive && !curMeshPosAnimation.running
+                            value: renderer.curMeshPos.x.toFixed(2).replace(/\.?0+$/, "")
+                        }
+                    }
+
+                    Binding {
+                        target: renderer
+                        property: "curMeshPos.x"
+                        value: tboxX.text
+                    }
+                }
+
+                Item {
+                    width: (parent.width - 20) / 3
+                    height: childrenRect.height
+
+                    Label {
+                        id: txtY
+                        text: 'Y'
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        isDimmable: true
+                    }
+
+                    TextBox {
+                        id: tboxY
+                        anchors.top: txtY.bottom
+                        anchors.topMargin: 5
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        isDimmable: true
+
+                        Binding on text {
+                            when: !tboxY.isActive && !curMeshPosAnimation.running
+                            value: renderer.curMeshPos.y.toFixed(2).replace(/\.?0+$/, "")
+                        }
+                    }
+
+                    Binding {
+                        target: renderer
+                        property: "curMeshPos.y"
+                        value: tboxY.text
+                    }
+                }
+
+                Item {
+                    width: (parent.width - 20) / 3
+                    height: childrenRect.height
+
+                    Label {
+                        id: txtZ
+                        text: 'Z'
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        isDimmable: true
+                    }
+
+                    TextBox {
+                        id: tboxZ
+                        anchors.top: txtZ.bottom
+                        anchors.topMargin: 5
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        isDimmable: true
+
+                        /*Binding on text {
+                            when: !tboxZ.isActive && !curMeshPosAnimation.running
+                            value: renderer.curMeshPos.x.toFixed(2).replace(/\.?0+$/, "")
+                        }*/
+                    }
+
+                    /*Binding {
+                        target: renderer
+                        property: "curMeshPos.x"
+                        value: tboxZ.text
+                    }*/
+                }
             }
         }
 

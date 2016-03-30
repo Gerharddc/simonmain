@@ -299,6 +299,21 @@ void STLRenderer::AddMesh(Mesh *mesh)
     mg->meshDirty = true;
     meshGroups.emplace(mesh, mg);
 
+    // Calculate the neccessary dimensions for the mesh
+
+    mg->width = mesh->MaxVec.x - mesh->MinVec.x;
+    mg->length = mesh->MaxVec.y - mesh->MinVec.y;
+    mg->height = mesh->MaxVec.z - mesh->MinVec.z;
+
+    mg->meshCentre = glm::vec3(-(mesh->MaxVec.x + mesh->MinVec.x) / 2.0f, -(mesh->MaxVec.y + mesh->MinVec.y) / 2.0f, -(mesh->MaxVec.z + mesh->MinVec.z) / 2.0f);
+    mg->moveOnMat.z = mg->height / 2.0f;
+
+    // Create a bounding sphere around the centre of the mesh using the largest distance as radius
+    mg->bSphereRadius = std::max(mg->length, std::max(mg->width, mg->height)) / 2.0f;
+
+    // Try to pack the meshes
+    PackMeshes(); // TODO: async
+
     // Signal the global dirty mesh flag
     dirtyMesh = true;
 }
@@ -306,7 +321,11 @@ void STLRenderer::AddMesh(Mesh *mesh)
 void STLRenderer::RemoveMesh(Mesh *mesh)
 {
     // Queue for deletion in the opengl thread
-    toDelete.push(mesh);
+    toDelete.push(meshGroups[mesh]);
+    meshGroups.erase(mesh);
+
+    // Try to repack the meshes
+    PackMeshes(); // TODO: async
 }
 
 // TODO: these transofrmations hould probably be applied in a bg thread
@@ -375,18 +394,6 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexNormalBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
     mesh->dumpFlatNorms();
-
-    mg.width = mesh->MaxVec.x - mesh->MinVec.x;
-    mg.length = mesh->MaxVec.y - mesh->MinVec.y;
-    mg.height = mesh->MaxVec.z - mesh->MinVec.z;
-
-    mg.meshCentre = glm::vec3(-(mesh->MaxVec.x + mesh->MinVec.x) / 2.0f, -(mesh->MaxVec.y + mesh->MinVec.y) / 2.0f, -(mesh->MaxVec.z + mesh->MinVec.z) / 2.0f);
-    mg.moveOnMat.z = mg.height / 2.0f;
-
-    // Create a bounding sphere around the centre of the mesh using the largest distance as radius
-    mg.bSphereRadius = std::max(mg.length, std::max(mg.width, mg.height)) / 2.0f;
-
-    UpdateTempMat(mg);
 
     mg.meshDirty = false;
 }
@@ -466,9 +473,7 @@ void STLRenderer::Draw()
 
     while (toDelete.size() != 0)
     {
-        Mesh *mesh = toDelete.front();
-        delete meshGroups[mesh];
-        meshGroups.erase(mesh);
+        delete toDelete.front();
         toDelete.pop();
         dirtyMesh = true;
     }
@@ -480,8 +485,6 @@ void STLRenderer::Draw()
             if (gPair.second->meshDirty)
                 LoadMesh(*gPair.second, gPair.first);
         }
-
-        PackMeshes(); // TODO: async
 
         dirtyMesh = false;
     }
