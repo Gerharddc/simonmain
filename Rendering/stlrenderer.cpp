@@ -121,6 +121,7 @@ void STLRenderer::PackMeshes()
     {
         //MeshGroupData &mg = pair.second;
         mgsLeft.push_back(pair.second);
+        qDebug() << "Snd: " << pair.second;
     }
 
     // Start by packing according to the bed length, we will try to fill the length with the longest object first,
@@ -142,8 +143,7 @@ void STLRenderer::PackMeshes()
         float longestL = 0.0f;
         float longestW = 0.0f;
         bool turned = false;
-        int i = 0;
-        for (i = 0; i < (int)mgsLeft.size(); i++)
+        for (unsigned int i = 0; i < mgsLeft.size(); i++)
         {
             MeshGroupData* mg = mgsLeft[i];
             if (mg->length > mg->width && mg->length > longestL)
@@ -163,15 +163,12 @@ void STLRenderer::PackMeshes()
         }
 
         // Turn 90 degs if needed
-        if (turned)
-        {
-            longestMg->rotOnMat.z = 90.0f;
-            //UpdateTempMat(*longestMg);
-        }
+        longestMg->rotOnMat.z = (turned) ? glm::radians(90.0f) : 0.0f;
 
         // Add to row
+        qDebug() << "Added " << longestMg;
         row.push_back(std::make_tuple(longestMg, longestW, longestL));
-        mgsLeft.erase(mgsLeft.begin() + i - 1);
+        mgsLeft.erase(std::remove(mgsLeft.begin(), mgsLeft.end(), longestMg));
 
         lLeft -= longestL;
 
@@ -180,7 +177,7 @@ void STLRenderer::PackMeshes()
 
         // Start by sorting according to closest match
         bool turneds[mgsLeft.size()];
-        for (i = 0; i < ((int)mgsLeft.size() - 1); i++)
+        for (int i = 0; i < ((int)mgsLeft.size() - 1); i++)
         {
             float dif, dif2;
             unsigned int j;
@@ -235,7 +232,7 @@ void STLRenderer::PackMeshes()
 
         // Try to fit the thinnest until full
         auto temp = mgsLeft;
-        for (i = 0; i < (int)temp.size(); i++)
+        for (unsigned int i = 0; i < temp.size(); i++)
         {
             MeshGroupData* mg = temp[i];
             float width, length;
@@ -256,13 +253,10 @@ void STLRenderer::PackMeshes()
                 lLeft -= length;
 
                 // Turn 90 degs if needed
-                if (turneds[i])
-                {
-                    mg->rotOnMat.z = 90.0f;
-                    //UpdateTempMat(*mg);
-                }
+                mg->rotOnMat.z = (turneds[i]) ? glm::radians(90.0f) : 0.0f;
 
                 // Add to row
+                qDebug() << "Added " << mg;
                 row.push_back(std::make_tuple(mg, width, length));
                 mgsLeft.erase(std::remove(mgsLeft.begin(), mgsLeft.end(), mg));
 
@@ -281,12 +275,12 @@ void STLRenderer::PackMeshes()
     // If the bed is too small then go over it to alert the user
     float xSpacing = std::max((GlobalSettings::BedWidth.Get() - gridWidth) / (grid.size() + 1), 5.0f);
     float curX = 0.0f;
-    float curY = 0.0f;
     for (unsigned int i = 0; i < grid.size(); i++)
     {
         std::vector<std::tuple<MeshGroupData*, float, float>> &row = grid[i];
         curX += xSpacing + rowWidths[i];
         float rowX = curX - (rowWidths[i] / 2.0f);
+        float curY = 0.0f;
 
         for (std::tuple<MeshGroupData*, float, float> item : row)
         {
@@ -297,7 +291,7 @@ void STLRenderer::PackMeshes()
             curY += ySpacing + length;
             mg->moveOnMat.x = rowX;
             mg->moveOnMat.y = curY - (length / 2.0f);
-            qDebug() << "x: " << mg->moveOnMat.x << " y: " << mg->moveOnMat.y;
+            qDebug() << mg << " x: " << mg->moveOnMat.x << " y: " << mg->moveOnMat.y;
             UpdateTempMat(*mg);
         }
     }
