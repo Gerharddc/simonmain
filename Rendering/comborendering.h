@@ -59,6 +59,7 @@ public:
     void SetMeshOpacity(float opacity);
     void SetTpOpacity(float opacity);
     void SetMeshPos(Mesh *mesh, float x, float y);
+    void SetMeshScale(Mesh *mesh, float scale);
     float MeshOpacity();
     float TpOpacity();
     unsigned short TestMouseIntersection(float x, float y, bool &needUpdate);

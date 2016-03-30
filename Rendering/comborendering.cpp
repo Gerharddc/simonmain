@@ -303,3 +303,8 @@ void ComboRendering::SetMeshPos(Mesh *mesh, float x, float y)
 {
     stlRen.CentreMesh(mesh, x, y);
 }
+
+void ComboRendering::SetMeshScale(Mesh *mesh, float scale)
+{
+    stlRen.ScaleMesh(mesh, scale);
+}

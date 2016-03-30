@@ -333,9 +333,15 @@ void STLRenderer::RemoveMesh(Mesh *mesh)
 // This method applies an absolute scale to the original mesh
 void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 {
+    // We can't scale to 0
+    if (absScale == 0)
+        absScale = 0.01f;
+
     MeshGroupData &mg = *meshGroups[mesh];
 
     // Update the dimension
+    mg.moveOnMat.z -= (mg.height / 2.0f);
+    mg.moveOnMat.z += (mg.height / 2.0f) * absScale / mg.scaleOnMat;
     mg.bSphereRadius *= absScale / mg.scaleOnMat;
     mg.length *= absScale / mg.scaleOnMat;
     mg.width *= absScale / mg.scaleOnMat;

@@ -58,7 +58,7 @@ BottomPage {
 
             Label {
                 id: txtPos
-                text: 'Selected model position'
+                text: 'Selected model properties'
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 isDimmable: true
@@ -77,7 +77,7 @@ BottomPage {
 
                     Label {
                         id: txtX
-                        text: 'X'
+                        text: 'X Pos:'
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         isDimmable: true
@@ -110,7 +110,7 @@ BottomPage {
 
                     Label {
                         id: txtY
-                        text: 'Y'
+                        text: 'Y Pos:'
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         isDimmable: true
@@ -142,32 +142,32 @@ BottomPage {
                     height: childrenRect.height
 
                     Label {
-                        id: txtZ
-                        text: 'Z'
+                        id: txtS
+                        text: 'Scale:'
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         isDimmable: true
                     }
 
                     TextBox {
-                        id: tboxZ
-                        anchors.top: txtZ.bottom
+                        id: tboxS
+                        anchors.top: txtS.bottom
                         anchors.topMargin: 5
                         anchors.left: parent.left
                         anchors.right: parent.right
                         isDimmable: true
 
-                        /*Binding on text {
-                            when: !tboxZ.isActive && !curMeshPosAnimation.running
-                            value: renderer.curMeshPos.x.toFixed(2).replace(/\.?0+$/, "")
-                        }*/
+                        Binding on text {
+                            when: !tboxS.isActive && !curMeshScaleAnimation.running
+                            value: renderer.curMeshScale
+                        }
                     }
 
-                    /*Binding {
+                    Binding {
                         target: renderer
-                        property: "curMeshPos.x"
-                        value: tboxZ.text
-                    }*/
+                        property: "curMeshScale"
+                        value: tboxS.text
+                    }
                 }
             }
         }

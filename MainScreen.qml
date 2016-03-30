@@ -88,6 +88,12 @@ Rectangle {
                 }
             }
 
+            Behavior on curMeshScale {
+                PropertyAnimation {
+                    id: curMeshScaleAnimation
+                }
+            }
+
             Toggle {
                 id: toggler
                 anchors.top: parent.top

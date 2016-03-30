@@ -38,11 +38,21 @@ public:
     QPointF curMeshPos();
     void setCurMeshPos(QPointF pos);
 
+    Q_PROPERTY(float curMeshLift READ curMeshLift WRITE setCurMeshLift NOTIFY curMeshLiftChanged)
+    float curMeshLift();
+    void setCurMeshLift(float lift);
+
+    Q_PROPERTY(float curMeshScale READ curMeshScale WRITE setCurMeshScale NOTIFY curMeshScaleChanged)
+    float curMeshScale();
+    void setCurMeshScale(float scale);
+
 signals:
    void meshOpacityChanged();
    void tpOpacityChanged();
    void meshesSelectedChanged();
    void curMeshPosChanged();
+   void curMeshLiftChanged();
+   void curMeshScaleChanged();
 };
 
 #endif // FBORENDERER_H

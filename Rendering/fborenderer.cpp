@@ -102,7 +102,10 @@ void FBORenderer::testMouseIntersection(float x, float y)
         emit meshesSelectedChanged();
 
     if (old != 1 && count == 1)
+    {
         emit curMeshPosChanged();
+        emit curMeshScaleChanged();
+    }
 }
 
 void FBORenderer::setMeshOpacity(float o)
@@ -145,10 +148,61 @@ void FBORenderer::setCurMeshPos(QPointF pos)
         auto old = curMeshPos();
 
         // Filter out some noise
-        if (std::abs((pos - old).manhattanLength()) > 0.1)
+        if (std::abs((pos - old).manhattanLength()) >= 0.05f)
         {
             comb.SetMeshPos(*comb.getSelectedMeshes().begin(), pos.x(), pos.y());
             emit curMeshPosChanged();
+            update();
+        }
+    }
+}
+
+float FBORenderer::curMeshLift()
+{
+    if (meshesSelected() == 1)
+    {
+        auto &v = comb.getMeshData(*comb.getSelectedMeshes().begin()).moveOnMat;
+        return v.z;
+    }
+    else
+        return 0.0f;
+}
+
+void FBORenderer::setCurMeshLift(float lift)
+{
+    if (meshesSelected() == 1)
+    {
+        float old = curMeshLift();
+
+        // Filter out noise
+        if (std::abs(lift - old) >= 0.1)
+        {
+            // TODO: implement this
+            emit curMeshLiftChanged();
+            update();
+        }
+    }
+}
+
+float FBORenderer::curMeshScale()
+{
+    if (meshesSelected() == 1)
+        return comb.getMeshData(*comb.getSelectedMeshes().begin()).scaleOnMat;
+    else
+        return 0.0f;
+}
+
+void FBORenderer::setCurMeshScale(float scale)
+{
+    if (meshesSelected() == 1)
+    {
+        float old = curMeshScale();
+
+        // Filter out noise
+        if (std::abs(scale - old) >= 0.005f)
+        {
+            comb.SetMeshScale(*comb.getSelectedMeshes().begin(), scale);
+            emit curMeshScaleChanged();
             update();
         }
     }
@@ -161,6 +215,7 @@ void FBORenderer::removeSelectedMeshes()
 
     emit meshesSelectedChanged();
     emit curMeshPosChanged();
+    emit curMeshScaleChanged();
 
     update();
 }
