@@ -93,15 +93,15 @@ void FBORenderer::testMouseIntersection(float x, float y)
     // if we have moved between a point of no or any mesh selection
     bool needUpdate = false;
     int old = meshesSelected();
-    int count = (comb.TestMouseIntersection(x, y, needUpdate) != 0);
+    comb.TestMouseIntersection(x, y, needUpdate);
 
     if (needUpdate)
         update();
 
-    if (count != old)
+    if (meshesSelected() != old)
         emit meshesSelectedChanged();
 
-    if (old != 1 && count == 1)
+    if (old != 1 && meshesSelected() == 1)
     {
         emit curMeshPosChanged();
         emit curMeshScaleChanged();

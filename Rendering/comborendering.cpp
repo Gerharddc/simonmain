@@ -227,7 +227,7 @@ float ComboRendering::TpOpacity()
     return tpRen.GetOpacity();
 }
 
-unsigned short ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
+void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
 {
     // TODO: this should only run if the STLs are visible
 
@@ -284,8 +284,6 @@ unsigned short ComboRendering::TestMouseIntersection(float x, float y, bool &nee
     }
     else
         needUpdate = false;
-
-    return selectedMeshes.size();
 }
 
 void ComboRendering::SetMeshOpacity(float opacity)

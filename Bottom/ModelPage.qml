@@ -21,15 +21,13 @@ BottomPage {
             }
         }
 
-        Text {
+        Label {
             id: txtSelect
+            text: 'Select some models to see more options'
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: btnAdd.bottom
             anchors.topMargin: 15
-            font.family: 'Nevis'
-            color: Style.textColor
-            text: 'Select some models to see more options'
-            font.pixelSize: 20
+            isDimmable: true
             visible: renderer.meshesSelected === 0
         }
 
@@ -46,6 +44,16 @@ BottomPage {
             onClicked: {
                 renderer.removeSelectedMeshes()
             }
+        }
+
+        Label {
+            id: txtOne
+            text: 'Select only one model to change its properties'
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: btnRemove.bottom
+            anchors.topMargin: 15
+            isDimmable: true
+            visible: renderer.meshesSelected > 1
         }
 
         Item {

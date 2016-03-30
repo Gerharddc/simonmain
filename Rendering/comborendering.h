@@ -62,7 +62,7 @@ public:
     void SetMeshScale(Mesh *mesh, float scale);
     float MeshOpacity();
     float TpOpacity();
-    unsigned short TestMouseIntersection(float x, float y, bool &needUpdate);
+    void TestMouseIntersection(float x, float y, bool &needUpdate);
 
     const std::set<Mesh*> &getSelectedMeshes() { return selectedMeshes; }
     const MeshGroupData &getMeshData(Mesh *mesh) { return stlRen.getMeshData(mesh); }
