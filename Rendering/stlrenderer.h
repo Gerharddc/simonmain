@@ -52,7 +52,10 @@ struct MeshGroupData
     glm::vec3 moveOnMat;
 
     // The radius of the bounding sphere
-    double bSphereRadius;
+    float bSphereRadius;
+
+    // Dimensions
+    float length, width, height;
 
     void Destroy();
 };
