@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <set>
 
 #include "stlrenderer.h"
 #include "toolpathrenderer.h"
@@ -36,6 +37,8 @@ private:
     std::vector<Mesh*> stlMeshes;
     std::vector<Toolpath*> gcodePaths;
 
+    std::set<Mesh*> selectedMeshes;
+
     Toolpath *gcodePath = nullptr;
 
     // TODO: remove this
@@ -58,7 +61,7 @@ public:
     void SetTpOpacity(float opacity);
     float MeshOpacity();
     float TpOpacity();
-    unsigned short TestMouseIntersection(float x, float y);
+    unsigned short TestMouseIntersection(float x, float y, bool &needUpdate);
 };
 
 #endif // COMBORENDERING_H

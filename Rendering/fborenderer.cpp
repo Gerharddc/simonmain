@@ -89,7 +89,11 @@ void FBORenderer::testMouseIntersection(float x, float y)
 {
     // Test for mouse intersection with objects and alert the gui
     // if we have moved between a point of no or any mesh selection
-    bool anySelection = (comb.TestMouseIntersection(x, y) != 0);
+    bool needUpdate = false;
+    bool anySelection = (comb.TestMouseIntersection(x, y, needUpdate) != 0);
+
+    if (needUpdate)
+        update();
 
     if (anySelection != m_meshesSelected)
     {

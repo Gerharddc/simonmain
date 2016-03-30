@@ -12,6 +12,9 @@
 #include <glm/gtx/quaternion.hpp>
 #include "structures.h"
 
+const glm::vec4 normalMeshCol = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+const glm::vec4 selectedMeshCol = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+
 struct MeshGroupData
 {
     bool meshDirty = false;
@@ -34,7 +37,7 @@ struct MeshGroupData
     bool sceneMatsDirty = true;
 
     // The colour of the mesh with transparency
-    glm::vec4 color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    glm::vec4 color = normalMeshCol;
 
     // The rotation that the actual mesh currently has
     glm::vec3 rotOnMesh;
@@ -48,10 +51,8 @@ struct MeshGroupData
     // The offset that the matrix is applying to the mesh
     glm::vec3 moveOnMat;
 
-    // The centre of the bounding sphere
-    glm::vec3 bSphereCentre;
-    // The squared (performance) radius of the bounding sphere
-    double bSphereRadius2;
+    // The radius of the bounding sphere
+    double bSphereRadius;
 
     void Destroy();
 };
@@ -80,7 +81,7 @@ public:
     void ColorAll(glm::vec3 color);
     void ColorAll(float alpha);
 
-    bool TestMeshIntersection(Mesh *mesh, float screenX, float screenY, float &screenZ);
+    bool TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ);
 
     void ProjMatDirty();
     void SceneMatDirty();

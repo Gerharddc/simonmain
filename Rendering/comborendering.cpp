@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/intersect.hpp>
 #include <limits>
 
 #include "stlimporting.h"
@@ -221,38 +222,75 @@ float ComboRendering::TpOpacity()
     return tpRen.GetOpacity();
 }
 
-unsigned short ComboRendering::TestMouseIntersection(float x, float y)
+inline void dVec(QString name, glm::vec3 &v)
+{
+    qDebug() << name << " x: " << v.x << " y: " << v.y << " z: " << v.z;
+}
+
+unsigned short ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
 {
     // TODO: this should only run if the STLs are visible
-    qDebug() << "x: " << x << " y: " << y;
+    //qDebug() << "x: " << x << " y: " << y;
 
     // Normalized screen coordinates
     float screenX = (2.0f * x) / viewWidth - 1.0f;
-    float screenY = 1.0f - (2.0 * y) / viewHeight;
+    float screenY = (2.0 * y) / viewHeight - 1.0f;
 
-    // 4d Homogeneous Clip Coordinates
-    /*glm::vec4 ray_clip = glm::vec4(screenX, screenY, -1.0f, 1.0f);
+    //qDebug() << "sX: " << screenX << " sY: " << screenY;
 
-    // 4d Eye (Camera) Coordinates
-    glm::vec4 ray_eye = glm::inverse(sceneProj) * ray_clip;
-    ray_eye.z = -1.0;
-    ray_eye.w = 0.0;*/
+    // Calculate the farthest and closest points from a line caused by the cursor
+    glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
+    glm::mat4 invMat = glm::inverse(MV);
+    glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
+    glm::vec4 worldCoords = invMat * clipCoords;
+    glm::vec3 near = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
+    clipCoords.z = 1.0f;
+    worldCoords = invMat * clipCoords;
+    glm::vec3 far = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
 
-    Mesh *highestMesh;
-    float z = std::numeric_limits<float>::lowest();
+    Mesh *highestMesh = nullptr;
+    float z = 2.0f;//std::numeric_limits<float>::highest();
 
     // Find the mesh with the 'highest' intersection
     for (Mesh *mesh : stlMeshes)
     {
         float nZ;
-        stlRen.TestMeshIntersection(mesh, screenX, screenY, nZ);
-
-        if (nZ > z)
+        if (stlRen.TestMeshIntersection(mesh, near, far, MV, nZ))
         {
-            highestMesh = mesh;
-            z = nZ;
+            if (nZ < z)
+            {
+                highestMesh = mesh;
+                z = nZ;
+            }
         }
     }
+
+    if (highestMesh != nullptr)
+    {
+        // (de)select the mesh
+        if (selectedMeshes.count(highestMesh) != 0)
+        {
+            // Deslect
+            selectedMeshes.erase(highestMesh);
+            stlRen.ColorMesh(highestMesh, normalMeshCol);
+            qDebug() << "Deselect " << highestMesh;
+            // TODO
+        }
+        else
+        {
+            // Select
+            selectedMeshes.insert(highestMesh);
+            stlRen.ColorMesh(highestMesh, selectedMeshCol);
+            qDebug() << "Select " << highestMesh;
+            // TODO
+        }
+
+        needUpdate = true;
+    }
+    else
+        needUpdate = false;
+
+    return selectedMeshes.size();
 }
 
 void ComboRendering::SetMeshOpacity(float opacity)
