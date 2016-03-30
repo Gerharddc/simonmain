@@ -104,25 +104,21 @@ void STLRenderer::PackMeshes()
     // TODO: run this async
 
     // If there is only one mesh then centre it
-    /*if (meshGroups.size() == 1)
+    if (meshGroups.size() == 1)
     {
         auto &pair = *meshGroups.begin();
-        MeshGroupData &mg = pair.second;
-        mg.moveOnMat.x = GlobalSettings::BedWidth.Get() / 2.0f;
-        mg.moveOnMat.y = GlobalSettings::BedLength.Get() / 2.0f;
-        UpdateTempMat(mg);
+        MeshGroupData *mg = pair.second;
+        mg->moveOnMat.x = GlobalSettings::BedWidth.Get() / 2.0f;
+        mg->moveOnMat.y = GlobalSettings::BedLength.Get() / 2.0f;
+        UpdateTempMat(*mg);
         return;
-    }*/
+    }
 
     // Create a list of those that still need placing
     std::vector<MeshGroupData*> mgsLeft;
     mgsLeft.reserve(meshGroups.size());
     for (auto pair : meshGroups)
-    {
-        //MeshGroupData &mg = pair.second;
         mgsLeft.push_back(pair.second);
-        qDebug() << "Snd: " << pair.second;
-    }
 
     // Start by packing according to the bed length, we will try to fill the length with the longest object first,
     // continue filling the length with objects almost as wide as the first until the length is full and then move
@@ -166,7 +162,6 @@ void STLRenderer::PackMeshes()
         longestMg->rotOnMat.z = (turned) ? glm::radians(90.0f) : 0.0f;
 
         // Add to row
-        qDebug() << "Added " << longestMg;
         row.push_back(std::make_tuple(longestMg, longestW, longestL));
         mgsLeft.erase(std::remove(mgsLeft.begin(), mgsLeft.end(), longestMg));
 
@@ -231,7 +226,9 @@ void STLRenderer::PackMeshes()
         }
 
         // Try to fit the thinnest until full
-        auto temp = mgsLeft;
+        // We need to clone the vector in order to prevent
+        // deleteion on the original one messing things up
+        auto temp = std::vector<MeshGroupData*>(mgsLeft);
         for (unsigned int i = 0; i < temp.size(); i++)
         {
             MeshGroupData* mg = temp[i];
@@ -256,7 +253,6 @@ void STLRenderer::PackMeshes()
                 mg->rotOnMat.z = (turneds[i]) ? glm::radians(90.0f) : 0.0f;
 
                 // Add to row
-                qDebug() << "Added " << mg;
                 row.push_back(std::make_tuple(mg, width, length));
                 mgsLeft.erase(std::remove(mgsLeft.begin(), mgsLeft.end(), mg));
 
@@ -291,7 +287,6 @@ void STLRenderer::PackMeshes()
             curY += ySpacing + length;
             mg->moveOnMat.x = rowX;
             mg->moveOnMat.y = curY - (length / 2.0f);
-            qDebug() << mg << " x: " << mg->moveOnMat.x << " y: " << mg->moveOnMat.y;
             UpdateTempMat(*mg);
         }
     }
@@ -377,12 +372,11 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
     mesh->dumpFlatNorms();
 
-    mg.length = mesh->MaxVec.x - mesh->MinVec.x;
-    mg.width = mesh->MaxVec.y - mesh->MinVec.y;
+    mg.width = mesh->MaxVec.x - mesh->MinVec.x;
+    mg.length = mesh->MaxVec.y - mesh->MinVec.y;
     mg.height = mesh->MaxVec.z - mesh->MinVec.z;
 
     mg.meshCentre = glm::vec3(-(mesh->MaxVec.x + mesh->MinVec.x) / 2.0f, -(mesh->MaxVec.y + mesh->MinVec.y) / 2.0f, -(mesh->MaxVec.z + mesh->MinVec.z) / 2.0f);
-    //mg.moveOnMat = glm::vec3(GlobalSettings::BedWidth.Get() / 2.0f, GlobalSettings::BedLength.Get() / 2.0f, mg.height / 2.0f);
     mg.moveOnMat.z = mg.height / 2.0f;
 
     // Create a bounding sphere around the centre of the mesh using the largest distance as radius
@@ -391,11 +385,6 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     UpdateTempMat(mg);
 
     mg.meshDirty = false;
-}
-
-inline void debugVec(QString name, glm::vec3 &v)
-{
-    qDebug() << name << " x: " << v.x << " y: " << v.y << " z: " << v.z;
 }
 
 bool STLRenderer::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ)
