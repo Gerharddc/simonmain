@@ -305,9 +305,8 @@ void STLRenderer::AddMesh(Mesh *mesh)
 
 void STLRenderer::RemoveMesh(Mesh *mesh)
 {
-    // Destroy the mesh and then remove it
-    delete meshGroups[mesh];
-    meshGroups.erase(mesh);
+    // Queue for deletion in the opengl thread
+    toDelete.push(mesh);
 }
 
 // TODO: these transofrmations hould probably be applied in a bg thread
@@ -358,6 +357,11 @@ void STLRenderer::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
     mg.rotOnMat = glm::vec3(absX, absY, absZ);
 
     UpdateTempMat(mg);
+}
+
+const MeshGroupData &STLRenderer::getMeshData(Mesh *mesh)
+{
+    return *meshGroups[mesh];
 }
 
 void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
@@ -459,6 +463,14 @@ void STLRenderer::Draw()
         return;
 
     glUseProgram(mProgram);
+
+    while (toDelete.size() != 0)
+    {
+        Mesh *mesh = toDelete.front();
+        delete meshGroups[mesh];
+        meshGroups.erase(mesh);
+        toDelete.pop();
+    }
 
     if (dirtyMesh)
     {

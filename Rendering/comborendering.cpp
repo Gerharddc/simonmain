@@ -5,7 +5,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/intersect.hpp>
-#include <limits>
 
 #include "stlimporting.h"
 #include "gcodeimporting.h"
@@ -34,9 +33,7 @@ float ComboRendering::meshOpacity = 1.0f;
 ComboRendering::ComboRendering()
 {
     // Load the initial models and set the grid up
-
-    stlMeshes.push_back(STLImporting::ImportSTL("bin.stl"));
-    stlRen.AddMesh(stlMeshes.back());
+    LoadMesh("bin.stl");
 
     gcodePath = GCodeImporting::ImportGCode("test.gcode");
     tpRen.SetToolpath(gcodePath);
@@ -64,8 +61,16 @@ ComboRendering::~ComboRendering()
 
 void ComboRendering::LoadMesh(const char *path)
 {
-    stlMeshes.push_back(STLImporting::ImportSTL(path));
-    stlRen.AddMesh(stlMeshes.back());
+    auto mesh = STLImporting::ImportSTL(path);
+    stlMeshes.insert(mesh);
+    stlRen.AddMesh(mesh);
+}
+
+void ComboRendering::RemoveMesh(Mesh *mesh)
+{
+    stlRen.RemoveMesh(mesh);
+    stlMeshes.erase(mesh);
+    delete mesh;
 }
 
 void ComboRendering::SetViewSize(float width, float height)
@@ -221,23 +226,16 @@ float ComboRendering::TpOpacity()
     return tpRen.GetOpacity();
 }
 
-inline void dVec(QString name, glm::vec3 &v)
-{
-    qDebug() << name << " x: " << v.x << " y: " << v.y << " z: " << v.z;
-}
-
 unsigned short ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
 {
     // TODO: this should only run if the STLs are visible
-    //qDebug() << "x: " << x << " y: " << y;
 
     // Normalized screen coordinates
     float screenX = (2.0f * x) / viewWidth - 1.0f;
     float screenY = (2.0 * y) / viewHeight - 1.0f;
 
-    //qDebug() << "sX: " << screenX << " sY: " << screenY;
-
     // Calculate the farthest and closest points from a line caused by the cursor
+    // TODO: cache some of this shit
     glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
     glm::mat4 invMat = glm::inverse(MV);
     glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
@@ -248,9 +246,10 @@ unsigned short ComboRendering::TestMouseIntersection(float x, float y, bool &nee
     glm::vec3 far = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
 
     Mesh *highestMesh = nullptr;
-    float z = 2.0f;//std::numeric_limits<float>::highest();
+    float z = 2.0f;
 
     // Find the mesh with the 'highest' intersection
+    // (the most negative z value)
     for (Mesh *mesh : stlMeshes)
     {
         float nZ;
@@ -272,16 +271,12 @@ unsigned short ComboRendering::TestMouseIntersection(float x, float y, bool &nee
             // Deslect
             selectedMeshes.erase(highestMesh);
             stlRen.ColorMesh(highestMesh, normalMeshCol);
-            qDebug() << "Deselect " << highestMesh;
-            // TODO
         }
         else
         {
             // Select
             selectedMeshes.insert(highestMesh);
             stlRen.ColorMesh(highestMesh, selectedMeshCol);
-            qDebug() << "Select " << highestMesh;
-            // TODO
         }
 
         needUpdate = true;
@@ -301,4 +296,9 @@ void ComboRendering::SetMeshOpacity(float opacity)
 void ComboRendering::SetTpOpacity(float opacity)
 {
     tpRen.SetOpacity(opacity);
+}
+
+void ComboRendering::SetMeshPos(Mesh *mesh, float x, float y)
+{
+    stlRen.CentreMesh(mesh, x, y);
 }

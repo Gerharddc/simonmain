@@ -8,6 +8,7 @@
 #endif
 
 #include <map>
+#include <queue>
 #include <thread>
 #include <glm/gtx/quaternion.hpp>
 #include "structures.h"
@@ -76,6 +77,8 @@ public:
     void LiftMesh(Mesh *mesh, float absZ);
     void RotateMesh(Mesh *mesh, float absX, float absY, float absZ);
 
+    const MeshGroupData &getMeshData(Mesh *mesh);
+
     void ColorMesh(Mesh *mesh, glm::vec4 colorAlpha);
     void ColorMesh(Mesh *mesh, glm::vec3 color);
     void ColorMesh(Mesh *mesh, float alpha);
@@ -105,6 +108,7 @@ private:
     void LoadMesh(MeshGroupData &mg, Mesh *mesh);
     std::map<Mesh*, MeshGroupData*> meshGroups;
     void PackMeshes();
+    std::queue<Mesh*> toDelete;
 
     // We need flags to determine when matrices have changed as
     // to be able to give new ones to opengl

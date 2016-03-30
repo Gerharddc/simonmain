@@ -34,9 +34,7 @@ private:
     static ToolpathRenderer tpRen;
     static GridRenderer gridRen;
 
-    std::vector<Mesh*> stlMeshes;
-    std::vector<Toolpath*> gcodePaths;
-
+    std::set<Mesh*> stlMeshes;
     std::set<Mesh*> selectedMeshes;
 
     Toolpath *gcodePath = nullptr;
@@ -56,12 +54,17 @@ public:
     void Zoom(float scale);
     void ResetView();
     void LoadMesh(const char* path);
+    void RemoveMesh(Mesh *mesh);
 
     void SetMeshOpacity(float opacity);
     void SetTpOpacity(float opacity);
+    void SetMeshPos(Mesh *mesh, float x, float y);
     float MeshOpacity();
     float TpOpacity();
     unsigned short TestMouseIntersection(float x, float y, bool &needUpdate);
+
+    const std::set<Mesh*> &getSelectedMeshes() { return selectedMeshes; }
+    const MeshGroupData &getMeshData(Mesh *mesh) { return stlRen.getMeshData(mesh); }
 };
 
 #endif // COMBORENDERING_H

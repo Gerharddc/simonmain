@@ -90,16 +90,14 @@ void FBORenderer::testMouseIntersection(float x, float y)
     // Test for mouse intersection with objects and alert the gui
     // if we have moved between a point of no or any mesh selection
     bool needUpdate = false;
-    bool anySelection = (comb.TestMouseIntersection(x, y, needUpdate) != 0);
+    int old = meshesSelected();
+    int count = (comb.TestMouseIntersection(x, y, needUpdate) != 0);
 
     if (needUpdate)
         update();
 
-    if (anySelection != m_meshesSelected)
-    {
-        m_meshesSelected = anySelection;
+    if (count != old)
         emit meshesSelectedChanged();
-    }
 }
 
 void FBORenderer::setMeshOpacity(float o)
@@ -122,4 +120,28 @@ void FBORenderer::setTpOpacity(float o)
 
         emit tpOpacityChanged();
     }
+}
+
+QPointF FBORenderer::curMeshPos()
+{
+    if (meshesSelected() == 1)
+    {
+        auto &v = comb.getMeshData(*comb.getSelectedMeshes().begin()).moveOnMat;
+        return QPointF(v.x, v.y);
+    }
+    else
+        return QPointF(0.0f, 0.0f);
+}
+
+void FBORenderer::setCurMeshPos(QPointF pos)
+{
+    comb.SetMeshPos(*comb.getSelectedMeshes().begin(), pos.x(), pos.y());
+}
+
+void FBORenderer::removeSelectedMeshes()
+{
+    for (Mesh *mesh : comb.getSelectedMeshes())
+        comb.RemoveMesh(mesh);
+
+    update();
 }
