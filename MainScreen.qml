@@ -101,6 +101,7 @@ Rectangle {
                 anchors.left: parent.left
                 anchors.leftMargin: 7
                 width: 150
+                isDimmable: true
                 opacity: 0.6
                 nameA: 'Pan'
                 nameB: 'Rotate'
@@ -112,6 +113,7 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.rightMargin: 7
                 opacity: 0.6
+                isDimmable: true
                 text: "Reset view"
                 width: 150
                 z: 200

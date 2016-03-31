@@ -3,6 +3,7 @@
 
 #include <QQuickFramebufferObject>
 #include <QString>
+#include <QVector3D>
 
 #include "structures.h"
 #include "comborendering.h"
@@ -10,6 +11,9 @@
 class FBORenderer : public QQuickFramebufferObject
 {
     Q_OBJECT
+
+private:
+    void EmitMeshProps();
 
 public:
     Renderer *createRenderer() const;
@@ -44,6 +48,10 @@ public:
     float curMeshScale();
     void setCurMeshScale(float scale);
 
+    Q_PROPERTY(QVector3D curMeshRot READ curMeshRot WRITE setCurMeshRot NOTIFY curMeshRotChanged)
+    QVector3D curMeshRot();
+    void setCurMeshRot(QVector3D rot);
+
 signals:
    void meshOpacityChanged();
    void tpOpacityChanged();
@@ -51,6 +59,7 @@ signals:
    void curMeshPosChanged();
    void curMeshLiftChanged();
    void curMeshScaleChanged();
+   void curMeshRotChanged();
 };
 
 #endif // FBORENDERER_H

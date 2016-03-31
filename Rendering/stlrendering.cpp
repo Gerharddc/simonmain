@@ -402,7 +402,7 @@ void STLRendering::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
 {
     MeshGroupData &mg = *meshGroups[mesh];
 
-    mg.rotOnMat = glm::vec3(absX, absY, absZ);
+    mg.rotOnMat = glm::vec3(glm::radians(absX), glm::radians(absY), glm::radians(absZ));
 
     UpdateTempMat(mg);
 }

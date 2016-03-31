@@ -87,12 +87,21 @@ void FBORenderer::resetView(bool updateNow)
         update();
 }
 
+// This is a helper method used to refresh all the properties
+// relating to the current mesh
+void FBORenderer::EmitMeshProps()
+{
+    emit curMeshPosChanged();
+    emit curMeshScaleChanged();
+    emit curMeshRotChanged();
+}
+
 void FBORenderer::loadMesh(QString path)
 {
     ComboRendering::LoadMesh(path.toStdString().c_str());
     update();
 
-    emit curMeshPosChanged();
+    EmitMeshProps();
 }
 
 void FBORenderer::testMouseIntersection(float x, float y)
@@ -111,8 +120,7 @@ void FBORenderer::testMouseIntersection(float x, float y)
 
     if (old != 1 && meshesSelected() == 1)
     {
-        emit curMeshPosChanged();
-        emit curMeshScaleChanged();
+        EmitMeshProps();
     }
 }
 
@@ -160,6 +168,33 @@ void FBORenderer::setCurMeshPos(QPointF pos)
         {
             STLRendering::CentreMesh(*ComboRendering::getSelectedMeshes().begin(), pos.x(), pos.y());
             emit curMeshPosChanged();
+            update();
+        }
+    }
+}
+
+QVector3D FBORenderer::curMeshRot()
+{
+    if (meshesSelected() == 1)
+    {
+        auto &v = STLRendering::getMeshData(*ComboRendering::getSelectedMeshes().begin()).rotOnMat;
+        return QVector3D(glm::degrees(v.x), glm::degrees(v.y), glm::degrees(v.z));
+    }
+    else
+        return QVector3D(0.0f, 0.0f, 0.0f);
+}
+
+void FBORenderer::setCurMeshRot(QVector3D rot)
+{
+    if (meshesSelected() == 1)
+    {
+        QVector3D old = curMeshRot();
+
+        // Filter out some noise
+        if (std::abs((rot - old).lengthSquared()) >= 0.05f)
+        {
+            STLRendering::RotateMesh(*ComboRendering::getSelectedMeshes().begin(), rot.x(), rot.y(), rot.z());
+            emit curMeshRotChanged();
             update();
         }
     }
@@ -222,8 +257,7 @@ void FBORenderer::removeSelectedMeshes()
         ComboRendering::RemoveMesh(mesh);
 
     emit meshesSelectedChanged();
-    emit curMeshPosChanged();
-    emit curMeshScaleChanged();
+    EmitMeshProps();
 
     update();
 }
