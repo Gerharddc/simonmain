@@ -77,13 +77,12 @@ namespace STLRendering {
 
     const MeshGroupData &getMeshData(Mesh *mesh);
 
-    void ColorMesh(Mesh *mesh, glm::vec4 colorAlpha);
-    void ColorMesh(Mesh *mesh, glm::vec3 color);
+    void ColorMesh(Mesh *mesh, const glm::vec4 &colorAlpha);
+    void ColorMesh(Mesh *mesh, const glm::vec3 &color);
     void ColorMesh(Mesh *mesh, float alpha);
 
-    void ColorAll(glm::vec4 colorAlpha);
-    void ColorAll(glm::vec3 color);
-    void ColorAll(float alpha);
+    void SetBaseOpacity(float alpha);
+    float GetBaseOpacity();
 
     bool TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ);
 

@@ -1,4 +1,4 @@
-#include "toolpathrenderer.h"
+#include "toolpathrendering.h"
 
 #include <string>
 #include <glm/glm.hpp>

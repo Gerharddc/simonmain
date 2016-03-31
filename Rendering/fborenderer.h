@@ -22,7 +22,7 @@ public:
     Q_INVOKABLE void removeSelectedMeshes();
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
-    bool meshOpacity() { return ComboRendering::MeshesOpacity(); }
+    bool meshOpacity() { return STLRendering::GetBaseOpacity(); }
     void setMeshOpacity(float o);
 
     Q_PROPERTY(float tpOpacity READ tpOpacity WRITE setTpOpacity NOTIFY tpOpacityChanged)

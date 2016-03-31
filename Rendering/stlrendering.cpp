@@ -61,6 +61,9 @@ namespace STLRendering {
         mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
         mg->meshMat = mg->gpuMat;
     }
+
+    // The base opacity for all stl meshes
+    float baseOpacity = 1.0f;
 }
 
 MeshGroupData::~MeshGroupData()
@@ -441,12 +444,12 @@ bool STLRendering::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const
     return false;
 }
 
-void STLRendering::ColorMesh(Mesh *mesh, glm::vec4 colorAlpha)
+void STLRendering::ColorMesh(Mesh *mesh, const glm::vec4 &colorAlpha)
 {
     meshGroups[mesh]->color = colorAlpha;
 }
 
-void STLRendering::ColorMesh(Mesh *mesh, glm::vec3 color)
+void STLRendering::ColorMesh(Mesh *mesh, const glm::vec3 &color)
 {
     meshGroups[mesh]->color = glm::vec4(color, meshGroups[mesh]->color.w);
 }
@@ -456,22 +459,14 @@ void STLRendering::ColorMesh(Mesh *mesh, float alpha)
     meshGroups[mesh]->color.w = alpha;
 }
 
-void STLRendering::ColorAll(glm::vec4 colorAlpha)
+void STLRendering::SetBaseOpacity(float alpha)
 {
-    for (auto &pair : meshGroups)
-        pair.second->color = colorAlpha;
+    baseOpacity = alpha;
 }
 
-void STLRendering::ColorAll(glm::vec3 color)
+float STLRendering::GetBaseOpacity()
 {
-    for (auto &pair : meshGroups)
-        pair.second->color = glm::vec4(color, pair.second->color.w);
-}
-
-void STLRendering::ColorAll(float alpha)
-{
-    for (auto &pair : meshGroups)
-        pair.second->color.w = alpha;
+    return baseOpacity;
 }
 
 void STLRendering::Init()
@@ -539,7 +534,9 @@ void STLRendering::Draw()
         glUniformMatrix4fv(mNormUniformLocation, 1, GL_FALSE, glm::value_ptr(mg.normalMat));
 
         // Set the colour for the mesh
-        glUniform4fv(mColorUniformLocation, 1, glm::value_ptr(mg.color));
+        auto tempCol = mg.color;
+        tempCol.w *= baseOpacity;
+        glUniform4fv(mColorUniformLocation, 1, glm::value_ptr(tempCol));
 
         glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
         glEnableVertexAttribArray(mPositionAttribLocation);

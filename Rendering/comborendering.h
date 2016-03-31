@@ -6,8 +6,8 @@
 #include <set>
 
 #include "stlrendering.h"
-#include "toolpathrenderer.h"
-#include "gridrenderer.h"
+#include "toolpathrendering.h"
+#include "gridrendering.h"
 #include "structures.h"
 
 namespace ComboRendering
@@ -24,9 +24,6 @@ namespace ComboRendering
     void LoadMesh(const char* path);
     void RemoveMesh(Mesh *mesh);
 
-    // TODO: drop this shit
-    void SetMeshesOpacity(float opacity);
-    float MeshesOpacity();
     void TestMouseIntersection(float x, float y, bool &needUpdate);
 
     const std::set<Mesh*> &getSelectedMeshes();

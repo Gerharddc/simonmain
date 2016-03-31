@@ -7,8 +7,8 @@
 #endif
 
 #include "stlrendering.h"
-#include "toolpathrenderer.h"
-#include "gridrenderer.h"
+#include "toolpathrendering.h"
+#include "gridrendering.h"
 
 class ComboFBORenderer : public QQuickFramebufferObject::Renderer
 {
@@ -118,9 +118,9 @@ void FBORenderer::testMouseIntersection(float x, float y)
 
 void FBORenderer::setMeshOpacity(float o)
 {
-    if (o != ComboRendering::MeshesOpacity())
+    if (o != STLRendering::GetBaseOpacity())
     {
-        ComboRendering::SetMeshesOpacity(o);
+        STLRendering::SetBaseOpacity(o);
         update();
 
         emit meshOpacityChanged();
@@ -185,7 +185,7 @@ void FBORenderer::setCurMeshLift(float lift)
         // Filter out noise
         if (std::abs(lift - old) >= 0.1)
         {
-            // TODO: implement this
+            STLRendering::LiftMesh(*ComboRendering::getSelectedMeshes().begin(), lift);
             emit curMeshLiftChanged();
             update();
         }

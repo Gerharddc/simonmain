@@ -1,4 +1,4 @@
-#include "gridrenderer.h"
+#include "gridrendering.h"
 
 #include <string>
 #include <glm/glm.hpp>

@@ -35,8 +35,6 @@ namespace ComboRendering
     glm::mat4 rotOrgInv = glm::mat4();
     glm::quat sceneRot = glm::quat();
 
-    float meshOpacity = 1.0f;
-
     std::set<Mesh*> stlMeshes;
     std::set<Mesh*> selectedMeshes;
 
@@ -60,7 +58,6 @@ void ComboRendering::FreeMemory()
         gcodePath = nullptr;
     }
 
-    // TODO: free others
     ToolpathRendering::FreeMemory();
     GridRendering::FreeMemory();
     STLRendering::FreeMemory();
@@ -223,18 +220,11 @@ void ComboRendering::Draw()
 
     GridRendering::Draw();
 
-    if (meshOpacity != 0.0f)
+    if (STLRendering::GetBaseOpacity() != 0.0f)
         STLRendering::Draw();
 
     if (ToolpathRendering::GetOpacity() != 0.0f)
         ToolpathRendering::Draw();
-}
-
-// TODO: maybe working with this local copy is dangerous...
-
-float ComboRendering::MeshesOpacity()
-{
-    return meshOpacity;
 }
 
 void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
@@ -294,12 +284,6 @@ void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
     }
     else
         needUpdate = false;
-}
-
-void ComboRendering::SetMeshesOpacity(float opacity)
-{
-    meshOpacity = opacity;
-    STLRendering::ColorAll(opacity);
 }
 
 const std::set<Mesh*> &ComboRendering::getSelectedMeshes()
