@@ -30,6 +30,7 @@ namespace ComboRendering
 
     const glm::mat4 &getSceneTrans();
     const glm::mat4 &getSceneProj();
+    int getMeshCount();
 }
 
 #endif // COMBORENDERING_H

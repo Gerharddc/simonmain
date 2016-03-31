@@ -63,6 +63,11 @@ void ComboRendering::FreeMemory()
     STLRendering::FreeMemory();
 }
 
+int ComboRendering::getMeshCount()
+{
+    return stlMeshes.size();
+}
+
 void ComboRendering::LoadMesh(const char *path)
 {
     auto mesh = STLImporting::ImportSTL(path);
@@ -199,7 +204,7 @@ void ComboRendering::ResetView()
 void ComboRendering::Init()
 {
     // Load the initial models and set the grid up
-    LoadMesh("bin.stl");
+    //LoadMesh("bin.stl");
 
     gcodePath = GCodeImporting::ImportGCode("test.gcode");
     ToolpathRendering::SetToolpath(gcodePath);

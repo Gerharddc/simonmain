@@ -24,6 +24,7 @@ public:
     Q_INVOKABLE void loadMesh(QString path);
     Q_INVOKABLE void testMouseIntersection(float x, float y);
     Q_INVOKABLE void removeSelectedMeshes();
+    Q_INVOKABLE void autoArrangeMeshes();
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
     bool meshOpacity() { return STLRendering::GetBaseOpacity(); }
@@ -52,6 +53,9 @@ public:
     QVector3D curMeshRot();
     void setCurMeshRot(QVector3D rot);
 
+    Q_PROPERTY(int meshCount READ meshCount NOTIFY meshCountChanged)
+    int meshCount();
+
 signals:
    void meshOpacityChanged();
    void tpOpacityChanged();
@@ -60,6 +64,7 @@ signals:
    void curMeshLiftChanged();
    void curMeshScaleChanged();
    void curMeshRotChanged();
+   void meshCountChanged();
 };
 
 #endif // FBORENDERER_H

@@ -69,6 +69,7 @@ namespace STLRendering {
 
     void AddMesh(Mesh *mesh);
     void RemoveMesh(Mesh *mesh);
+    void PackMeshes();
 
     void ScaleMesh(Mesh *mesh, float absScale);
     void CentreMesh(Mesh *mesh, float absX, float absY);

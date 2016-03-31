@@ -21,11 +21,26 @@ BottomPage {
             }
         }
 
+        Button {
+            id: btnArrange
+            text: "Auto-arrange all models"
+            anchors.top: btnAdd.bottom
+            anchors.topMargin: 15
+            anchors.left: parent.left
+            anchors.right: parent.right
+            isDimmable: true
+            enabled: renderer.meshCount > 0
+
+            onClicked: {
+                renderer.autoArrangeMeshes()
+            }
+        }
+
         Label {
             id: txtSelect
             text: 'Select some models to see more options'
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: btnAdd.bottom
+            anchors.top: btnArrange.bottom
             anchors.topMargin: 15
             isDimmable: true
             visible: renderer.meshesSelected === 0
@@ -34,7 +49,7 @@ BottomPage {
         Button {
             id: btnRemove
             text: "Remove selected models"
-            anchors.top: btnAdd.bottom
+            anchors.top: btnArrange.bottom
             anchors.topMargin: 15
             anchors.left: parent.left
             anchors.right: parent.right

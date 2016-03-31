@@ -91,6 +91,9 @@ Rectangle {
             Behavior on curMeshScale {
                 PropertyAnimation {
                     id: curMeshScaleAnimation
+                    onStopped: {
+                        renderer.autoArrangeMeshes
+                    }
                 }
             }
 

@@ -30,7 +30,6 @@ namespace STLRendering {
 
     void LoadMesh(MeshGroupData &mg, Mesh *mesh);
     std::map<Mesh*, MeshGroupData*> meshGroups;
-    void PackMeshes();
     std::queue<MeshGroupData*> toDelete;
 
     // We need flags to determine when matrices have changed as

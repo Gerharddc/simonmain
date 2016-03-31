@@ -58,7 +58,8 @@ public:
 
 QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 {
-    return new ComboFBORenderer();
+    auto ren = new ComboFBORenderer();
+    return ren;
 }
 
 void FBORenderer::rotateView(float x, float y)
@@ -87,6 +88,13 @@ void FBORenderer::resetView(bool updateNow)
         update();
 }
 
+void FBORenderer::autoArrangeMeshes()
+{
+    STLRendering::PackMeshes();
+    EmitMeshProps();
+    update();
+}
+
 // This is a helper method used to refresh all the properties
 // relating to the current mesh
 void FBORenderer::EmitMeshProps()
@@ -102,6 +110,12 @@ void FBORenderer::loadMesh(QString path)
     update();
 
     EmitMeshProps();
+    emit meshCountChanged();
+}
+
+int FBORenderer::meshCount()
+{
+    return ComboRendering::getMeshCount();
 }
 
 void FBORenderer::testMouseIntersection(float x, float y)
@@ -257,6 +271,7 @@ void FBORenderer::removeSelectedMeshes()
         ComboRendering::RemoveMesh(mesh);
 
     emit meshesSelectedChanged();
+    emit meshCountChanged();
     EmitMeshProps();
 
     update();
