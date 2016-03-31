@@ -14,17 +14,20 @@ public:
     T Get();
 };
 
+// Explicitly specialize the GS classes
+template class GlobalSetting<float>;
+
+// As static class is used instead of a namespace because the compiler does not
+// like to combine the nampesace option with this funny template class that is
+// implemented in the cpp file
 class GlobalSettings
 {
 public:
-    GlobalSettings();
-
+    static void LoadSettings();
+    static void SaveSettings();
     static GlobalSetting<float> BedWidth;
     static GlobalSetting<float> BedLength;
     static GlobalSetting<float> BedHeight;
 };
-
-// Create a singleton instance
-extern GlobalSettings GlobalSettingsClass;
 
 #endif // GLOBALSETTINGS_H

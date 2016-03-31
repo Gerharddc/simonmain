@@ -23,51 +23,16 @@ struct GroupGLData
     short idxCount = 0;
 };
 
-class ToolpathRenderer
-{
-public:
-    ToolpathRenderer();
-    ~ToolpathRenderer();
+namespace ToolpathRendering {
+    void FreeMemory();
     void Draw();
     void Init();
     void SetToolpath(Toolpath *tp);\
     void ProjMatDirty();
     void SceneMatDirty();
-
     void SetOpacity(float alpha);
     float GetOpacity();
     void SetColor(glm::vec3 color);
-
-private:
-    GLuint mProgram = 0;
-    GLsizei mWindowWidth = 0;
-    GLsizei mWindowHeight = 0;
-
-    GLint mCurPosAttribLocation;
-    GLint mNextPosAttribLocation;
-    GLint mPrevPosAttribLocation;
-    GLint mSideAttribLocation;
-
-    GLint mModelUniformLocation;
-    GLint mRadiusUniformLocation;
-    GLint mProjUniformLocation;
-    GLint mColorUniformLocation;
-
-    GroupGLData *groupDatas = nullptr;
-    std::size_t groupCount = 0;
-
-    inline void LoadPath();
-    Toolpath *path;
-
-    // We need flags to determine when matrices have changed as
-    // to be able to give new ones to opengl
-    bool dirtyProjMat = true;
-    bool dirtySceneMat = true;
-    bool dirtyPath = false;
-    bool dirtyColor = true;
-
-    glm::vec3 _color = glm::vec3(0.2f, 0.2f, 0.8f);
-    float opacity = 1.0f;
-};
+}
 
 #endif // TOOLPATHRENDERER_H

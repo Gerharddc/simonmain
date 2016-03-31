@@ -1,4 +1,4 @@
-#include "stlrenderer.h"
+#include "stlrendering.h"
 
 #include <QDebug>
 
@@ -15,32 +15,52 @@
 #include "comborendering.h"
 #include "Misc/globalsettings.h"
 
-STLRenderer::STLRenderer()
-{
+namespace STLRendering {
+    GLuint mProgram = 0;
+    GLsizei mWindowWidth = 0;
+    GLsizei mWindowHeight = 0;
 
-}
+    GLint mPositionAttribLocation;
+    GLint mNormalAttribLocation;
 
-// This updates the Mesh in normal memory for saving but does not
-// affect the mesh loaded in GPU memory
-void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
-{
-    //Apply the matrix to the mesh
-    for (std::size_t i = 0; i < mesh->vertexCount; i++)
+    GLint mModelUniformLocation;
+    GLint mProjUniformLocation;
+    GLint mNormUniformLocation;
+    GLint mColorUniformLocation;
+
+    void LoadMesh(MeshGroupData &mg, Mesh *mesh);
+    std::map<Mesh*, MeshGroupData*> meshGroups;
+    void PackMeshes();
+    std::queue<MeshGroupData*> toDelete;
+
+    // We need flags to determine when matrices have changed as
+    // to be able to give new ones to opengl
+    bool dirtyProjMat = true;
+    bool dirtySceneMat = true;
+    bool dirtyMesh = false;
+
+    // This updates the Mesh in normal memory for saving but does not
+    // affect the mesh loaded in GPU memory
+    void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
     {
-        // TODO: optomize...
-        auto idx = i * 3;
-        glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
-        v = mg->gpuMat * glm::inverse(mg->meshMat) * v;
-        mesh->vertexFloats[idx + 0] = v.x;
-        mesh->vertexFloats[idx + 1] = v.y;
-        mesh->vertexFloats[idx + 2] = v.z;
-    }
+        //Apply the matrix to the mesh
+        for (std::size_t i = 0; i < mesh->vertexCount; i++)
+        {
+            // TODO: optomize...
+            auto idx = i * 3;
+            glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
+            v = mg->gpuMat * glm::inverse(mg->meshMat) * v;
+            mesh->vertexFloats[idx + 0] = v.x;
+            mesh->vertexFloats[idx + 1] = v.y;
+            mesh->vertexFloats[idx + 2] = v.z;
+        }
 
-    // Update the parameters
-    mg->rotOnMesh = mg->rotOnMat;
-    mg->scaleOnMesh = mg->scaleOnMat;
-    mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
-    mg->meshMat = mg->gpuMat;
+        // Update the parameters
+        mg->rotOnMesh = mg->rotOnMat;
+        mg->scaleOnMesh = mg->scaleOnMat;
+        mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
+        mg->meshMat = mg->gpuMat;
+    }
 }
 
 MeshGroupData::~MeshGroupData()
@@ -60,7 +80,7 @@ MeshGroupData::~MeshGroupData()
     }
 }
 
-STLRenderer::~STLRenderer()
+void STLRendering::FreeMemory()
 {
     // Delete all the meshes on the heap
     for (auto &gPair : meshGroups)
@@ -76,12 +96,12 @@ STLRenderer::~STLRenderer()
     }
 }
 
-void STLRenderer::ProjMatDirty()
+void STLRendering::ProjMatDirty()
 {
     dirtyProjMat = true;
 }
 
-void STLRenderer::SceneMatDirty()
+void STLRendering::SceneMatDirty()
 {
     dirtySceneMat = true;
 }
@@ -98,7 +118,7 @@ inline void UpdateTempMat(MeshGroupData &mg)
     mg.sceneMatsDirty = true;
 }
 
-void STLRenderer::PackMeshes()
+void STLRendering::PackMeshes()
 {
     // TODO: this can probably be improved
     // TODO: run this async
@@ -292,7 +312,7 @@ void STLRenderer::PackMeshes()
     }
 }
 
-void STLRenderer::AddMesh(Mesh *mesh)
+void STLRendering::AddMesh(Mesh *mesh)
 {
     // Add a new mesh data group to the vector that contains all the metadata and helpers
     MeshGroupData *mg = new MeshGroupData;
@@ -318,7 +338,7 @@ void STLRenderer::AddMesh(Mesh *mesh)
     dirtyMesh = true;
 }
 
-void STLRenderer::RemoveMesh(Mesh *mesh)
+void STLRendering::RemoveMesh(Mesh *mesh)
 {
     // Queue for deletion in the opengl thread
     toDelete.push(meshGroups[mesh]);
@@ -331,7 +351,7 @@ void STLRenderer::RemoveMesh(Mesh *mesh)
 // TODO: these transofrmations hould probably be applied in a bg thread
 
 // This method applies an absolute scale to the original mesh
-void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
+void STLRendering::ScaleMesh(Mesh *mesh, float absScale)
 {
     // We can't scale to 0
     if (absScale == 0)
@@ -353,7 +373,7 @@ void STLRenderer::ScaleMesh(Mesh *mesh, float absScale)
 }
 
 // This method centres the mesh around the current coordinates
-void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
+void STLRendering::CentreMesh(Mesh *mesh, float absX, float absY)
 {
     MeshGroupData &mg = *meshGroups[mesh];
 
@@ -364,7 +384,7 @@ void STLRenderer::CentreMesh(Mesh *mesh, float absX, float absY)
 }
 
 // This method places the mesh an absolute height above the bed
-void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
+void STLRendering::LiftMesh(Mesh *mesh, float absZ)
 {
     MeshGroupData &mg = *meshGroups[mesh];
 
@@ -375,7 +395,7 @@ void STLRenderer::LiftMesh(Mesh *mesh, float absZ)
 }
 
 // This method applies an absolute rotation to the original mesh
-void STLRenderer::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
+void STLRendering::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
 {
     MeshGroupData &mg = *meshGroups[mesh];
 
@@ -384,12 +404,12 @@ void STLRenderer::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
     UpdateTempMat(mg);
 }
 
-const MeshGroupData &STLRenderer::getMeshData(Mesh *mesh)
+const MeshGroupData &STLRendering::getMeshData(Mesh *mesh)
 {
     return *meshGroups[mesh];
 }
 
-void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
+void STLRendering::LoadMesh(MeshGroupData &mg, Mesh *mesh)
 {
     glGenBuffers(1, &mg.mVertexPositionBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
@@ -404,7 +424,7 @@ void STLRenderer::LoadMesh(MeshGroupData &mg, Mesh *mesh)
     mg.meshDirty = false;
 }
 
-bool STLRenderer::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ)
+bool STLRendering::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ)
 {
     auto &mg = *meshGroups[mesh];
 
@@ -421,40 +441,40 @@ bool STLRenderer::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const 
     return false;
 }
 
-void STLRenderer::ColorMesh(Mesh *mesh, glm::vec4 colorAlpha)
+void STLRendering::ColorMesh(Mesh *mesh, glm::vec4 colorAlpha)
 {
     meshGroups[mesh]->color = colorAlpha;
 }
 
-void STLRenderer::ColorMesh(Mesh *mesh, glm::vec3 color)
+void STLRendering::ColorMesh(Mesh *mesh, glm::vec3 color)
 {
     meshGroups[mesh]->color = glm::vec4(color, meshGroups[mesh]->color.w);
 }
 
-void STLRenderer::ColorMesh(Mesh *mesh, float alpha)
+void STLRendering::ColorMesh(Mesh *mesh, float alpha)
 {
     meshGroups[mesh]->color.w = alpha;
 }
 
-void STLRenderer::ColorAll(glm::vec4 colorAlpha)
+void STLRendering::ColorAll(glm::vec4 colorAlpha)
 {
     for (auto &pair : meshGroups)
         pair.second->color = colorAlpha;
 }
 
-void STLRenderer::ColorAll(glm::vec3 color)
+void STLRendering::ColorAll(glm::vec3 color)
 {
     for (auto &pair : meshGroups)
         pair.second->color = glm::vec4(color, pair.second->color.w);
 }
 
-void STLRenderer::ColorAll(float alpha)
+void STLRendering::ColorAll(float alpha)
 {
     for (auto &pair : meshGroups)
         pair.second->color.w = alpha;
 }
 
-void STLRenderer::Init()
+void STLRendering::Init()
 {
     // Shader source files
     const std::string vs = "mesh.vsh";
@@ -470,7 +490,7 @@ void STLRenderer::Init()
     mColorUniformLocation = glGetUniformLocation(mProgram, "uMeshColor");
 }
 
-void STLRenderer::Draw()
+void STLRendering::Draw()
 {
     if (mProgram == 0)
         return;
@@ -497,7 +517,7 @@ void STLRenderer::Draw()
 
     if (dirtyProjMat)
     {
-        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
+        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::getSceneProj()));
         dirtyProjMat = false;
     }
 
@@ -511,7 +531,7 @@ void STLRenderer::Draw()
         // Set the matrices to those of this mesh, update if needed first
         if (mg.sceneMatsDirty || dirtySceneMat)
         {
-            mg.sceneMat = ComboRendering::sceneTrans * mg.gpuMat;
+            mg.sceneMat = ComboRendering::getSceneTrans() * mg.gpuMat;
             mg.normalMat = glm::inverse(mg.sceneMat);
             mg.sceneMatsDirty = false;
         }

@@ -10,6 +10,7 @@
 
 #include <QFile>
 #include <QString>
+#include <QDebug>
 
 int main(int argc, char *argv[])
 {
@@ -61,6 +62,11 @@ int main(int argc, char *argv[])
 
     view.show();
 
-    return app.exec();
+    auto result = app.exec();
+
+    // Free up the memory
+
+
+    return result;
 }
 

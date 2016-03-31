@@ -5,46 +5,14 @@
 #include <vector>
 #include <set>
 
-#include "stlrenderer.h"
+#include "stlrendering.h"
 #include "toolpathrenderer.h"
 #include "gridrenderer.h"
 #include "structures.h"
 
-class ComboRendering
+namespace ComboRendering
 {
-    friend class STLRenderer;
-    friend class ToolpathRenderer;
-    friend class GridRenderer;
-
-private:
-    static glm::mat4 sceneTrans, sceneProj;
-    static float viewWidth, viewHeight;
-    static float centreX, centreY;
-    static float aimX, aimY;
-    static float zoom;
-
-    static void UpdateProjection();
-    static void UpdateTransform();
-    static void RecalculateCentre();
-
-    static glm::mat4 rotOrg, rotOrgInv;
-    static glm::quat sceneRot;
-
-    static STLRenderer stlRen;
-    static ToolpathRenderer tpRen;
-    static GridRenderer gridRen;
-
-    std::set<Mesh*> stlMeshes;
-    std::set<Mesh*> selectedMeshes;
-
-    Toolpath *gcodePath = nullptr;
-
-    // TODO: remove this
-    static float meshOpacity;
-
-public:
-    ComboRendering();
-    ~ComboRendering();
+    void FreeMemory();
 
     void SetViewSize(float width, float height);
     void Init();
@@ -56,16 +24,15 @@ public:
     void LoadMesh(const char* path);
     void RemoveMesh(Mesh *mesh);
 
-    void SetMeshOpacity(float opacity);
-    void SetTpOpacity(float opacity);
-    void SetMeshPos(Mesh *mesh, float x, float y);
-    void SetMeshScale(Mesh *mesh, float scale);
-    float MeshOpacity();
-    float TpOpacity();
+    // TODO: drop this shit
+    void SetMeshesOpacity(float opacity);
+    float MeshesOpacity();
     void TestMouseIntersection(float x, float y, bool &needUpdate);
 
-    const std::set<Mesh*> &getSelectedMeshes() { return selectedMeshes; }
-    const MeshGroupData &getMeshData(Mesh *mesh) { return stlRen.getMeshData(mesh); }
-};
+    const std::set<Mesh*> &getSelectedMeshes();
+
+    const glm::mat4 &getSceneTrans();
+    const glm::mat4 &getSceneProj();
+}
 
 #endif // COMBORENDERING_H

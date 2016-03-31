@@ -10,12 +10,31 @@
 #include "comborendering.h"
 #include "Misc/globalsettings.h"
 
-GridRenderer::GridRenderer()
+namespace GridRendering
 {
+    GLuint mProgram = 0;
+    GLsizei mWindowWidth = 0;
+    GLsizei mWindowHeight = 0;
 
+    GLint mPositionAttribLocation;
+
+    GLint mModelUniformLocation;
+    GLint mProjUniformLocation;
+
+    GLuint mVertexPositionBuffer;
+
+    GridGeneration::Grid *grid = nullptr;
+    unsigned int vertCount = 0;
+
+    // We need flags to determine when matrices have changed as
+    // to be able to give new ones to opengl
+    bool dirtyProjMat = true;
+    bool dirtySceneMat = true;
+    bool dirtyGrid = false;
+    bool gridLoaded = false;
 }
 
-GridRenderer::~GridRenderer()
+void GridRendering::FreeMemory()
 {
     if (mProgram != 0)
     {
@@ -33,7 +52,7 @@ GridRenderer::~GridRenderer()
         delete grid;
 }
 
-void GridRenderer::Init()
+void GridRendering::Init()
 {
     // Shader source files
     const std::string vs = "line.vsh";
@@ -48,17 +67,17 @@ void GridRenderer::Init()
     glGenBuffers(1, &mVertexPositionBuffer);
 }
 
-void GridRenderer::ProjMatDirty()
+void GridRendering::ProjMatDirty()
 {
     dirtyProjMat = true;
 }
 
-void GridRenderer::SceneMatDirty()
+void GridRendering::SceneMatDirty()
 {
     dirtySceneMat = true;
 }
 
-void GridRenderer::GridDirty()
+void GridRendering::GridDirty()
 {
     if (grid != nullptr)
         delete grid;
@@ -70,7 +89,7 @@ void GridRenderer::GridDirty()
     dirtyGrid = true;
 }
 
-void GridRenderer::Draw()
+void GridRendering::Draw()
 {
     if (mProgram == 0)
         return;
@@ -84,14 +103,14 @@ void GridRenderer::Draw()
     // Apply the scene tranformation matrix if it has changed
     if (dirtySceneMat)
     {        
-        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
+        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::getSceneTrans()));
         dirtySceneMat = false;
     }
 
     // Apply the new projection matrix if it has changed
     if (dirtyProjMat)
     {  
-        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
+        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::getSceneProj()));
         dirtyProjMat = false;
     }
 

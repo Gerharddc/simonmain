@@ -10,12 +10,39 @@
 #include "gcodeimporting.h"
 #include "comborendering.h"
 
-ToolpathRenderer::ToolpathRenderer()
-{
+namespace ToolpathRendering {
+    GLuint mProgram = 0;
+    GLsizei mWindowWidth = 0;
+    GLsizei mWindowHeight = 0;
 
+    GLint mCurPosAttribLocation = 0;
+    GLint mNextPosAttribLocation = 0;
+    GLint mPrevPosAttribLocation = 0;
+    GLint mSideAttribLocation = 0;
+
+    GLint mModelUniformLocation = 0;
+    GLint mRadiusUniformLocation = 0;
+    GLint mProjUniformLocation = 0;
+    GLint mColorUniformLocation = 0;
+
+    GroupGLData *groupDatas = nullptr;
+    std::size_t groupCount = 0;
+
+    inline void LoadPath();
+    Toolpath *path;
+
+    // We need flags to determine when matrices have changed as
+    // to be able to give new ones to opengl
+    bool dirtyProjMat = true;
+    bool dirtySceneMat = true;
+    bool dirtyPath = false;
+    bool dirtyColor = true;
+
+    glm::vec3 _color = glm::vec3(0.2f, 0.2f, 0.8f);
+    float opacity = 1.0f;
 }
 
-ToolpathRenderer::~ToolpathRenderer()
+void ToolpathRendering::FreeMemory()
 {
     if (mProgram != 0)
     {
@@ -30,17 +57,17 @@ ToolpathRenderer::~ToolpathRenderer()
     }
 }
 
-void ToolpathRenderer::SceneMatDirty()
+void ToolpathRendering::SceneMatDirty()
 {
     dirtySceneMat = true;
 }
 
-void ToolpathRenderer::ProjMatDirty()
+void ToolpathRendering::ProjMatDirty()
 {
     dirtyProjMat = true;
 }
 
-void ToolpathRenderer::SetToolpath(Toolpath *tp)
+void ToolpathRendering::SetToolpath(Toolpath *tp)
 {
     path = tp;
     dirtyPath = true;
@@ -79,7 +106,7 @@ GroupGLData::~GroupGLData()
     }
 }
 
-void ToolpathRenderer::LoadPath()
+void ToolpathRendering::LoadPath()
 {
     dirtyPath = false;
 
@@ -118,7 +145,7 @@ void ToolpathRenderer::LoadPath()
     delete chunks;
 }
 
-void ToolpathRenderer::Init()
+void ToolpathRendering::Init()
 {
     // Shader source files
     //const std::string vs = "line.vsh";
@@ -138,7 +165,7 @@ void ToolpathRenderer::Init()
     mSideAttribLocation = glGetAttribLocation(mProgram, "aSide");
 }
 
-void ToolpathRenderer::Draw()
+void ToolpathRendering::Draw()
 {
     if (mProgram == 0)
         return;
@@ -150,13 +177,13 @@ void ToolpathRenderer::Draw()
 
     if (dirtySceneMat)
     {
-        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneTrans));
+        glUniformMatrix4fv(mModelUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::getSceneTrans()));
         dirtySceneMat = false;
     }
 
     if (dirtyProjMat)
     {
-        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::sceneProj));
+        glUniformMatrix4fv(mProjUniformLocation, 1, GL_FALSE, glm::value_ptr(ComboRendering::getSceneProj()));
         dirtyProjMat = false;
     }
 
@@ -192,18 +219,18 @@ void ToolpathRenderer::Draw()
     }
 }
 
-void ToolpathRenderer::SetOpacity(float alpha)
+void ToolpathRendering::SetOpacity(float alpha)
 {
     opacity = alpha;
     dirtyColor = true;
 }
 
-float ToolpathRenderer::GetOpacity()
+float ToolpathRendering::GetOpacity()
 {
     return opacity;
 }
 
-void ToolpathRenderer::SetColor(glm::vec3 color)
+void ToolpathRendering::SetColor(glm::vec3 color)
 {
     _color = color;
     dirtyColor = true;

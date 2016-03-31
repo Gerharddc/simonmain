@@ -6,23 +6,31 @@
 #include "loadedgl.h"
 #endif
 
-#include "stlrenderer.h"
+#include "stlrendering.h"
 #include "toolpathrenderer.h"
 #include "gridrenderer.h"
 
 class ComboFBORenderer : public QQuickFramebufferObject::Renderer
 {
 public:
-    ComboRendering *comb;
 
-    ComboFBORenderer(const ComboRendering *c)
+    ComboFBORenderer()
     {
-        comb = (ComboRendering*)c;
-
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
-        comb->Init();
+        ComboRendering::Init();
+#ifndef GLES
+        LoadedGL::DeactivateGL();
+#endif
+    }
+
+    ~ComboFBORenderer()
+    {
+#ifndef GLES
+        LoadedGL::ActivateGL();
+#endif
+        ComboRendering::FreeMemory();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -32,7 +40,7 @@ public:
 #ifndef GLES
         LoadedGL::ActivateGL();
 #endif
-        comb->Draw();
+        ComboRendering::Draw();
 #ifndef GLES
         LoadedGL::DeactivateGL();
 #endif
@@ -42,7 +50,7 @@ public:
         QOpenGLFramebufferObjectFormat format;
         format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
         format.setSamples(4);
-        comb->SetViewSize(size.width(), size.height());
+        ComboRendering::SetViewSize(size.width(), size.height());
 
         return new QOpenGLFramebufferObject(size, format);
     }
@@ -50,30 +58,30 @@ public:
 
 QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 {
-    return new ComboFBORenderer(&comb);
+    return new ComboFBORenderer();
 }
 
 void FBORenderer::rotateView(float x, float y)
 {
-    comb.ApplyRot(x, y);
+    ComboRendering::ApplyRot(x, y);
     update();
 }
 
 void FBORenderer::panView(float x, float y)
 {
-    comb.Move(x, y);
+    ComboRendering::Move(x, y);
     update();
 }
 
 void FBORenderer::zoomView(float scale)
 {
-    comb.Zoom(scale);
+    ComboRendering::Zoom(scale);
     update();
 }
 
 void FBORenderer::resetView(bool updateNow)
 {
-    comb.ResetView();
+    ComboRendering::ResetView();
 
     if (updateNow)
         update();
@@ -81,7 +89,7 @@ void FBORenderer::resetView(bool updateNow)
 
 void FBORenderer::loadMesh(QString path)
 {
-    comb.LoadMesh(path.toStdString().c_str());
+    ComboRendering::LoadMesh(path.toStdString().c_str());
     update();
 
     emit curMeshPosChanged();
@@ -93,7 +101,7 @@ void FBORenderer::testMouseIntersection(float x, float y)
     // if we have moved between a point of no or any mesh selection
     bool needUpdate = false;
     int old = meshesSelected();
-    comb.TestMouseIntersection(x, y, needUpdate);
+    ComboRendering::TestMouseIntersection(x, y, needUpdate);
 
     if (needUpdate)
         update();
@@ -110,9 +118,9 @@ void FBORenderer::testMouseIntersection(float x, float y)
 
 void FBORenderer::setMeshOpacity(float o)
 {
-    if (o != comb.MeshOpacity())
+    if (o != ComboRendering::MeshesOpacity())
     {
-        comb.SetMeshOpacity(o);
+        ComboRendering::SetMeshesOpacity(o);
         update();
 
         emit meshOpacityChanged();
@@ -121,9 +129,9 @@ void FBORenderer::setMeshOpacity(float o)
 
 void FBORenderer::setTpOpacity(float o)
 {
-    if (o != comb.TpOpacity())
+    if (o != ToolpathRendering::GetOpacity())
     {
-        comb.SetTpOpacity(o);
+        ToolpathRendering::SetOpacity(o);
         update();
 
         emit tpOpacityChanged();
@@ -134,7 +142,7 @@ QPointF FBORenderer::curMeshPos()
 {
     if (meshesSelected() == 1)
     {
-        auto &v = comb.getMeshData(*comb.getSelectedMeshes().begin()).moveOnMat;
+        auto &v = STLRendering::getMeshData(*ComboRendering::getSelectedMeshes().begin()).moveOnMat;
         return QPointF(v.x, v.y);
     }
     else
@@ -150,7 +158,7 @@ void FBORenderer::setCurMeshPos(QPointF pos)
         // Filter out some noise
         if (std::abs((pos - old).manhattanLength()) >= 0.05f)
         {
-            comb.SetMeshPos(*comb.getSelectedMeshes().begin(), pos.x(), pos.y());
+            STLRendering::CentreMesh(*ComboRendering::getSelectedMeshes().begin(), pos.x(), pos.y());
             emit curMeshPosChanged();
             update();
         }
@@ -161,7 +169,7 @@ float FBORenderer::curMeshLift()
 {
     if (meshesSelected() == 1)
     {
-        auto &v = comb.getMeshData(*comb.getSelectedMeshes().begin()).moveOnMat;
+        auto &v = STLRendering::getMeshData(*ComboRendering::getSelectedMeshes().begin()).moveOnMat;
         return v.z;
     }
     else
@@ -187,7 +195,7 @@ void FBORenderer::setCurMeshLift(float lift)
 float FBORenderer::curMeshScale()
 {
     if (meshesSelected() == 1)
-        return comb.getMeshData(*comb.getSelectedMeshes().begin()).scaleOnMat;
+        return STLRendering::getMeshData(*ComboRendering::getSelectedMeshes().begin()).scaleOnMat;
     else
         return 0.0f;
 }
@@ -201,7 +209,7 @@ void FBORenderer::setCurMeshScale(float scale)
         // Filter out noise
         if (std::abs(scale - old) >= 0.005f)
         {
-            comb.SetMeshScale(*comb.getSelectedMeshes().begin(), scale);
+            STLRendering::ScaleMesh(*ComboRendering::getSelectedMeshes().begin(), scale);
             emit curMeshScaleChanged();
             update();
         }
@@ -210,8 +218,8 @@ void FBORenderer::setCurMeshScale(float scale)
 
 void FBORenderer::removeSelectedMeshes()
 {
-    for (Mesh *mesh : std::set<Mesh*>(comb.getSelectedMeshes()))
-        comb.RemoveMesh(mesh);
+    for (Mesh *mesh : std::set<Mesh*>(ComboRendering::getSelectedMeshes()))
+        ComboRendering::RemoveMesh(mesh);
 
     emit meshesSelectedChanged();
     emit curMeshPosChanged();

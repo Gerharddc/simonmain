@@ -1,4 +1,4 @@
-#include "globalsettings.h"
+﻿#include "globalsettings.h"
 
 #include <cstddef>
 #include <map>
@@ -7,8 +7,6 @@
 #include <memory>
 
 #include <QDebug>
-
-GlobalSettings GlobalSettingsClass = GlobalSettings();
 
 struct SettingValue
 {
@@ -41,7 +39,7 @@ std::map<const char*, SettingValue> settingsMap;
 const char* const SettingsFilePath = "settings.bin";
 
 // TODO: implement a bg thread to save the settings
-void SaveSettings()
+void GlobalSettings::SaveSettings()
 {
     for (auto name : queuedSettings)
     {
@@ -49,14 +47,9 @@ void SaveSettings()
     }
 }
 
-void LoadSettings()
+void GlobalSettings::LoadSettings()
 {
     // TODO: implement this
-}
-
-GlobalSettings::GlobalSettings()
-{
-    LoadSettings();
 }
 
 // This function saves a setting by converting it to a byte array
@@ -98,9 +91,7 @@ template<typename T> T GlobalSetting<T>::Get()
 }
 
 // Init the settings
+// This needs to be at the end to prevent a crash
 GlobalSetting<float> GlobalSettings::BedWidth = GlobalSetting<float>("BedWidth", 100.0f);
 GlobalSetting<float> GlobalSettings::BedLength = GlobalSetting<float>("Bedlength", 100.0f);
 GlobalSetting<float> GlobalSettings::BedHeight = GlobalSetting<float>("BedHeight", 100.0f);
-
-// Explicitly specialize the GS classes
-template class GlobalSetting<float>;

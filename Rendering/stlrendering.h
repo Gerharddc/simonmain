@@ -61,11 +61,9 @@ struct MeshGroupData
     ~MeshGroupData();
 };
 
-class STLRenderer
-{
-public:
-    STLRenderer();
-    ~STLRenderer();
+namespace STLRendering {
+    void FreeMemory();
+
     void Draw();
     void Init();
 
@@ -91,30 +89,6 @@ public:
 
     void ProjMatDirty();
     void SceneMatDirty();
-
-private:
-    GLuint mProgram = 0;
-    GLsizei mWindowWidth = 0;
-    GLsizei mWindowHeight = 0;
-
-    GLint mPositionAttribLocation;
-    GLint mNormalAttribLocation;
-
-    GLint mModelUniformLocation;
-    GLint mProjUniformLocation;
-    GLint mNormUniformLocation;
-    GLint mColorUniformLocation;
-
-    void LoadMesh(MeshGroupData &mg, Mesh *mesh);
-    std::map<Mesh*, MeshGroupData*> meshGroups;
-    void PackMeshes();
-    std::queue<MeshGroupData*> toDelete;
-
-    // We need flags to determine when matrices have changed as
-    // to be able to give new ones to opengl
-    bool dirtyProjMat = true;
-    bool dirtySceneMat = true;
-    bool dirtyMesh = false;
-};
+}
 
 #endif // STLRENDERER_H

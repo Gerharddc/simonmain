@@ -7,7 +7,6 @@ SOURCES += main.cpp \
     Keyboard/keyboard.cpp \
     Rendering/loadedgl.cpp \
     Rendering/fborenderer.cpp \
-    Rendering/stlrenderer.cpp \
     Rendering/stlimporting.cpp \
     Rendering/gcodeimporting.cpp \
     Rendering/toolpathrenderer.cpp \
@@ -16,7 +15,8 @@ SOURCES += main.cpp \
     Rendering/gridrenderer.cpp \
     Rendering/comborendering.cpp \
     Misc/globalsettings.cpp \
-    Misc/filebrowser.cpp
+    Misc/filebrowser.cpp \
+    Rendering/stlrendering.cpp
 
 RESOURCES += qml.qrc
 
@@ -31,7 +31,6 @@ HEADERS += \
     Rendering/glhelper.h \
     Rendering/loadedgl.h \
     Rendering/fborenderer.h \
-    Rendering/stlrenderer.h \
     Rendering/mathhelper.h \
     Rendering/structures.h \
     Misc/strings.h \
@@ -42,7 +41,8 @@ HEADERS += \
     Rendering/gridrenderer.h \
     Rendering/comborendering.h \
     Misc/globalsettings.h \
-    Misc/filebrowser.h
+    Misc/filebrowser.h \
+    Rendering/stlrendering.h
 
 INCLUDEPATH += $$PWD/glm
 

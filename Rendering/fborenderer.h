@@ -10,8 +10,6 @@
 class FBORenderer : public QQuickFramebufferObject
 {
     Q_OBJECT
-private:
-    ComboRendering comb;
 
 public:
     Renderer *createRenderer() const;
@@ -24,15 +22,15 @@ public:
     Q_INVOKABLE void removeSelectedMeshes();
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
-    bool meshOpacity() { return comb.MeshOpacity(); }
+    bool meshOpacity() { return ComboRendering::MeshesOpacity(); }
     void setMeshOpacity(float o);
 
     Q_PROPERTY(float tpOpacity READ tpOpacity WRITE setTpOpacity NOTIFY tpOpacityChanged)
-    bool tpOpacity() { return comb.TpOpacity(); }
+    bool tpOpacity() { return ToolpathRendering::GetOpacity(); }
     void setTpOpacity(float o);
 
     Q_PROPERTY(int meshesSelected READ meshesSelected NOTIFY meshesSelectedChanged)
-    int meshesSelected() { return comb.getSelectedMeshes().size(); }
+    int meshesSelected() { return ComboRendering::getSelectedMeshes().size(); }
 
     Q_PROPERTY(QPointF curMeshPos READ curMeshPos WRITE setCurMeshPos NOTIFY curMeshPosChanged)
     QPointF curMeshPos();

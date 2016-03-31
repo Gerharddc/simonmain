@@ -10,38 +10,40 @@
 #include "gcodeimporting.h"
 #include "Misc/globalsettings.h"
 
-// Init
-const float DefaultZoom = 3.0f;
-
-float ComboRendering::viewWidth = 0.0f;
-float ComboRendering::viewHeight = 0.0f;
-float ComboRendering::centreX = 0.0f;
-float ComboRendering::centreY = 0.0f;
-float ComboRendering::aimX = 50.0f;
-float ComboRendering::aimY = 50.0f;
-float ComboRendering::zoom = DefaultZoom;
-glm::mat4 ComboRendering::sceneTrans = glm::mat4();
-glm::mat4 ComboRendering::sceneProj = glm::mat4();
-GridRenderer ComboRendering::gridRen = GridRenderer();
-STLRenderer ComboRendering::stlRen = STLRenderer();
-ToolpathRenderer ComboRendering::tpRen = ToolpathRenderer();
-glm::mat4 ComboRendering::rotOrg = glm::mat4();
-glm::mat4 ComboRendering::rotOrgInv = glm::mat4();
-glm::quat ComboRendering::sceneRot = glm::quat();
-float ComboRendering::meshOpacity = 1.0f;
-
-ComboRendering::ComboRendering()
+namespace ComboRendering
 {
-    // Load the initial models and set the grid up
-    LoadMesh("bin.stl");
+    const float DefaultZoom = 3.0f;
 
-    gcodePath = GCodeImporting::ImportGCode("test.gcode");
-    tpRen.SetToolpath(gcodePath);
+    float viewWidth = 0.0f;
+    float viewHeight = 0.0f;
 
-    gridRen.GridDirty();
+    float centreX = 0.0f;
+    float centreY = 0.0f;
+
+    float aimX = 50.0f;
+    float aimY = 50.0f;
+    float zoom = DefaultZoom;
+
+    void UpdateProjection();
+    void UpdateTransform();
+    void RecalculateCentre();
+
+    glm::mat4 sceneTrans = glm::mat4();
+    glm::mat4 sceneProj = glm::mat4();
+
+    glm::mat4 rotOrg = glm::mat4();
+    glm::mat4 rotOrgInv = glm::mat4();
+    glm::quat sceneRot = glm::quat();
+
+    float meshOpacity = 1.0f;
+
+    std::set<Mesh*> stlMeshes;
+    std::set<Mesh*> selectedMeshes;
+
+    Toolpath *gcodePath = nullptr;
 }
 
-ComboRendering::~ComboRendering()
+void ComboRendering::FreeMemory()
 {
     for (Mesh *mesh : stlMeshes)
     {
@@ -57,18 +59,23 @@ ComboRendering::~ComboRendering()
         delete gcodePath;
         gcodePath = nullptr;
     }
+
+    // TODO: free others
+    ToolpathRendering::FreeMemory();
+    GridRendering::FreeMemory();
+    STLRendering::FreeMemory();
 }
 
 void ComboRendering::LoadMesh(const char *path)
 {
     auto mesh = STLImporting::ImportSTL(path);
     stlMeshes.insert(mesh);
-    stlRen.AddMesh(mesh);
+    STLRendering::AddMesh(mesh);
 }
 
 void ComboRendering::RemoveMesh(Mesh *mesh)
 {
-    stlRen.RemoveMesh(mesh);
+    STLRendering::RemoveMesh(mesh);
     stlMeshes.erase(mesh);
     selectedMeshes.erase(mesh);
     delete mesh;
@@ -110,9 +117,9 @@ void ComboRendering::UpdateProjection()
     sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10, GlobalSettings::BedHeight.Get() * 10);
 
     // Flag the renderers to update their proj matrices
-    gridRen.ProjMatDirty();
-    stlRen.ProjMatDirty();
-    tpRen.ProjMatDirty();
+    GridRendering::ProjMatDirty();
+    STLRendering::ProjMatDirty();
+    ToolpathRendering::ProjMatDirty();
 }
 
 void ComboRendering::RecalculateCentre()
@@ -155,9 +162,9 @@ void ComboRendering::ApplyRot(float x, float y)
     sceneTrans *= rotOrgInv;
 
     // Flag the renderers to update their scene matrices
-    gridRen.SceneMatDirty();
-    stlRen.SceneMatDirty();
-    tpRen.SceneMatDirty();
+    GridRendering::SceneMatDirty();
+    STLRendering::SceneMatDirty();
+    ToolpathRendering::SceneMatDirty();
 }
 
 void ComboRendering::Move(float x, float y)
@@ -187,16 +194,24 @@ void ComboRendering::ResetView()
     aimX = GlobalSettings::BedWidth.Get() / 2.0f;
     aimY = GlobalSettings::BedLength.Get() / 2.0f;
 
-    gridRen.SceneMatDirty();
-    stlRen.SceneMatDirty();
-    tpRen.SceneMatDirty();
+    GridRendering::SceneMatDirty();
+    STLRendering::SceneMatDirty();
+    ToolpathRendering::SceneMatDirty();
 }
 
 void ComboRendering::Init()
 {
-    gridRen.Init();
-    stlRen.Init();
-    tpRen.Init();
+    // Load the initial models and set the grid up
+    LoadMesh("bin.stl");
+
+    gcodePath = GCodeImporting::ImportGCode("test.gcode");
+    ToolpathRendering::SetToolpath(gcodePath);
+
+    GridRendering::GridDirty();
+
+    GridRendering::Init();
+    STLRendering::Init();
+    ToolpathRendering::Init();
 }
 
 void ComboRendering::Draw()
@@ -206,25 +221,20 @@ void ComboRendering::Draw()
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    gridRen.Draw();
+    GridRendering::Draw();
 
     if (meshOpacity != 0.0f)
-        stlRen.Draw();
+        STLRendering::Draw();
 
-    if (TpOpacity() != 0.0f)
-        tpRen.Draw();
+    if (ToolpathRendering::GetOpacity() != 0.0f)
+        ToolpathRendering::Draw();
 }
 
 // TODO: maybe working with this local copy is dangerous...
 
-float ComboRendering::MeshOpacity()
+float ComboRendering::MeshesOpacity()
 {
     return meshOpacity;
-}
-
-float ComboRendering::TpOpacity()
-{
-    return tpRen.GetOpacity();
 }
 
 void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
@@ -254,7 +264,7 @@ void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
     for (Mesh *mesh : stlMeshes)
     {
         float nZ;
-        if (stlRen.TestMeshIntersection(mesh, near, far, MV, nZ))
+        if (STLRendering::TestMeshIntersection(mesh, near, far, MV, nZ))
         {
             if (nZ < z)
             {
@@ -271,13 +281,13 @@ void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
         {
             // Deslect
             selectedMeshes.erase(highestMesh);
-            stlRen.ColorMesh(highestMesh, normalMeshCol);
+            STLRendering::ColorMesh(highestMesh, normalMeshCol);
         }
         else
         {
             // Select
             selectedMeshes.insert(highestMesh);
-            stlRen.ColorMesh(highestMesh, selectedMeshCol);
+            STLRendering::ColorMesh(highestMesh, selectedMeshCol);
         }
 
         needUpdate = true;
@@ -286,23 +296,23 @@ void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
         needUpdate = false;
 }
 
-void ComboRendering::SetMeshOpacity(float opacity)
+void ComboRendering::SetMeshesOpacity(float opacity)
 {
     meshOpacity = opacity;
-    stlRen.ColorAll(opacity);
+    STLRendering::ColorAll(opacity);
 }
 
-void ComboRendering::SetTpOpacity(float opacity)
+const std::set<Mesh*> &ComboRendering::getSelectedMeshes()
 {
-    tpRen.SetOpacity(opacity);
+    return selectedMeshes;
 }
 
-void ComboRendering::SetMeshPos(Mesh *mesh, float x, float y)
+const glm::mat4 &ComboRendering::getSceneTrans()
 {
-    stlRen.CentreMesh(mesh, x, y);
+    return sceneTrans;
 }
 
-void ComboRendering::SetMeshScale(Mesh *mesh, float scale)
+const glm::mat4 &ComboRendering::getSceneProj()
 {
-    stlRen.ScaleMesh(mesh, scale);
+    return sceneProj;
 }
