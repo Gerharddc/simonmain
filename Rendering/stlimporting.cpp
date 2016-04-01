@@ -182,6 +182,8 @@ namespace STLImporting
 
     inline Mesh* ImportASCII(const char* path, std::size_t fileSize)
     {
+        // TODO: this thing does not cope well with invalid files
+
         // Allocate a large enough mesh and shrink it later
         Mesh* mesh = new Mesh(fileSize / minSize);
         std::ifstream is(path);
@@ -322,7 +324,9 @@ namespace STLImporting
                 mesh->ShrinkTrigs(i);
             }
             else
+            {
                 throw std::runtime_error("The ASCII file is invalid");
+            }
         }
         else
             throw std::runtime_error(format_string("Could not open ASCII stl file with path: %s", path));
@@ -354,7 +358,9 @@ namespace STLImporting
 
             // check if the length is correct for binary
             if (length == (84 + (trigCount * 50)))
+            {
                 mesh = ImportBinary(is, trigCount);
+            }
             else
             {
                 is.close();

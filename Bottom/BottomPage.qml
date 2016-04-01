@@ -1,8 +1,8 @@
 import QtQuick 2.3
 
 Flickable {
-    id: modelPage
     anchors.top: parent.top
+    anchors.topMargin: 20
     anchors.bottom: parent.bottom
     width: 100 // Default
     clip: true

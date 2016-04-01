@@ -82,7 +82,7 @@ void ComboRendering::LoadMesh(const char *path)
     curMeshesSaved = false;
 }
 
-void removeCharsFromString(std::string &str, char* charsToRemove ) {
+void removeCharsFromString(std::string &str, const char* charsToRemove ) {
    for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
       str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
    }
@@ -92,16 +92,17 @@ std::string ComboRendering::SaveMeshes(std::string fileName)
 {
     // Remove illegal characters
     removeCharsFromString(fileName, "./\\|"); // TODO: complete this list
-    const std::string saveDir = "/home/Simon/Saved";
+    const std::string saveDir = "/home/Simon/Saved/";
     std::string savePath = saveDir + fileName + ".stl";
     std::string error = "";
 
     // Copy if already saved
-    if (STLRendering::PrepMeshesSave(stlMeshes) || !curMeshesSaved)
+    if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved)
     {
         // TODO: use native fs
-        std::ifstream  src("from.ogv", std::ios::binary);
-        std::ofstream  dst("to.ogv",   std::ios::binary);
+        // TODO: check for errors
+        std::ifstream  src(curMeshesPath, std::ios::binary);
+        std::ofstream  dst(savePath,   std::ios::binary);
 
         dst << src.rdbuf();
     }
@@ -119,9 +120,9 @@ std::string ComboRendering::SaveMeshes(std::string fileName)
     return error;
 }
 
-std::string ComboRendering::SliceMeshes()
+std::string ComboRendering::SliceMeshes(std::string fileName)
 {
-    SaveMeshes(".sliceTemp");
+    SaveMeshes(fileName);
     // TODO: implement slice
 }
 

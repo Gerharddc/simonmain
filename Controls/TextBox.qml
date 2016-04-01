@@ -3,7 +3,7 @@ import "qrc:/StyleSheet.js" as Style
 
 DimmableControl {
     id: textRect
-    color: Style.bgRed
+    color: enabled ? Style.bgRed : Style.disabledRed
     border.color: Style.accentColor
     border.width: 2
 

@@ -3,9 +3,16 @@ import "qrc:/Controls"
 import "qrc:/StyleSheet.js" as Style
 
 BottomPage {
+    id: modePage
+    contentHeightPlus: (renderer.meshesSelected > 0) ? 300 : 0
+
     Item {
-        anchors.fill: parent
-        anchors.margins: 20        
+        id: indenter
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 20
+        anchors.rightMargin: 20
 
         Button {
             id: btnAdd
@@ -37,10 +44,57 @@ BottomPage {
         }
 
         Label {
+            id: txtSave
+            text: 'Name of the file to save:'
+            anchors.top: btnArrange.bottom
+            anchors.topMargin: 15
+            anchors.left: parent.left
+            anchors.right: parent.right
+            isDimmable: true
+            enabled: renderer.meshCount > 0
+        }
+
+        TextBox {
+            id: saveBox
+            anchors.top: txtSave.bottom
+            anchors.topMargin: 10
+            anchors.left: parent.left
+            anchors.right: parent.right
+            isDimmable: true
+            enabled: renderer.meshCount > 0
+
+            Binding on text {
+                when: !saveBox.isActive
+                value: renderer.saveName
+            }
+
+            Binding {
+                target: renderer
+                property: "saveName"
+                value: saveBox.text
+            }
+        }
+
+        Button {
+            id: btnSave
+            anchors.top: saveBox.bottom
+            anchors.topMargin: 10
+            anchors.left: parent.left
+            anchors.right: parent.right
+            isDimmable: true
+            enabled: renderer.meshCount > 0
+            text: "Save all models as one"
+
+            onClicked: {
+                renderer.saveMeshes()
+            }
+        }
+
+        Label {
             id: txtSelect
             text: 'Select some models to see more options'
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: btnArrange.bottom
+            anchors.top: btnSave.bottom
             anchors.topMargin: 15
             isDimmable: true
             visible: renderer.meshesSelected === 0
@@ -49,7 +103,7 @@ BottomPage {
         Button {
             id: btnRemove
             text: "Remove selected models"
-            anchors.top: btnArrange.bottom
+            anchors.top: btnSave.bottom
             anchors.topMargin: 15
             anchors.left: parent.left
             anchors.right: parent.right

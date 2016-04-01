@@ -25,7 +25,7 @@ namespace ComboRendering
     void LoadMesh(const char* path);
     void RemoveMesh(Mesh *mesh);
     std::string SaveMeshes(std::string fileName);
-    std::string SliceMeshes();
+    std::string SliceMeshes(std::string fileName);
 
     void TestMouseIntersection(float x, float y, bool &needUpdate);
 

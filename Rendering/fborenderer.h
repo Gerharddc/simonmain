@@ -14,6 +14,7 @@ class FBORenderer : public QQuickFramebufferObject
 
 private:
     void EmitMeshProps();
+    QString m_saveName = "Untitled";
 
 public:
     Renderer *createRenderer() const;
@@ -25,7 +26,7 @@ public:
     Q_INVOKABLE void testMouseIntersection(float x, float y);
     Q_INVOKABLE void removeSelectedMeshes();
     Q_INVOKABLE void autoArrangeMeshes();
-    Q_INVOKABLE QString saveMeshes(QString fileName);
+    Q_INVOKABLE QString saveMeshes();
     Q_INVOKABLE QString sliceMeshes();
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
@@ -58,6 +59,10 @@ public:
     Q_PROPERTY(int meshCount READ meshCount NOTIFY meshCountChanged)
     int meshCount();
 
+    Q_PROPERTY(QString saveName READ saveName WRITE setSaveName NOTIFY saveNameChanged)
+    QString saveName() { return m_saveName; }
+    void setSaveName(QString sav);
+
 signals:
    void meshOpacityChanged();
    void tpOpacityChanged();
@@ -67,6 +72,7 @@ signals:
    void curMeshScaleChanged();
    void curMeshRotChanged();
    void meshCountChanged();
+   void saveNameChanged();
 };
 
 #endif // FBORENDERER_H

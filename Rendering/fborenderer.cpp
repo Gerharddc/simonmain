@@ -95,14 +95,14 @@ void FBORenderer::autoArrangeMeshes()
     update();
 }
 
-QString FBORenderer::saveMeshes(QString fileName)
+QString FBORenderer::saveMeshes()
 {
-    return QString::fromStdString(ComboRendering::SaveMeshes(fileName.toStdString()));
+    return QString::fromStdString(ComboRendering::SaveMeshes(saveName().toStdString()));
 }
 
 QString FBORenderer::sliceMeshes()
 {
-    return QString::fromStdString(ComboRendering::SliceMeshes());
+    return QString::fromStdString(ComboRendering::SliceMeshes(saveName().toStdString()));
 }
 
 // This is a helper method used to refresh all the properties
@@ -272,6 +272,20 @@ void FBORenderer::setCurMeshScale(float scale)
             emit curMeshScaleChanged();
             update();
         }
+    }
+}
+
+void FBORenderer::setSaveName(QString sav)
+{
+    if (sav != m_saveName)
+    {
+        if (sav == "")
+            sav = "Untitled";
+
+        sav.remove("./|\\~"); // TODO: complete list
+
+        m_saveName = sav;
+        emit saveNameChanged();
     }
 }
 

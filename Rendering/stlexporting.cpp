@@ -9,12 +9,14 @@ namespace STLExporting {
         // TODO: check for errors
         if (os.is_open())
         {
+            os.seekp(0);
+
             // Write the header
-            char header[80];
+            char header[80] { ' ' };
 #define HEADERTEXT "Written by naai software..."
             const char *headerText = HEADERTEXT;
             memcpy(header, headerText, sizeof HEADERTEXT);
-            os << header;
+            os.write(header, 80);
 
             // Write the size
             uint32_t trigCount = 0;
@@ -26,21 +28,25 @@ namespace STLExporting {
             for (Mesh *mesh : meshes)
             {
                 // Get the vertex and normal floats
-                const float *verts = mesh->getFlatVerts();
-                const float *norms = mesh->getFlatNorms();
+                const char *verts = (char*)mesh->getFlatVerts();
+                const char *norms = (char*)mesh->getFlatNorms();
 
                 for (std::size_t i = 0; i < mesh->trigCount; i++)
                 {
                     // Write the normal first
-                    os.write((char*)norms, 4);
-                    norms += 4;
+                    os.write(norms, 12);
+                    norms += 12;
 
                     // Write the three vertices
                     for (uint8_t j = 0; j < 3; j++)
                     {
-                        os.write((char*)verts, 4);
-                        verts += 4;
+                        os.write(verts, 12);
+                        verts += 12;
                     }
+
+                    // Write the bs 16bit attrib thing
+                    const char attrib[2] = { 0 };
+                    os.write(attrib, 2);
                 }
 
                 // Dump the temporary arrays
