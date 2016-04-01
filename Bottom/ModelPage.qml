@@ -183,7 +183,7 @@ BottomPage {
 
                         Binding on text {
                             when: !tboxS.isActive && !curMeshScaleAnimation.running
-                            value: renderer.curMeshScale
+                            value: renderer.curMeshScale.toFixed(2).replace(/\.?0+$/, "")
                         }
                     }
 
@@ -208,7 +208,7 @@ BottomPage {
 
                     Label {
                         id: lblX
-                        text: 'X Pos:'
+                        text: 'X Rot:'
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         isDimmable: true
@@ -221,7 +221,11 @@ BottomPage {
                         width: parent.width
                         height: 50
                         isDimmable: true
-                        value: renderer.curMeshRot.x
+
+                        Binding on value {
+                            when: !sldrX.isActive && !curMeshRotAnimation.running
+                            value: renderer.curMeshRot.x
+                        }
                     }
 
                     Binding {
@@ -237,7 +241,7 @@ BottomPage {
 
                     Label {
                         id: lblY
-                        text: 'Y Pos:'
+                        text: 'Y Rot:'
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         isDimmable: true
@@ -250,7 +254,11 @@ BottomPage {
                         width: parent.width
                         height: 50
                         isDimmable: true
-                        value: renderer.curMeshRot.y
+
+                        Binding on value {
+                            when: !sldrY.isActive && !curMeshRotAnimation.running
+                            value: renderer.curMeshRot.y
+                        }
                     }
 
                     Binding {
@@ -266,7 +274,7 @@ BottomPage {
 
                     Label {
                         id: lblZ
-                        text: 'Z Pos:'
+                        text: 'Z Rot:'
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         isDimmable: true
@@ -279,10 +287,9 @@ BottomPage {
                         width: parent.width
                         height: 50
                         isDimmable: true
-                        value: renderer.curMeshRot.z
 
                         Binding on value {
-                            when: !sldrZ.isActive
+                            when: !sldrZ.isActive && !curMeshRotAnimation.running
                             value: renderer.curMeshRot.z
                         }
                     }

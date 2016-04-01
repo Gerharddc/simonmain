@@ -7,6 +7,7 @@
 #include "Keyboard/keyboard.h"
 #include "Rendering/fborenderer.h"
 #include "Misc/filebrowser.h"
+#include "Misc/globalsettings.h"
 
 #include <QFile>
 #include <QString>
@@ -34,6 +35,9 @@ int main(int argc, char *argv[])
     }
     delete[] names;
 #endif
+
+    // Initialize
+    GlobalSettings::LoadSettings();
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 
@@ -64,8 +68,8 @@ int main(int argc, char *argv[])
 
     auto result = app.exec();
 
-    // Free up the memory
-
+    // Finialize
+    GlobalSettings::SaveSettings();
 
     return result;
 }
