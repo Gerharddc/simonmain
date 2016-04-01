@@ -5,8 +5,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/intersect.hpp>
+#include <algorithm>
+#include <fstream>
 
 #include "stlimporting.h"
+#include "stlexporting.h"
 #include "gcodeimporting.h"
 #include "Misc/globalsettings.h"
 
@@ -39,6 +42,9 @@ namespace ComboRendering
     std::set<Mesh*> selectedMeshes;
 
     Toolpath *gcodePath = nullptr;
+
+    bool curMeshesSaved = false;
+    std::string curMeshesPath = "";
 }
 
 void ComboRendering::FreeMemory()
@@ -73,6 +79,50 @@ void ComboRendering::LoadMesh(const char *path)
     auto mesh = STLImporting::ImportSTL(path);
     stlMeshes.insert(mesh);
     STLRendering::AddMesh(mesh);
+    curMeshesSaved = false;
+}
+
+void removeCharsFromString(std::string &str, char* charsToRemove ) {
+   for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
+      str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
+   }
+}
+
+std::string ComboRendering::SaveMeshes(std::string fileName)
+{
+    // Remove illegal characters
+    removeCharsFromString(fileName, "./\\|"); // TODO: complete this list
+    const std::string saveDir = "/home/Simon/Saved";
+    std::string savePath = saveDir + fileName + ".stl";
+    std::string error = "";
+
+    // Copy if already saved
+    if (STLRendering::PrepMeshesSave(stlMeshes) || !curMeshesSaved)
+    {
+        // TODO: use native fs
+        std::ifstream  src("from.ogv", std::ios::binary);
+        std::ofstream  dst("to.ogv",   std::ios::binary);
+
+        dst << src.rdbuf();
+    }
+    else
+    {
+        STLExporting::ExportSTL(savePath, stlMeshes, error);
+    }
+
+    if (error == "")
+    {
+        curMeshesSaved = true;
+        curMeshesPath = savePath;
+    }
+
+    return error;
+}
+
+std::string ComboRendering::SliceMeshes()
+{
+    SaveMeshes(".sliceTemp");
+    // TODO: implement slice
 }
 
 void ComboRendering::RemoveMesh(Mesh *mesh)
@@ -81,6 +131,7 @@ void ComboRendering::RemoveMesh(Mesh *mesh)
     stlMeshes.erase(mesh);
     selectedMeshes.erase(mesh);
     delete mesh;
+    curMeshesSaved = false;
 }
 
 void ComboRendering::SetViewSize(float width, float height)

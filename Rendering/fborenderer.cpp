@@ -95,6 +95,16 @@ void FBORenderer::autoArrangeMeshes()
     update();
 }
 
+QString FBORenderer::saveMeshes(QString fileName)
+{
+    return QString::fromStdString(ComboRendering::SaveMeshes(fileName.toStdString()));
+}
+
+QString FBORenderer::sliceMeshes()
+{
+    return QString::fromStdString(ComboRendering::SliceMeshes());
+}
+
 // This is a helper method used to refresh all the properties
 // relating to the current mesh
 void FBORenderer::EmitMeshProps()

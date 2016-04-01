@@ -65,7 +65,7 @@ void Mesh::ShrinkTrigs(std::size_t newSize)
     trigs = (Triangle*)realloc(trigs, sizeof(Triangle) * newSize);
 }
 
-float *Mesh::getFlatVerts()
+const float *Mesh::getFlatVerts()
 {
     if (vertexFloats != nullptr)
         delete[] vertFloats;
@@ -86,7 +86,7 @@ float *Mesh::getFlatVerts()
     return vertFloats;
 }
 
-float *Mesh::getFlatNorms()
+const float *Mesh::getFlatNorms()
 {
     if (normFloats != nullptr)
         delete[] vertexFloats;

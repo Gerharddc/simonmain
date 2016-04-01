@@ -84,7 +84,7 @@ public:
 
     // These functions temporarily create an array of repetead vertices for flat shading
     // it is recommended to delete the values directly after passing them to the GPU
-    float *getFlatVerts();
+    const float *getFlatVerts();
     void dumpFlatVerts()
     {
         delete[] vertFloats;
@@ -93,7 +93,7 @@ public:
 
     // These functions temporarily create an array of repetead vertices for flat shading
     // it is recommended to delete the values directly after passing them to the GPU
-    float *getFlatNorms();
+    const float *getFlatNorms();
     void dumpFlatNorms()
     {
         delete[] normFloats;

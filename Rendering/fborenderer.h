@@ -25,6 +25,8 @@ public:
     Q_INVOKABLE void testMouseIntersection(float x, float y);
     Q_INVOKABLE void removeSelectedMeshes();
     Q_INVOKABLE void autoArrangeMeshes();
+    Q_INVOKABLE QString saveMeshes(QString fileName);
+    Q_INVOKABLE QString sliceMeshes();
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
     bool meshOpacity() { return STLRendering::GetBaseOpacity(); }

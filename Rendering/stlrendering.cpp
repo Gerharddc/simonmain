@@ -3,6 +3,7 @@
 #include <QDebug>
 
 #include <string>
+#include <queue>
 #include <algorithm>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -59,6 +60,7 @@ namespace STLRendering {
         mg->scaleOnMesh = mg->scaleOnMat;
         mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
         mg->meshMat = mg->gpuMat;
+        mg->meshMatDirty = false;
     }
 
     // The base opacity for all stl meshes
@@ -118,6 +120,7 @@ inline void UpdateTempMat(MeshGroupData &mg)
     mg.gpuMat = glm::translate(mg.gpuMat, mg.meshCentre);
 
     mg.sceneMatsDirty = true;
+    mg.meshMatDirty = true;
 }
 
 void STLRendering::PackMeshes()
@@ -466,6 +469,23 @@ void STLRendering::SetBaseOpacity(float alpha)
 float STLRendering::GetBaseOpacity()
 {
     return baseOpacity;
+}
+
+bool STLRendering::PrepMeshesSave(std::set<Mesh *> &meshes)
+{
+    bool changed = false;
+
+    for (Mesh *mesh : meshes)
+    {
+        auto mg = meshGroups[mesh];
+        if (mg->meshMatDirty)
+        {
+            changed = true;
+            UpdateMesh(mesh, mg);
+        }
+    }
+
+    return changed;
 }
 
 void STLRendering::Init()

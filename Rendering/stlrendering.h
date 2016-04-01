@@ -8,7 +8,7 @@
 #endif
 
 #include <map>
-#include <queue>
+#include <set>
 #include <thread>
 #include <glm/gtx/quaternion.hpp>
 #include "structures.h"
@@ -36,6 +36,7 @@ struct MeshGroupData
     // Thes matrices and flag are used to store the combined mesh and scene matrices
     glm::mat4 sceneMat, normalMat;
     bool sceneMatsDirty = true;
+    bool meshMatDirty = false;
 
     // The colour of the mesh with transparency
     glm::vec4 color = normalMeshCol;
@@ -86,6 +87,9 @@ namespace STLRendering {
     float GetBaseOpacity();
 
     bool TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ);
+
+    // Applies pending changes to meshes in memory and returns if any changes were made
+    bool PrepMeshesSave(std::set<Mesh*> &meshes);
 
     void ProjMatDirty();
     void SceneMatDirty();

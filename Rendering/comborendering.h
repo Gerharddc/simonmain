@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <string>
 #include <set>
 
 #include "stlrendering.h"
@@ -23,6 +24,8 @@ namespace ComboRendering
     void ResetView();
     void LoadMesh(const char* path);
     void RemoveMesh(Mesh *mesh);
+    std::string SaveMeshes(std::string fileName);
+    std::string SliceMeshes();
 
     void TestMouseIntersection(float x, float y, bool &needUpdate);
 

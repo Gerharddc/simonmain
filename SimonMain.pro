@@ -16,7 +16,8 @@ SOURCES += main.cpp \
     Misc/filebrowser.cpp \
     Rendering/stlrendering.cpp \
     Rendering/toolpathrendering.cpp \
-    Rendering/gridrendering.cpp
+    Rendering/gridrendering.cpp \
+    Rendering/stlexporting.cpp
 
 RESOURCES += qml.qrc
 
@@ -42,7 +43,8 @@ HEADERS += \
     Misc/filebrowser.h \
     Rendering/stlrendering.h \
     Rendering/toolpathrendering.h \
-    Rendering/gridrendering.h
+    Rendering/gridrendering.h \
+    Rendering/stlexporting.h
 
 INCLUDEPATH += $$PWD/glm
 
