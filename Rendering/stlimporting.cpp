@@ -339,7 +339,7 @@ namespace STLImporting
     Mesh* ImportSTL(const char *path)
     {
         // TODO: better error handling
-        std::ifstream is(path, std::ifstream::binary);
+        std::ifstream is(path, std::ios::binary);
         if (!is.fail())
         {
             // get length of file:

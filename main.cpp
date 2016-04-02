@@ -66,6 +66,9 @@ int main(int argc, char *argv[])
 
     view.show();
 
+    //GlobalSettings::InfillLineDistance.Set(31.0f);
+    //GlobalSettings::BedLength.Set(200.0f);
+
     auto result = app.exec();
 
     // Finialize

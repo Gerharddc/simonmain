@@ -336,7 +336,7 @@ QString FBORenderer::sliceMeshes()
 void FBORenderer::ReadSlicerOutput()
 {
     QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
-    m_slicerStatus = sl.last();
+    m_slicerStatus = sl.front();
     emit slicerStatusChanged();
 }
 
