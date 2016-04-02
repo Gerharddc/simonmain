@@ -1,6 +1,7 @@
 #include "comborendering.h"
 
 #include <QDebug>
+#include <QFile>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -106,14 +107,20 @@ std::string ComboRendering::SaveMeshes(std::string fileName)
     std::string error = "";
 
     // Copy if already saved
-    if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved)
+    QString src = QString::fromStdString(curMeshesPath);
+    QString dest = QString::fromStdString(savePath);
+    if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved && QFile::exists(src))
     {
-        // TODO: use native fs
-        // TODO: check for errors
-        std::ifstream  src(curMeshesPath, std::ios::binary);
-        std::ofstream  dst(savePath,   std::ios::binary);
+        // TODO: do not use Qt here
+        if (curMeshesPath != savePath)
+        {
+            if (QFile::exists(dest))
+            {
+                QFile::remove(dest);
+            }
 
-        dst << src.rdbuf();
+            QFile::copy(src, dest);
+        }
     }
     else
     {
@@ -265,17 +272,14 @@ void ComboRendering::ResetView()
 
 void ComboRendering::Init()
 {
-    // Load the initial models and set the grid up
-    //LoadMesh("bin.stl");
-
-    //gcodePath = GCodeImporting::ImportGCode("/home/Simon/Saved/Untitled.gcode");//"test.gcode");
-    //ToolpathRendering::SetToolpath(gcodePath);
-
     GridRendering::GridDirty();
 
     GridRendering::Init();
     STLRendering::Init();
     ToolpathRendering::Init();
+
+    //gcodePath = GCodeImporting::ImportGCode("/home/Simon/Saved/Untitled.gcode");//"test.gcode");
+    //ToolpathRendering::SetToolpath(gcodePath);
 }
 
 void ComboRendering::Draw()

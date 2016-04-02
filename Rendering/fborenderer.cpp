@@ -66,7 +66,7 @@ QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 FBORenderer::FBORenderer()
 {
     sliceProcess = new QProcess();
-    QObject::connect(sliceProcess, SIGNAL(readyReadStandardOutput()), this, SLOT(ReadSlicerOutput()));
+    QObject::connect(sliceProcess, SIGNAL(readyReadStandardError()), this, SLOT(ReadSlicerOutput()));
     QObject::connect(sliceProcess, SIGNAL(finished(int)), this, SLOT(SlicerFinsihed(int)));
 }
 
@@ -307,6 +307,8 @@ QString FBORenderer::sliceMeshes()
         emit slicerStatusChanged();
         return "stopped";
     }
+    else if (meshCount() == 0)
+        return "no meshes";
 
     m_slicerRunning = true;
     m_slicerStatus = "Running";
@@ -333,12 +335,9 @@ QString FBORenderer::sliceMeshes()
 
 void FBORenderer::ReadSlicerOutput()
 {
-    while (sliceProcess->canReadLine())
-    {
-        m_slicerStatus = sliceProcess->readLine();
-        qDebug() << m_slicerStatus;
-        emit slicerStatusChanged();
-    }
+    QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
+    m_slicerStatus = sl.last();
+    emit slicerStatusChanged();
 }
 
 void FBORenderer::SlicerFinsihed(int res)
