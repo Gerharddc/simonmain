@@ -4,6 +4,7 @@
 #include <QQuickFramebufferObject>
 #include <QString>
 #include <QVector3D>
+#include <QProcess>
 
 #include "structures.h"
 #include "comborendering.h"
@@ -15,8 +16,15 @@ class FBORenderer : public QQuickFramebufferObject
 private:
     void EmitMeshProps();
     QString m_saveName = "Untitled";
+    bool m_slicerRunning = false;
+    QString m_slicerStatus = "Not running";
+    QProcess *sliceProcess;
+    QString gcodePath = "";
 
 public:
+    FBORenderer();
+    ~FBORenderer();
+
     Renderer *createRenderer() const;
     Q_INVOKABLE void rotateView(float x, float y);
     Q_INVOKABLE void panView(float x, float y);
@@ -63,6 +71,16 @@ public:
     QString saveName() { return m_saveName; }
     void setSaveName(QString sav);
 
+    Q_PROPERTY(bool slicerRunning READ slicerRunning NOTIFY slicerRunningChanged)
+    bool slicerRunning() { return m_slicerRunning; }
+
+    Q_PROPERTY(QString slicerStatus READ slicerStatus NOTIFY slicerStatusChanged)
+    QString slicerStatus() { return m_slicerStatus; }
+
+public slots:
+    void ReadSlicerOutput();
+    void SlicerFinsihed(int res);
+
 signals:
    void meshOpacityChanged();
    void tpOpacityChanged();
@@ -73,6 +91,8 @@ signals:
    void curMeshRotChanged();
    void meshCountChanged();
    void saveNameChanged();
+   void slicerRunningChanged();
+   void slicerStatusChanged();
 };
 
 #endif // FBORENDERER_H

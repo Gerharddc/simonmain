@@ -10,19 +10,6 @@
 #include <array>
 #include "structures.h"
 
-struct GroupGLData
-{
-    ~GroupGLData();
-
-    GLuint mCurPosBuffer = 0;
-    GLuint mNextPosBuffer = 0;
-    GLuint mPrevPosBuffer = 0;
-    GLuint mSideBuffer = 0;
-
-    uint16_t *indices;
-    short idxCount = 0;
-};
-
 namespace ToolpathRendering {
     void FreeMemory();
     void Draw();

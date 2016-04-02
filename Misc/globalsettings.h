@@ -25,9 +25,12 @@ class GlobalSettings
 public:
     static void LoadSettings();
     static void SaveSettings();
+
+    // The actual settings
     static GlobalSetting<float> BedWidth;
     static GlobalSetting<float> BedLength;
     static GlobalSetting<float> BedHeight;
+    static GlobalSetting<float> InfillLineDistance;
 };
 
 #endif // GLOBALSETTINGS_H

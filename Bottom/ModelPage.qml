@@ -3,11 +3,10 @@ import "qrc:/Controls"
 import "qrc:/StyleSheet.js" as Style
 
 BottomPage {
-    id: modePage
+    id: modelPage
     contentHeightPlus: (renderer.meshesSelected > 0) ? 300 : 0
 
     Item {
-        id: indenter
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top

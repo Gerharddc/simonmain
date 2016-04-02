@@ -71,8 +71,8 @@ Rectangle {
                 renderer.panView(0, renderer.height / 3);
             }
 
-            meshOpacity: (bottomDrawer.activeTabNum == 0) ? 1 : 0
-            tpOpacity: (bottomDrawer.activeTabNum == 1) ? 1 : 0
+            meshOpacity: (bottomDrawer.activeTabNum == 0) ? 1 : ((bottomDrawer.activeTabNum == 1) ? 0.5 : 0)
+            tpOpacity: (bottomDrawer.activeTabNum == 2) ? 1 : ((bottomDrawer.activeTabNum == 1) ? 0.5 : 0)
 
             Behavior on meshOpacity {
                 PropertyAnimation {}

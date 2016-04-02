@@ -82,6 +82,15 @@ void ComboRendering::LoadMesh(const char *path)
     curMeshesSaved = false;
 }
 
+void ComboRendering::LoadToolpath(const char *path)
+{
+    if (gcodePath != nullptr)
+        delete gcodePath;
+
+    gcodePath = GCodeImporting::ImportGCode(path);
+    ToolpathRendering::SetToolpath(gcodePath);
+}
+
 void removeCharsFromString(std::string &str, const char* charsToRemove ) {
    for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
       str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
@@ -115,6 +124,7 @@ std::string ComboRendering::SaveMeshes(std::string fileName)
     {
         curMeshesSaved = true;
         curMeshesPath = savePath;
+        return savePath;
     }
 
     return error;
@@ -258,8 +268,8 @@ void ComboRendering::Init()
     // Load the initial models and set the grid up
     //LoadMesh("bin.stl");
 
-    gcodePath = GCodeImporting::ImportGCode("test.gcode");
-    ToolpathRendering::SetToolpath(gcodePath);
+    //gcodePath = GCodeImporting::ImportGCode("/home/Simon/Saved/Untitled.gcode");//"test.gcode");
+    //ToolpathRendering::SetToolpath(gcodePath);
 
     GridRendering::GridDirty();
 

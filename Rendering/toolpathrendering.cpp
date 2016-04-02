@@ -11,6 +11,19 @@
 #include "comborendering.h"
 
 namespace ToolpathRendering {
+    struct GroupGLData
+    {
+        ~GroupGLData();
+
+        GLuint mCurPosBuffer = 0;
+        GLuint mNextPosBuffer = 0;
+        GLuint mPrevPosBuffer = 0;
+        GLuint mSideBuffer = 0;
+
+        uint16_t *indices;
+        short idxCount = 0;
+    };
+
     GLuint mProgram = 0;
     GLsizei mWindowWidth = 0;
     GLsizei mWindowHeight = 0;
@@ -73,7 +86,7 @@ void ToolpathRendering::SetToolpath(Toolpath *tp)
     dirtyPath = true;
 }
 
-GroupGLData::~GroupGLData()
+ToolpathRendering::GroupGLData::~GroupGLData()
 {
     if (mCurPosBuffer != 0)
     {

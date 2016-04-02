@@ -95,3 +95,4 @@ template<typename T> T GlobalSetting<T>::Get()
 GlobalSetting<float> GlobalSettings::BedWidth = GlobalSetting<float>("BedWidth", 100.0f);
 GlobalSetting<float> GlobalSettings::BedLength = GlobalSetting<float>("Bedlength", 100.0f);
 GlobalSetting<float> GlobalSettings::BedHeight = GlobalSetting<float>("BedHeight", 100.0f);
+GlobalSetting<float> GlobalSettings::InfillLineDistance = GlobalSetting<float>("InfillLineDistance", 1.0f);

@@ -9,6 +9,7 @@
 #include "stlrendering.h"
 #include "toolpathrendering.h"
 #include "gridrendering.h"
+#include "Misc/globalsettings.h"
 
 class ComboFBORenderer : public QQuickFramebufferObject::Renderer
 {
@@ -62,6 +63,18 @@ QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
     return ren;
 }
 
+FBORenderer::FBORenderer()
+{
+    sliceProcess = new QProcess();
+    QObject::connect(sliceProcess, SIGNAL(readyReadStandardOutput()), this, SLOT(ReadSlicerOutput()));
+    QObject::connect(sliceProcess, SIGNAL(finished(int)), this, SLOT(SlicerFinsihed(int)));
+}
+
+FBORenderer::~FBORenderer()
+{
+    delete sliceProcess;
+}
+
 void FBORenderer::rotateView(float x, float y)
 {
     ComboRendering::ApplyRot(x, y);
@@ -98,11 +111,6 @@ void FBORenderer::autoArrangeMeshes()
 QString FBORenderer::saveMeshes()
 {
     return QString::fromStdString(ComboRendering::SaveMeshes(saveName().toStdString()));
-}
-
-QString FBORenderer::sliceMeshes()
-{
-    return QString::fromStdString(ComboRendering::SliceMeshes(saveName().toStdString()));
 }
 
 // This is a helper method used to refresh all the properties
@@ -287,6 +295,61 @@ void FBORenderer::setSaveName(QString sav)
         m_saveName = sav;
         emit saveNameChanged();
     }
+}
+
+QString FBORenderer::sliceMeshes()
+{
+    if (m_slicerRunning)
+    {
+        m_slicerRunning = false;
+        m_slicerStatus = "Stopped";
+        emit slicerRunningChanged();
+        emit slicerStatusChanged();
+        return "stopped";
+    }
+
+    m_slicerRunning = true;
+    m_slicerStatus = "Running";
+    emit slicerRunningChanged();
+    emit slicerStatusChanged();
+
+    QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(saveName().toStdString()));
+    gcodePath = QString(stlName);
+    gcodePath.replace(".stl", ".gcode");
+
+    const QString program = "/home/Simon/.Cura/CuraEngine";
+
+    QStringList arguments;
+    arguments << "slice" << "-v";
+    arguments << "-j" << "/home/Simon/.Cura/simon.json";
+    arguments << "-o" << gcodePath;
+    //arguments << "-s" << "infill_line_distance=" + QString::number(GlobalSettings::InfillLineDistance.Get());
+    arguments << "-l" << stlName;
+
+    sliceProcess->start(program, arguments);
+
+    return "started";
+}
+
+void FBORenderer::ReadSlicerOutput()
+{
+    while (sliceProcess->canReadLine())
+    {
+        m_slicerStatus = sliceProcess->readLine();
+        qDebug() << m_slicerStatus;
+        emit slicerStatusChanged();
+    }
+}
+
+void FBORenderer::SlicerFinsihed(int res)
+{
+    m_slicerRunning = false;
+    m_slicerStatus = "Finished";
+    emit slicerRunningChanged();
+    emit slicerStatusChanged();
+
+    ComboRendering::LoadToolpath(gcodePath.toStdString().c_str());
+    update();
 }
 
 void FBORenderer::removeSelectedMeshes()
