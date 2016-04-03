@@ -315,6 +315,9 @@ void STLRendering::PackMeshes()
             UpdateTempMat(*mg);
         }
     }
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 void STLRendering::AddMesh(Mesh *mesh)
@@ -375,6 +378,9 @@ void STLRendering::ScaleMesh(Mesh *mesh, float absScale)
     mg.scaleOnMat = absScale;
 
     UpdateTempMat(mg);
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 // This method centres the mesh around the current coordinates
@@ -386,6 +392,9 @@ void STLRendering::CentreMesh(Mesh *mesh, float absX, float absY)
     mg.moveOnMat.y = absY;
 
     UpdateTempMat(mg);
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 // This method places the mesh an absolute height above the bed
@@ -397,6 +406,9 @@ void STLRendering::LiftMesh(Mesh *mesh, float absZ)
     mg.moveOnMat.z = absZ + (mg.height / 2.0f);
 
     UpdateTempMat(mg);
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 // This method applies an absolute rotation to the original mesh
@@ -407,6 +419,9 @@ void STLRendering::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
     mg.rotOnMat = glm::vec3(glm::radians(absX), glm::radians(absY), glm::radians(absZ));
 
     UpdateTempMat(mg);
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 const MeshGroupData &STLRendering::getMeshData(Mesh *mesh)
@@ -464,6 +479,9 @@ void STLRendering::ColorMesh(Mesh *mesh, float alpha)
 void STLRendering::SetBaseOpacity(float alpha)
 {
     baseOpacity = alpha;
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 float STLRendering::GetBaseOpacity()

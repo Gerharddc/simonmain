@@ -288,8 +288,8 @@ template<typename T> void GlobalSetting<T>::Set(T value)
         SetGlobalSetting(Name, value);
 
         // Alert the handlers of the change
-        //for (const StoredHandler &handler : storedHandlers)
-          //  handler.m_handler(handler.m_context, value);
+        for (const StoredHandler &handler : storedHandlers)
+            handler.m_handler(handler.m_context, value);
     }
 }
 
@@ -305,7 +305,7 @@ template<typename T> void GlobalSetting<T>::RegisterHandler(ChangedHandler handl
 
 template<typename T> void GlobalSetting<T>::UnregisterHandler(ChangedHandler handler, void *context)
 {
-    //storedHandlers.erase(StoredHandler(handler, context));
+    storedHandlers.erase(StoredHandler(handler, context));
 }
 
 // Init the settings

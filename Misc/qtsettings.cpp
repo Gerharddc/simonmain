@@ -23,7 +23,7 @@ namespace QtSettingsInternal {
 
     // We use a generic function to envoke the signal contained in the struct
     template <typename T>
-    void HandleWithSignal(void *context, T value)
+    void HandleWithSignal(void *context, T)
     {
         ((SignalWrapper*)(context))->operator ()();
     }

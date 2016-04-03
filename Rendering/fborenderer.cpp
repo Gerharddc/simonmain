@@ -63,11 +63,17 @@ QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
     return ren;
 }
 
+void CallFBOUpdate(void *context)
+{
+    ((FBORenderer*)context)->update();
+}
+
 FBORenderer::FBORenderer()
 {
     sliceProcess = new QProcess();
     QObject::connect(sliceProcess, SIGNAL(readyReadStandardError()), this, SLOT(ReadSlicerOutput()));
     QObject::connect(sliceProcess, SIGNAL(finished(int)), this, SLOT(SlicerFinsihed(int)));
+    ComboRendering::SetUpdateHandler(CallFBOUpdate, this);
 }
 
 FBORenderer::~FBORenderer()
@@ -78,34 +84,27 @@ FBORenderer::~FBORenderer()
 void FBORenderer::rotateView(float x, float y)
 {
     ComboRendering::ApplyRot(x, y);
-    update();
 }
 
 void FBORenderer::panView(float x, float y)
 {
     ComboRendering::Move(x, y);
-    update();
 }
 
 void FBORenderer::zoomView(float scale)
 {
     ComboRendering::Zoom(scale);
-    update();
 }
 
 void FBORenderer::resetView(bool updateNow)
 {
-    ComboRendering::ResetView();
-
-    if (updateNow)
-        update();
+    ComboRendering::ResetView(updateNow);
 }
 
 void FBORenderer::autoArrangeMeshes()
 {
     STLRendering::PackMeshes();
     EmitMeshProps();
-    update();
 }
 
 QString FBORenderer::saveMeshes()
@@ -125,7 +124,6 @@ void FBORenderer::EmitMeshProps()
 void FBORenderer::loadMesh(QString path)
 {
     ComboRendering::LoadMesh(path.toStdString().c_str());
-    update();
 
     EmitMeshProps();
     emit meshCountChanged();
@@ -140,12 +138,9 @@ void FBORenderer::testMouseIntersection(float x, float y)
 {
     // Test for mouse intersection with objects and alert the gui
     // if we have moved between a point of no or any mesh selection
-    bool needUpdate = false;
+    //bool needUpdate = false;
     int old = meshesSelected();
-    ComboRendering::TestMouseIntersection(x, y, needUpdate);
-
-    if (needUpdate)
-        update();
+    ComboRendering::TestMouseIntersection(x, y);//, needUpdate);
 
     if (meshesSelected() != old)
         emit meshesSelectedChanged();
@@ -161,7 +156,6 @@ void FBORenderer::setMeshOpacity(float o)
     if (o != STLRendering::GetBaseOpacity())
     {
         STLRendering::SetBaseOpacity(o);
-        update();
 
         emit meshOpacityChanged();
     }
@@ -172,7 +166,6 @@ void FBORenderer::setTpOpacity(float o)
     if (o != ToolpathRendering::GetOpacity())
     {
         ToolpathRendering::SetOpacity(o);
-        update();
 
         emit tpOpacityChanged();
     }
@@ -200,7 +193,6 @@ void FBORenderer::setCurMeshPos(QPointF pos)
         {
             STLRendering::CentreMesh(*ComboRendering::getSelectedMeshes().begin(), pos.x(), pos.y());
             emit curMeshPosChanged();
-            update();
         }
     }
 }
@@ -227,7 +219,6 @@ void FBORenderer::setCurMeshRot(QVector3D rot)
         {
             STLRendering::RotateMesh(*ComboRendering::getSelectedMeshes().begin(), rot.x(), rot.y(), rot.z());
             emit curMeshRotChanged();
-            update();
         }
     }
 }
@@ -254,7 +245,6 @@ void FBORenderer::setCurMeshLift(float lift)
         {
             STLRendering::LiftMesh(*ComboRendering::getSelectedMeshes().begin(), lift);
             emit curMeshLiftChanged();
-            update();
         }
     }
 }
@@ -278,7 +268,6 @@ void FBORenderer::setCurMeshScale(float scale)
         {
             STLRendering::ScaleMesh(*ComboRendering::getSelectedMeshes().begin(), scale);
             emit curMeshScaleChanged();
-            update();
         }
     }
 }
@@ -340,7 +329,7 @@ void FBORenderer::ReadSlicerOutput()
     emit slicerStatusChanged();
 }
 
-void FBORenderer::SlicerFinsihed(int res)
+void FBORenderer::SlicerFinsihed(int)
 {
     m_slicerRunning = false;
     m_slicerStatus = "Finished";
@@ -348,7 +337,6 @@ void FBORenderer::SlicerFinsihed(int res)
     emit slicerStatusChanged();
 
     ComboRendering::LoadToolpath(gcodePath.toStdString().c_str());
-    update();
 }
 
 void FBORenderer::removeSelectedMeshes()
@@ -359,6 +347,4 @@ void FBORenderer::removeSelectedMeshes()
     emit meshesSelectedChanged();
     emit meshCountChanged();
     EmitMeshProps();
-
-    update();
 }

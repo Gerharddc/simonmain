@@ -34,6 +34,35 @@ BottomPage {
             anchors.right: parent.right
             isDimmable: true
         }
+
+        TextBox {
+            id: tbxWidth
+            text: settings.bedWidth
+            anchors.top: txtSave.bottom
+            anchors.topMargin: 15
+            anchors.left: parent.left
+            anchors.right: parent.right
+            isDimmable: true
+
+            Binding {
+                target: settings
+                property: "bedWidth"
+                value: tbxWidth.text
+            }
+        }
+
+        Button {
+            text: "Change"
+            anchors.top: tbxWidth.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.topMargin: 10
+            isDimmable: true
+
+            onClicked: {
+                settings.bedWidth = 100
+            }
+        }
     }
 
     /*Slider {

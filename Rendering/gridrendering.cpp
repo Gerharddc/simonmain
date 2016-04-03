@@ -79,11 +79,18 @@ void GridRendering::SceneMatDirty()
 
 void GridRendering::GridDirty()
 {
+    auto w = GlobalSettings::BedWidth.Get();
+    auto l = GlobalSettings::BedLength.Get();
+    auto h = GlobalSettings::BedHeight.Get();
+
+    // Make sure the grid size is valid
+    if ((w == 0.0f) || (l == 0.0f) || (h == 0.0f))
+        return;
+
     if (grid != nullptr)
         delete grid;
 
-
-    grid = GridGeneration::GenerateGrids(GlobalSettings::BedWidth.Get(), GlobalSettings::BedLength.Get(), GlobalSettings::BedHeight.Get(), 10.0f);
+    grid = GridGeneration::GenerateGrids(w, l, h, 10.0f);
     vertCount = grid->floatCount / 3;
 
     dirtyGrid = true;

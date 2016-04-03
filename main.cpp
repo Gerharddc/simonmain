@@ -8,6 +8,7 @@
 #include "Rendering/fborenderer.h"
 #include "Misc/filebrowser.h"
 #include "Misc/globalsettings.h"
+#include "Misc/qtsettings.h"
 
 #include <QFile>
 #include <QString>
@@ -51,6 +52,8 @@ int main(int argc, char *argv[])
 
     FileBrowser fb;
     view.rootContext()->setContextProperty("fileBrowser", &fb);
+
+    view.rootContext()->setContextProperty("settings", &qtSettings);
 
 #ifdef ROTATE_SCREEN
 #define ROOTQML "qrc:/Rotated.qml"

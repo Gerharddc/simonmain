@@ -79,7 +79,7 @@ public:
 
 public slots:
     void ReadSlicerOutput();
-    void SlicerFinsihed(int res);
+    void SlicerFinsihed(int);
 
 signals:
    void meshOpacityChanged();

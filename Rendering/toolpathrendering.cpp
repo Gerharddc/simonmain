@@ -236,6 +236,9 @@ void ToolpathRendering::SetOpacity(float alpha)
 {
     opacity = alpha;
     dirtyColor = true;
+
+    // Call OpenGL upate
+    ComboRendering::Update();
 }
 
 float ToolpathRendering::GetOpacity()

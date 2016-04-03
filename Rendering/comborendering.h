@@ -15,20 +15,24 @@ namespace ComboRendering
 {
     void FreeMemory();
 
+    typedef void(*UpdateHandler)(void*);
+    void SetUpdateHandler(UpdateHandler handler,void *context);
+
     void SetViewSize(float width, float height);
     void Init();
     void Draw();
     void ApplyRot(float x, float y);
     void Move(float x, float y);
     void Zoom(float scale);
-    void ResetView();
+    void ResetView(bool updateNow);
     void LoadMesh(const char* path);
     void LoadToolpath(const char* path);
     void RemoveMesh(Mesh *mesh);
+    void Update();
     std::string SaveMeshes(std::string fileName);
     std::string SliceMeshes(std::string fileName);
 
-    void TestMouseIntersection(float x, float y, bool &needUpdate);
+    void TestMouseIntersection(float x, float y);//, bool &needUpdate);
 
     const std::set<Mesh*> &getSelectedMeshes();
 

@@ -46,6 +46,28 @@ namespace ComboRendering
 
     bool curMeshesSaved = false;
     std::string curMeshesPath = "";
+
+    // These are used to delegate an opengl update call
+    UpdateHandler updateHandler;
+    void *updateContext = nullptr;
+
+    void SetUpdateHandler(UpdateHandler handler, void *context)
+    {
+        updateHandler = handler;
+        updateContext = context;
+    }
+
+    void UpdateGridHandler(void*, float)
+    {
+        GridRendering::GridDirty();
+        Update();
+    }
+}
+
+void ComboRendering::Update()
+{
+    if (updateContext != nullptr)
+        updateHandler(updateContext);
 }
 
 void ComboRendering::FreeMemory()
@@ -81,6 +103,9 @@ void ComboRendering::LoadMesh(const char *path)
     stlMeshes.insert(mesh);
     STLRendering::AddMesh(mesh);
     curMeshesSaved = false;
+
+    // Call OpenGL upate
+    Update();
 }
 
 void ComboRendering::LoadToolpath(const char *path)
@@ -90,6 +115,9 @@ void ComboRendering::LoadToolpath(const char *path)
 
     gcodePath = GCodeImporting::ImportGCode(path);
     ToolpathRendering::SetToolpath(gcodePath);
+
+    // Call OpenGL upate
+    Update();
 }
 
 void removeCharsFromString(std::string &str, const char* charsToRemove ) {
@@ -141,6 +169,7 @@ std::string ComboRendering::SliceMeshes(std::string fileName)
 {
     SaveMeshes(fileName);
     // TODO: implement slice
+    return "";
 }
 
 void ComboRendering::RemoveMesh(Mesh *mesh)
@@ -150,6 +179,9 @@ void ComboRendering::RemoveMesh(Mesh *mesh)
     selectedMeshes.erase(mesh);
     delete mesh;
     curMeshesSaved = false;
+
+    // Call OpenGL upate
+    Update();
 }
 
 void ComboRendering::SetViewSize(float width, float height)
@@ -185,7 +217,8 @@ void ComboRendering::UpdateProjection()
     float top = aimY + (centreY / zoom);
 
     // With the orthographic system we need a negative and positive clip plane of enough distance
-    sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10, GlobalSettings::BedHeight.Get() * 10);
+    sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10,
+                           GlobalSettings::BedHeight.Get() * 10);
 
     // Flag the renderers to update their proj matrices
     GridRendering::ProjMatDirty();
@@ -213,7 +246,8 @@ void ComboRendering::ApplyRot(float x, float y)
     // For some reason the x rot is in the inverse direction of the mouse movement
     // TODO: 3.0 ?
     float yAng = (x / GlobalSettings::BedWidth.Get() * 1.1) / 3.0;
-    float xAng = -(y / GlobalSettings::BedLength.Get() * (1.1 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / 3.0;
+    float xAng = -(y / GlobalSettings::BedLength.Get() *
+                   (1.1 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / 3.0;
     glm::vec2 axis = glm::vec2(xAng, yAng);
     auto l = glm::length(axis); // doesnt work
     if (l == 0) // This is important to avoid normaliztion disasters ahead
@@ -236,6 +270,9 @@ void ComboRendering::ApplyRot(float x, float y)
     GridRendering::SceneMatDirty();
     STLRendering::SceneMatDirty();
     ToolpathRendering::SceneMatDirty();
+
+    // Call OpenGL upate
+    Update();
 }
 
 void ComboRendering::Move(float x, float y)
@@ -246,18 +283,23 @@ void ComboRendering::Move(float x, float y)
     // aspect ration into account
     // TODO: add dpi support
     aimX -= (x / GlobalSettings::BedWidth.Get() * 65) / zoom;
-    aimY -= (y / GlobalSettings::BedLength.Get() * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
+    aimY -= (y / GlobalSettings::BedLength.Get()
+             * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
 
     UpdateProjection();
+
+    // Call OpenGL upate
+    Update();
 }
 
 void ComboRendering::Zoom(float scale)
 {
     zoom *= scale;
     UpdateProjection();
+    Update();
 }
 
-void ComboRendering::ResetView()
+void ComboRendering::ResetView(bool updateNow)
 {
     zoom = DefaultZoom;
 
@@ -268,6 +310,10 @@ void ComboRendering::ResetView()
     GridRendering::SceneMatDirty();
     STLRendering::SceneMatDirty();
     ToolpathRendering::SceneMatDirty();
+
+    // Call OpenGL upate
+    if (updateNow)
+        Update();
 }
 
 void ComboRendering::Init()
@@ -280,6 +326,11 @@ void ComboRendering::Init()
 
     //gcodePath = GCodeImporting::ImportGCode("/home/Simon/Saved/Untitled.gcode");//"test.gcode");
     //ToolpathRendering::SetToolpath(gcodePath);
+
+    // Setup event handler for settings changes
+    GlobalSettings::BedHeight.RegisterHandler(UpdateGridHandler, nullptr);
+    GlobalSettings::BedWidth.RegisterHandler(UpdateGridHandler, nullptr);
+    GlobalSettings::BedLength.RegisterHandler(UpdateGridHandler, nullptr);
 }
 
 void ComboRendering::Draw()
@@ -298,7 +349,7 @@ void ComboRendering::Draw()
         ToolpathRendering::Draw();
 }
 
-void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
+void ComboRendering::TestMouseIntersection(float x, float y)//, bool &needUpdate)
 {
     // TODO: this should only run if the STLs are visible
 
@@ -351,10 +402,9 @@ void ComboRendering::TestMouseIntersection(float x, float y, bool &needUpdate)
             STLRendering::ColorMesh(highestMesh, selectedMeshCol);
         }
 
-        needUpdate = true;
+        // Call OpenGL upate
+        Update();
     }
-    else
-        needUpdate = false;
 }
 
 const std::set<Mesh*> &ComboRendering::getSelectedMeshes()
