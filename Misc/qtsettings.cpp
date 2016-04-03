@@ -30,6 +30,8 @@ namespace QtSettingsInternal {
 
     // We need to create a wrapper for each signal
     SignalWrapper bedWidthSignal(&QtSettings::bedWidthChanged);
+    SignalWrapper bedHeightSignal(&QtSettings::bedHeightChanged);
+    SignalWrapper bedLengthSignal(&QtSettings::bedLengthChanged);
 }
 
 using namespace QtSettingsInternal;
@@ -38,4 +40,6 @@ QtSettings::QtSettings(QObject *parent) : QObject(parent)
 {
     // Connect the qt signals to the the settings backend
     GlobalSettings::BedWidth.RegisterHandler(HandleWithSignal<float>, &bedWidthSignal);
+    GlobalSettings::BedHeight.RegisterHandler(HandleWithSignal<float>, &bedHeightSignal);
+    GlobalSettings::BedLength.RegisterHandler(HandleWithSignal<float>, &bedLengthSignal);
 }

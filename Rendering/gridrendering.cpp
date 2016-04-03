@@ -79,18 +79,17 @@ void GridRendering::SceneMatDirty()
 
 void GridRendering::GridDirty()
 {
-    auto w = GlobalSettings::BedWidth.Get();
-    auto l = GlobalSettings::BedLength.Get();
-    auto h = GlobalSettings::BedHeight.Get();
+    const float gridSpacing = 10.0f;
 
     // Make sure the grid size is valid
-    if ((w == 0.0f) || (l == 0.0f) || (h == 0.0f))
-        return;
+    auto w = std::max(GlobalSettings::BedWidth.Get(), gridSpacing);
+    auto l = std::max(GlobalSettings::BedLength.Get(), gridSpacing);
+    auto h = std::max(GlobalSettings::BedHeight.Get(), gridSpacing);
 
     if (grid != nullptr)
         delete grid;
 
-    grid = GridGeneration::GenerateGrids(w, l, h, 10.0f);
+    grid = GridGeneration::GenerateGrids(w, l, h, gridSpacing);
     vertCount = grid->floatCount / 3;
 
     dirtyGrid = true;

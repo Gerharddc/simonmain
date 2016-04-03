@@ -35,32 +35,57 @@ BottomPage {
             isDimmable: true
         }
 
-        TextBox {
-            id: tbxWidth
-            text: settings.bedWidth
-            anchors.top: txtSave.bottom
-            anchors.topMargin: 15
-            anchors.left: parent.left
-            anchors.right: parent.right
-            isDimmable: true
+        ListModel {
+            id: settingsModel
+            ListElement { title: "Bed Width"; setting: "bedWidth"; }
+            ListElement { title: "Bed Length"; setting: "bedLength"; }
+            ListElement { title: "Bed Height"; setting: "bedHeight"; }
+        }
 
-            Binding {
-                target: settings
-                property: "bedWidth"
-                value: tbxWidth.text
+        Component {
+            id: settingsDelegate
+
+            Item {
+                width: parent.width
+                height: childrenRect.height
+
+                Label {
+                    id: setLabel
+                    text: title + ":"
+                    width: parent.width
+                }
+
+                TextBox {
+                    id: setTBox
+                    anchors.top: setLabel.bottom
+                    anchors.topMargin: 5
+                    width: parent.width
+
+                    Binding on text {
+                        when: !setTBox.isActive
+                        value: settings[setting]
+                    }
+
+                    Binding {
+                        target: settings
+                        property: setting
+                        value: setTBox.text
+                    }
+                }
             }
         }
 
-        Button {
-            text: "Change"
-            anchors.top: tbxWidth.bottom
+        Column {
+            id: settingsColumn
+            spacing: 10
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.topMargin: 10
-            isDimmable: true
+            anchors.top: txtSave.bottom
+            anchors.topMargin: 15
 
-            onClicked: {
-                settings.bedWidth = 100
+            Repeater {
+                model: settingsModel
+                delegate: settingsDelegate
             }
         }
     }

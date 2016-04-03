@@ -68,7 +68,7 @@ Rectangle {
 
             // Move the view down a bit after creation
             Component.onCompleted: {
-                renderer.panView(0, renderer.height / 3);
+                //renderer.panView(0, renderer.height / 3);
             }
 
             meshOpacity: (bottomDrawer.activeTabNum == 0) ? 1 : ((bottomDrawer.activeTabNum == 1) ? 0.5 : 0)
@@ -126,7 +126,6 @@ Rectangle {
 
                 onClicked: {
                     renderer.resetView(true)
-                    renderer.panView(0, renderer.height / 3)
                 }
             }
 

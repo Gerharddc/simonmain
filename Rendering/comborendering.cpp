@@ -16,6 +16,7 @@
 
 namespace ComboRendering
 {
+    // TODO: make relative to bed size
     const float DefaultZoom = 3.0f;
 
     float viewWidth = 0.0f;
@@ -24,8 +25,8 @@ namespace ComboRendering
     float centreX = 0.0f;
     float centreY = 0.0f;
 
-    float aimX = 50.0f;
-    float aimY = 50.0f;
+    float aimX = 0.0f;
+    float aimY = 0.0f;
     float zoom = DefaultZoom;
 
     void UpdateProjection();
@@ -60,7 +61,7 @@ namespace ComboRendering
     void UpdateGridHandler(void*, float)
     {
         GridRendering::GridDirty();
-        Update();
+        ResetView(true);
     }
 }
 
@@ -286,6 +287,8 @@ void ComboRendering::Move(float x, float y)
     aimY -= (y / GlobalSettings::BedLength.Get()
              * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
 
+    qDebug() << "Move " << "X: " << aimX << " Y: " << aimY;
+
     UpdateProjection();
 
     // Call OpenGL upate
@@ -304,8 +307,10 @@ void ComboRendering::ResetView(bool updateNow)
     zoom = DefaultZoom;
 
     SetViewSize(viewWidth, viewHeight);
-    aimX = GlobalSettings::BedWidth.Get() / 2.0f;
-    aimY = GlobalSettings::BedLength.Get() / 2.0f;
+    aimX = (GlobalSettings::BedWidth.Get() / 2.0f);
+    aimY = (GlobalSettings::BedLength.Get() / 2.0f);// + (GlobalSettings::BedHeight.Get() / 4.0f);
+
+    qDebug() << "X: " << aimX << " Y: " << aimY;
 
     GridRendering::SceneMatDirty();
     STLRendering::SceneMatDirty();
@@ -331,6 +336,9 @@ void ComboRendering::Init()
     GlobalSettings::BedHeight.RegisterHandler(UpdateGridHandler, nullptr);
     GlobalSettings::BedWidth.RegisterHandler(UpdateGridHandler, nullptr);
     GlobalSettings::BedLength.RegisterHandler(UpdateGridHandler, nullptr);
+
+    // Reset the view
+    ResetView(true);
 }
 
 void ComboRendering::Draw()
