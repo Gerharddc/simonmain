@@ -287,8 +287,6 @@ void ComboRendering::Move(float x, float y)
     aimY -= (y / GlobalSettings::BedLength.Get()
              * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
 
-    qDebug() << "Move " << "X: " << aimX << " Y: " << aimY;
-
     UpdateProjection();
 
     // Call OpenGL upate
@@ -306,11 +304,9 @@ void ComboRendering::ResetView(bool updateNow)
 {
     zoom = DefaultZoom;
 
-    SetViewSize(viewWidth, viewHeight);
     aimX = (GlobalSettings::BedWidth.Get() / 2.0f);
-    aimY = (GlobalSettings::BedLength.Get() / 2.0f);// + (GlobalSettings::BedHeight.Get() / 4.0f);
-
-    qDebug() << "X: " << aimX << " Y: " << aimY;
+    aimY = (GlobalSettings::BedLength.Get() / 2.0f);
+    SetViewSize(viewWidth, viewHeight);
 
     GridRendering::SceneMatDirty();
     STLRendering::SceneMatDirty();
