@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <exception>
 #include <iostream>
+#include <map>
 
 struct SettingValue
 {
@@ -281,12 +282,30 @@ template<typename T> GlobalSetting<T>::GlobalSetting(std::string name, T defVal)
 
 template<typename T> void GlobalSetting<T>::Set(T value)
 {
-    SetGlobalSetting(Name, value);
+    // Check for change first
+    if (value != Get())
+    {
+        SetGlobalSetting(Name, value);
+
+        // Alert the handlers of the change
+        //for (const StoredHandler &handler : storedHandlers)
+          //  handler.m_handler(handler.m_context, value);
+    }
 }
 
 template<typename T> T GlobalSetting<T>::Get()
 {
     return GetGlobalSetting<T>(Name);
+}
+
+template<typename T> void GlobalSetting<T>::RegisterHandler(ChangedHandler handler, void *context)
+{
+    storedHandlers.insert(StoredHandler(handler, context));
+}
+
+template<typename T> void GlobalSetting<T>::UnregisterHandler(ChangedHandler handler, void *context)
+{
+    //storedHandlers.erase(StoredHandler(handler, context));
 }
 
 // Init the settings

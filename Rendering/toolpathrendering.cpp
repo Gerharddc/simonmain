@@ -226,7 +226,7 @@ void ToolpathRendering::Draw()
         glEnableVertexAttribArray(mSideAttribLocation);
         glVertexAttribPointer(mSideAttribLocation, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
-        glUniform1f(mRadiusUniformLocation, 0.25f);
+        glUniform1f(mRadiusUniformLocation, 0.2f);
 
         glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
     }

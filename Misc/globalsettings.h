@@ -1,7 +1,6 @@
 ﻿#ifndef GLOBALSETTINGS_H
 #define GLOBALSETTINGS_H
 
-#include <map>
 #include <set>
 #include <string>
 
@@ -9,13 +8,40 @@
 // This is important because the sotrage mechanism is inherintly not typesafe.
 template<typename T> class GlobalSetting
 {
-private:
-    std::string Name;
-
 public:
     GlobalSetting(const std::string name, T defVal);
     void Set(T value);
     T Get();
+
+    // The changed handler is a pointer to a C function that handles a change to the settings,
+    // this function gets the new value and pointer to the "context" associated with it.
+    // This could be a pointer to a class that the function needs. It should be passed along
+    // when the handler is registered or unregistered
+    typedef void(*ChangedHandler)(void*, T);
+    void RegisterHandler(ChangedHandler handler, void *context);
+    void UnregisterHandler(ChangedHandler handler, void *context);
+
+private:
+    std::string Name;
+
+    struct StoredHandler
+    {
+        ChangedHandler m_handler;
+        void *m_context;
+
+        StoredHandler(ChangedHandler handler, void *context)
+            : m_handler(handler), m_context(context) {}
+
+        bool operator ==(const StoredHandler &o) const {
+            return ((m_handler == o.m_handler) && (m_context == o.m_context));
+        }
+
+        bool operator <(const StoredHandler &o) const {
+            return ((m_handler < o.m_handler) && (m_context < o.m_context));
+        }
+    };
+
+    std::set<StoredHandler> storedHandlers;
 };
 
 // As static class is used instead of a namespace because the compiler does not
