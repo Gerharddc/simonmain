@@ -314,7 +314,15 @@ QString FBORenderer::sliceMeshes()
     arguments << "slice" << "-v";
     arguments << "-j" << "/home/Simon/.Cura/simon.json";
     arguments << "-o" << gcodePath;
-    //arguments << "-s" << "infill_line_distance=" + QString::number(GlobalSettings::InfillLineDistance.Get());
+    arguments << "-s" << "infill_sparse_density=" + QString::number(GlobalSettings::InfillDensity.Get());
+    arguments << "-s" << "layer_height=" + QString::number(GlobalSettings::LayerHeight.Get());
+    arguments << "-s" << "skirt_line_count=" + QString::number(GlobalSettings::SkirtLineCount.Get());
+    arguments << "-s" << "skirt_gap=" + QString::number(GlobalSettings::SkirtDistance.Get());
+    arguments << "-s" << "speed_print=" + QString::number(GlobalSettings::PrintSpeed.Get());
+    arguments << "-s" << "speed_infill=" + QString::number(GlobalSettings::InfillSpeed.Get());
+    arguments << "-s" << "speed_topbottom=" + QString::number(GlobalSettings::TopBottomSpeed.Get());
+    arguments << "-s" << "speed_travel=" + QString::number(GlobalSettings::TravelSpeed.Get());
+    arguments << "-s" << "speed_layer_0=" + QString::number(GlobalSettings::FirstLineSpeed.Get());
     arguments << "-l" << stlName;
 
     sliceProcess->start(program, arguments);

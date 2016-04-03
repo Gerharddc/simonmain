@@ -313,7 +313,15 @@ template<typename T> void GlobalSetting<T>::UnregisterHandler(ChangedHandler han
 GlobalSetting<float> GlobalSettings::BedWidth = GlobalSetting<float>("BedWidth", 100.0f);
 GlobalSetting<float> GlobalSettings::BedLength = GlobalSetting<float>("Bedlength", 100.0f);
 GlobalSetting<float> GlobalSettings::BedHeight = GlobalSetting<float>("BedHeight", 100.0f);
-GlobalSetting<float> GlobalSettings::InfillLineDistance = GlobalSetting<float>("InfillLineDistance", 1.0f);
+GlobalSetting<float> GlobalSettings::InfillDensity = GlobalSetting<float>("InfillDensity", 20.0f);
+GlobalSetting<float> GlobalSettings::LayerHeight = GlobalSetting<float>("LayerHeight", 0.2f);
+GlobalSetting<int> GlobalSettings::SkirtLineCount = GlobalSetting<int>("SkirtLineCount", 3);
+GlobalSetting<float> GlobalSettings::SkirtDistance = GlobalSetting<float>("SkirtDistance", 5.0f);
+GlobalSetting<float> GlobalSettings::PrintSpeed = GlobalSetting<float>("PrintSpeed", 60.0f);
+GlobalSetting<float> GlobalSettings::InfillSpeed = GlobalSetting<float>("InfillSpeed", 100.0f);
+GlobalSetting<float> GlobalSettings::TopBottomSpeed = GlobalSetting<float>("TopBottomSpeed", 15.0f);
+GlobalSetting<float> GlobalSettings::FirstLineSpeed = GlobalSetting<float>("FirstLineSpeed", 15.0f);
+GlobalSetting<float> GlobalSettings::TravelSpeed = GlobalSetting<float>("TravelSpeed", 15.0f);
 
 // Explicitly specialize the GS classes
 template class GlobalSetting<float>;
