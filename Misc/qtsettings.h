@@ -29,6 +29,11 @@ public:
     AUTO_SETTING_PROPERTY(float, topBottomSpeed, TopBottomSpeed)
     AUTO_SETTING_PROPERTY(float, firstLineSpeed, FirstLineSpeed)
     AUTO_SETTING_PROPERTY(float, travelSpeed, TravelSpeed)
+    AUTO_SETTING_PROPERTY(float, retractionSpeed, RetractionSpeed)
+    AUTO_SETTING_PROPERTY(float, retractionDistance, RetractionDistance)
+    AUTO_SETTING_PROPERTY(float, shellThickness, ShellThickness)
+    AUTO_SETTING_PROPERTY(float, topBottomThickness, TopBottomThickness)
+    AUTO_SETTING_PROPERTY(int, printTemperature, PrintTemperature)
 #undef AUTO_SETTING_PROPERTY
 };
 

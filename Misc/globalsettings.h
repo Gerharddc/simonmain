@@ -66,6 +66,11 @@ public:
     static GlobalSetting<float> TopBottomSpeed;
     static GlobalSetting<float> FirstLineSpeed;
     static GlobalSetting<float> TravelSpeed;
+    static GlobalSetting<float> RetractionSpeed;
+    static GlobalSetting<float> RetractionDistance;
+    static GlobalSetting<float> ShellThickness;
+    static GlobalSetting<float> TopBottomThickness;
+    static GlobalSetting<int> PrintTemperature;
 };
 
 #endif // GLOBALSETTINGS_H

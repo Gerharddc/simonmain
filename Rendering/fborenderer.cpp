@@ -323,6 +323,11 @@ QString FBORenderer::sliceMeshes()
     arguments << "-s" << "speed_topbottom=" + QString::number(GlobalSettings::TopBottomSpeed.Get());
     arguments << "-s" << "speed_travel=" + QString::number(GlobalSettings::TravelSpeed.Get());
     arguments << "-s" << "speed_layer_0=" + QString::number(GlobalSettings::FirstLineSpeed.Get());
+    arguments << "-s" << "retraction_speed=" + QString::number(GlobalSettings::RetractionSpeed.Get());
+    arguments << "-s" << "retraction_amount=" + QString::number(GlobalSettings::RetractionDistance.Get());
+    arguments << "-s" << "shell_thickness=" + QString::number(GlobalSettings::ShellThickness.Get());
+    arguments << "-s" << "top_bottom_thickness=" + QString::number(GlobalSettings::TopBottomThickness.Get());
+    arguments << "-s" << "material_print_temperature=" + QString::number(GlobalSettings::PrintTemperature.Get());
     arguments << "-l" << stlName;
 
     sliceProcess->start(program, arguments);
@@ -333,7 +338,8 @@ QString FBORenderer::sliceMeshes()
 void FBORenderer::ReadSlicerOutput()
 {
     QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
-    m_slicerStatus = sl.front();
+    sl.removeLast(); // The last one is usually empty
+    m_slicerStatus = sl.back();
     emit slicerStatusChanged();
 }
 

@@ -325,6 +325,11 @@ AUTO_SET(InfillSpeed, float, 100.0f)
 AUTO_SET(TopBottomSpeed, float, 15.0f)
 AUTO_SET(FirstLineSpeed, float, 15.0f)
 AUTO_SET(TravelSpeed, float, 80.0f)
+AUTO_SET(RetractionSpeed, float, 45.0f)
+AUTO_SET(RetractionDistance, float, 0.8f)
+AUTO_SET(ShellThickness, float, 1.5f)
+AUTO_SET(TopBottomThickness, float, 1.2f)
+AUTO_SET(PrintTemperature, int, 200)
 #undef AUTO_SET
 
 // Explicitly specialize the GS classes

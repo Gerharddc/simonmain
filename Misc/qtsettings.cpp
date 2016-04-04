@@ -44,6 +44,11 @@ namespace QtSettingsInternal {
     AUTO_WRAPPER(topBottomSpeed)
     AUTO_WRAPPER(firstLineSpeed)
     AUTO_WRAPPER(travelSpeed)
+    AUTO_WRAPPER(retractionSpeed)
+    AUTO_WRAPPER(retractionDistance)
+    AUTO_WRAPPER(shellThickness)
+    AUTO_WRAPPER(topBottomThickness)
+    AUTO_WRAPPER(printTemperature)
 #undef AUTO_WRAPPER
 }
 
@@ -67,5 +72,11 @@ QtSettings::QtSettings(QObject *parent) : QObject(parent)
     AUTO_CONNECT(float, topBottomSpeed, TopBottomSpeed)
     AUTO_CONNECT(float, firstLineSpeed, FirstLineSpeed)
     AUTO_CONNECT(float, travelSpeed, TravelSpeed)
+    AUTO_CONNECT(float, travelSpeed, TravelSpeed)
+    AUTO_CONNECT(float, retractionSpeed, RetractionSpeed)
+    AUTO_CONNECT(float, retractionDistance, RetractionDistance)
+    AUTO_CONNECT(float, shellThickness, ShellThickness)
+    AUTO_CONNECT(float, topBottomThickness, TopBottomThickness)
+    AUTO_CONNECT(int, printTemperature, PrintTemperature)
 #undef AUTO_CONNECT
 }
