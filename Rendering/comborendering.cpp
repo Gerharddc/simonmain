@@ -29,10 +29,6 @@ namespace ComboRendering
     float aimY = 0.0f;
     float zoom = DefaultZoom;
 
-    void UpdateProjection();
-    void UpdateTransform();
-    void RecalculateCentre();
-
     glm::mat4 sceneTrans = glm::mat4();
     glm::mat4 sceneProj = glm::mat4();
 
@@ -62,6 +58,58 @@ namespace ComboRendering
     {
         GridRendering::GridDirty();
         ResetView(true);
+    }
+
+    void RecalculateCentre()
+    {
+        // We need to translate the centre of the box to the origin for rotation
+        float midX = GlobalSettings::BedWidth.Get() / 2.0f;
+        float midY = GlobalSettings::BedLength.Get() / 2.0f;
+
+        rotOrg = glm::translate(glm::mat4(), glm::vec3(midX, midY, 0.0f));
+        rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-midX, -midY, 0.0f));
+    }
+
+    void UpdateProjection()
+    {
+        // Calculate an orthographic projection that centres the view at the aiming position and applies the zoom
+        float left = aimX - (centreX / zoom);
+        float right = aimX + (centreX / zoom);
+        float bottom = aimY - (centreY / zoom);
+        float top = aimY + (centreY / zoom);
+
+        // With the orthographic system we need a negative and positive clip plane of enough distance
+        sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10,
+                               GlobalSettings::BedHeight.Get() * 10);
+
+        // Flag the renderers to update their proj matrices
+        GridRendering::ProjMatDirty();
+        STLRendering::ProjMatDirty();
+        ToolpathRendering::ProjMatDirty();
+    }
+
+    void RecalculateView()
+    {
+        // Update the projection
+        UpdateProjection();
+
+        // Reset the scene view looking at the centre of the box from a height above the origin
+        RecalculateCentre();
+        sceneTrans = rotOrg;
+        sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::quat inv = sceneRot;
+        inv.w *= -1; // Invert the angle
+        glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
+        xDir = inv * xDir;
+        sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
+        sceneTrans *= glm::mat4_cast(sceneRot);
+        sceneTrans *= rotOrgInv;
+    }
+
+    void removeCharsFromString(std::string &str, const char* charsToRemove ) {
+       for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
+          str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
+       }
     }
 }
 
@@ -100,70 +148,80 @@ int ComboRendering::getMeshCount()
 
 void ComboRendering::LoadMesh(const char *path)
 {
-    auto mesh = STLImporting::ImportSTL(path);
-    stlMeshes.insert(mesh);
-    STLRendering::AddMesh(mesh);
-    curMeshesSaved = false;
+    // Load the mesh asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        auto mesh = STLImporting::ImportSTL(path);
+        stlMeshes.insert(mesh);
+        STLRendering::AddMesh(mesh);
+        curMeshesSaved = false;
 
-    // Call OpenGL upate
-    Update();
+        // Call OpenGL upate
+        Update();
+    });
 }
 
 void ComboRendering::LoadToolpath(const char *path)
 {
-    if (gcodePath != nullptr)
-        delete gcodePath;
+    // Load the toolpath asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        if (gcodePath != nullptr)
+            delete gcodePath;
 
-    gcodePath = GCodeImporting::ImportGCode(path);
-    ToolpathRendering::SetToolpath(gcodePath);
+        gcodePath = GCodeImporting::ImportGCode(path);
+        ToolpathRendering::SetToolpath(gcodePath);
 
-    // Call OpenGL upate
-    Update();
+        // Call OpenGL upate
+        Update();
+    });
 }
 
-void removeCharsFromString(std::string &str, const char* charsToRemove ) {
-   for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
-      str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
-   }
-}
-
-std::string ComboRendering::SaveMeshes(std::string fileName)
+std::future<std::string> ComboRendering::SaveMeshes(std::string fileName)
 {
-    // Remove illegal characters
-    removeCharsFromString(fileName, "./\\|"); // TODO: complete this list
-    const std::string saveDir = "/home/Simon/Saved/";
-    std::string savePath = saveDir + fileName + ".stl";
-    std::string error = "";
+    // Save the meshes asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    // TODO: implement error reporting on this
+    std::future<std::string> result(std::async(std::launch::async, [=]() {
+        // Remove illegal characters
+        std::string fN(fileName);
+        removeCharsFromString(fN, "./\\|"); // TODO: complete this list
+        const std::string saveDir = "/home/Simon/Saved/";
+        std::string savePath = saveDir + fN + ".stl";
+        std::string error = "";
 
-    // Copy if already saved
-    QString src = QString::fromStdString(curMeshesPath);
-    QString dest = QString::fromStdString(savePath);
-    if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved && QFile::exists(src))
-    {
-        // TODO: do not use Qt here
-        if (curMeshesPath != savePath)
+        // Copy if already saved
+        QString src = QString::fromStdString(curMeshesPath);
+        QString dest = QString::fromStdString(savePath);
+        if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved && QFile::exists(src))
         {
-            if (QFile::exists(dest))
+            // TODO: do not use Qt here
+            if (curMeshesPath != savePath)
             {
-                QFile::remove(dest);
+                if (QFile::exists(dest))
+                {
+                    QFile::remove(dest);
+                }
+
+                QFile::copy(src, dest);
             }
-
-            QFile::copy(src, dest);
         }
-    }
-    else
-    {
-        STLExporting::ExportSTL(savePath, stlMeshes, error);
-    }
+        else
+        {
+            STLExporting::ExportSTL(savePath, stlMeshes, error);
+        }
 
-    if (error == "")
-    {
-        curMeshesSaved = true;
-        curMeshesPath = savePath;
-        return savePath;
-    }
+        if (error == "")
+        {
+            curMeshesSaved = true;
+            curMeshesPath = savePath;
+            return savePath;
+        }
 
-    return error;
+        return error;
+    }));
+
+    return result;
 }
 
 std::string ComboRendering::SliceMeshes(std::string fileName)
@@ -175,14 +233,18 @@ std::string ComboRendering::SliceMeshes(std::string fileName)
 
 void ComboRendering::RemoveMesh(Mesh *mesh)
 {
-    STLRendering::RemoveMesh(mesh);
-    stlMeshes.erase(mesh);
-    selectedMeshes.erase(mesh);
-    delete mesh;
-    curMeshesSaved = false;
+    // Unload the mesh asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        STLRendering::RemoveMesh(mesh);
+        stlMeshes.erase(mesh);
+        selectedMeshes.erase(mesh);
+        delete mesh;
+        curMeshesSaved = false;
 
-    // Call OpenGL upate
-    Update();
+        // Call OpenGL upate
+        Update();
+    });
 }
 
 void ComboRendering::SetViewSize(float width, float height)
@@ -193,48 +255,7 @@ void ComboRendering::SetViewSize(float width, float height)
     centreX = width / 2.0f;
     centreY = height / 2.0f;
 
-    // Update the projection
-    UpdateProjection();
-
-    // Reset the scene view looking at the centre of the box from a height above the origin
-    RecalculateCentre();
-    sceneTrans = rotOrg;
-    sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::quat inv = sceneRot;
-    inv.w *= -1; // Invert the angle
-    glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
-    xDir = inv * xDir;
-    sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
-    sceneTrans *= glm::mat4_cast(sceneRot);
-    sceneTrans *= rotOrgInv;
-}
-
-void ComboRendering::UpdateProjection()
-{
-    // Calculate an orthographic projection that centres the view at the aiming position and applies the zoom
-    float left = aimX - (centreX / zoom);
-    float right = aimX + (centreX / zoom);
-    float bottom = aimY - (centreY / zoom);
-    float top = aimY + (centreY / zoom);
-
-    // With the orthographic system we need a negative and positive clip plane of enough distance
-    sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10,
-                           GlobalSettings::BedHeight.Get() * 10);
-
-    // Flag the renderers to update their proj matrices
-    GridRendering::ProjMatDirty();
-    STLRendering::ProjMatDirty();
-    ToolpathRendering::ProjMatDirty();
-}
-
-void ComboRendering::RecalculateCentre()
-{
-    // We need to translate the centre of the box to the origin for rotation
-    float midX = GlobalSettings::BedWidth.Get() / 2.0f;
-    float midY = GlobalSettings::BedLength.Get() / 2.0f;
-
-    rotOrg = glm::translate(glm::mat4(), glm::vec3(midX, midY, 0.0f));
-    rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-midX, -midY, 0.0f));
+    RecalculateView();
 }
 
 void ComboRendering::ApplyRot(float x, float y)
@@ -306,7 +327,7 @@ void ComboRendering::ResetView(bool updateNow)
 
     aimX = (GlobalSettings::BedWidth.Get() / 2.0f);
     aimY = (GlobalSettings::BedLength.Get() / 2.0f);
-    SetViewSize(viewWidth, viewHeight);
+    RecalculateView();
 
     GridRendering::SceneMatDirty();
     STLRendering::SceneMatDirty();

@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <future>
 
 #include "stlrendering.h"
 #include "toolpathrendering.h"
@@ -29,7 +30,7 @@ namespace ComboRendering
     void LoadToolpath(const char* path);
     void RemoveMesh(Mesh *mesh);
     void Update();
-    std::string SaveMeshes(std::string fileName);
+    std::future<std::string> SaveMeshes(std::string fileName);
     std::string SliceMeshes(std::string fileName);
 
     void TestMouseIntersection(float x, float y);//, bool &needUpdate);

@@ -10,6 +10,8 @@
 #include "toolpathrendering.h"
 #include "gridrendering.h"
 #include "Misc/globalsettings.h"
+#include <future>
+#include <QObject>
 
 class ComboFBORenderer : public QQuickFramebufferObject::Renderer
 {
@@ -109,7 +111,9 @@ void FBORenderer::autoArrangeMeshes()
 
 QString FBORenderer::saveMeshes()
 {
-    return QString::fromStdString(ComboRendering::SaveMeshes(saveName().toStdString()));
+    // TODO: saving is done async; implement error reporting
+    ComboRendering::SaveMeshes(saveName().toStdString());
+    return "";
 }
 
 // This is a helper method used to refresh all the properties
@@ -304,33 +308,39 @@ QString FBORenderer::sliceMeshes()
     emit slicerRunningChanged();
     emit slicerStatusChanged();
 
-    QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(saveName().toStdString()));
-    gcodePath = QString(stlName);
-    gcodePath.replace(".stl", ".gcode");
+    // We wait async for the mesh that is being saved async and then start the slicer
+    std::async(std::launch::async, [](FBORenderer *fbo) {
+        QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(fbo->saveName().toStdString()).get());
+        fbo->gcodePath = QString(stlName);
+        fbo->gcodePath.replace(".stl", ".gcode");
 
-    const QString program = "/home/Simon/.Cura/CuraEngine";
+        QStringList arguments;
+        arguments << "slice" << "-v";
+        arguments << "-j" << "/home/Simon/.Cura/simon.json";
+        arguments << "-o" << fbo->gcodePath;
+        arguments << "-s" << "infill_sparse_density=" + QString::number(GlobalSettings::InfillDensity.Get());
+        arguments << "-s" << "layer_height=" + QString::number(GlobalSettings::LayerHeight.Get());
+        arguments << "-s" << "skirt_line_count=" + QString::number(GlobalSettings::SkirtLineCount.Get());
+        arguments << "-s" << "skirt_gap=" + QString::number(GlobalSettings::SkirtDistance.Get());
+        arguments << "-s" << "speed_print=" + QString::number(GlobalSettings::PrintSpeed.Get());
+        arguments << "-s" << "speed_infill=" + QString::number(GlobalSettings::InfillSpeed.Get());
+        arguments << "-s" << "speed_topbottom=" + QString::number(GlobalSettings::TopBottomSpeed.Get());
+        arguments << "-s" << "speed_travel=" + QString::number(GlobalSettings::TravelSpeed.Get());
+        arguments << "-s" << "speed_layer_0=" + QString::number(GlobalSettings::FirstLineSpeed.Get());
+        arguments << "-s" << "retraction_speed=" + QString::number(GlobalSettings::RetractionSpeed.Get());
+        arguments << "-s" << "retraction_amount=" + QString::number(GlobalSettings::RetractionDistance.Get());
+        arguments << "-s" << "shell_thickness=" + QString::number(GlobalSettings::ShellThickness.Get());
+        arguments << "-s" << "top_bottom_thickness=" + QString::number(GlobalSettings::TopBottomThickness.Get());
+        arguments << "-s" << "material_print_temperature=" + QString::number(GlobalSettings::PrintTemperature.Get());
+        arguments << "-l" << stlName;
 
-    QStringList arguments;
-    arguments << "slice" << "-v";
-    arguments << "-j" << "/home/Simon/.Cura/simon.json";
-    arguments << "-o" << gcodePath;
-    arguments << "-s" << "infill_sparse_density=" + QString::number(GlobalSettings::InfillDensity.Get());
-    arguments << "-s" << "layer_height=" + QString::number(GlobalSettings::LayerHeight.Get());
-    arguments << "-s" << "skirt_line_count=" + QString::number(GlobalSettings::SkirtLineCount.Get());
-    arguments << "-s" << "skirt_gap=" + QString::number(GlobalSettings::SkirtDistance.Get());
-    arguments << "-s" << "speed_print=" + QString::number(GlobalSettings::PrintSpeed.Get());
-    arguments << "-s" << "speed_infill=" + QString::number(GlobalSettings::InfillSpeed.Get());
-    arguments << "-s" << "speed_topbottom=" + QString::number(GlobalSettings::TopBottomSpeed.Get());
-    arguments << "-s" << "speed_travel=" + QString::number(GlobalSettings::TravelSpeed.Get());
-    arguments << "-s" << "speed_layer_0=" + QString::number(GlobalSettings::FirstLineSpeed.Get());
-    arguments << "-s" << "retraction_speed=" + QString::number(GlobalSettings::RetractionSpeed.Get());
-    arguments << "-s" << "retraction_amount=" + QString::number(GlobalSettings::RetractionDistance.Get());
-    arguments << "-s" << "shell_thickness=" + QString::number(GlobalSettings::ShellThickness.Get());
-    arguments << "-s" << "top_bottom_thickness=" + QString::number(GlobalSettings::TopBottomThickness.Get());
-    arguments << "-s" << "material_print_temperature=" + QString::number(GlobalSettings::PrintTemperature.Get());
-    arguments << "-l" << stlName;
+        // Because QT has some really crazy threading bs we need to use a caller QObject to tell
+        // the fbo to start the thread on its own thread with the signal-slot mechanism
+        SlicerStartCaller ssc;
+        QObject::connect(&ssc, SIGNAL(StartSlicer(QStringList)), fbo, SLOT(StartSliceThread(QStringList)));
+        ssc(arguments);
 
-    sliceProcess->start(program, arguments);
+    }, this);
 
     return "started";
 }
@@ -351,6 +361,13 @@ void FBORenderer::SlicerFinsihed(int)
     emit slicerStatusChanged();
 
     ComboRendering::LoadToolpath(gcodePath.toStdString().c_str());
+}
+
+void FBORenderer::StartSliceThread(QStringList arguments)
+{
+    const QString program = "/home/Simon/.Cura/CuraEngine";
+
+    sliceProcess->start(program, arguments);
 }
 
 void FBORenderer::removeSelectedMeshes()

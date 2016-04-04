@@ -5,6 +5,7 @@
 #include <QString>
 #include <QVector3D>
 #include <QProcess>
+#include <QStringList>
 
 #include "structures.h"
 #include "comborendering.h"
@@ -80,6 +81,7 @@ public:
 public slots:
     void ReadSlicerOutput();
     void SlicerFinsihed(int);
+    void StartSliceThread(QStringList arguments);
 
 signals:
    void meshOpacityChanged();
@@ -93,6 +95,18 @@ signals:
    void saveNameChanged();
    void slicerRunningChanged();
    void slicerStatusChanged();
+};
+
+class SlicerStartCaller : public QObject
+{
+    Q_OBJECT
+
+signals:
+    void StartSlicer(QStringList args);
+
+public:
+    SlicerStartCaller() {}
+    void operator()(QStringList args) { emit StartSlicer(args); }
 };
 
 #endif // FBORENDERER_H
