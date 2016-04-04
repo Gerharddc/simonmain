@@ -67,7 +67,8 @@ QQuickFramebufferObject::Renderer *FBORenderer::createRenderer() const
 
 void CallFBOUpdate(void *context)
 {
-    ((FBORenderer*)context)->update();
+    // Invoke the update slot through the message queue to make it thread safe
+    QMetaObject::invokeMethod((FBORenderer*)context, "update");
 }
 
 FBORenderer::FBORenderer()
@@ -334,12 +335,8 @@ QString FBORenderer::sliceMeshes()
         arguments << "-s" << "material_print_temperature=" + QString::number(GlobalSettings::PrintTemperature.Get());
         arguments << "-l" << stlName;
 
-        // Because QT has some really crazy threading bs we need to use a caller QObject to tell
-        // the fbo to start the thread on its own thread with the signal-slot mechanism
-        SlicerStartCaller ssc;
-        QObject::connect(&ssc, SIGNAL(StartSlicer(QStringList)), fbo, SLOT(StartSliceThread(QStringList)));
-        ssc(arguments);
-
+        // Start the slicer through the message queue (thread safe)
+        QMetaObject::invokeMethod(fbo, "StartSliceThread", Q_ARG(QStringList, arguments));
     }, this);
 
     return "started";

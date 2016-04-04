@@ -97,16 +97,4 @@ signals:
    void slicerStatusChanged();
 };
 
-class SlicerStartCaller : public QObject
-{
-    Q_OBJECT
-
-signals:
-    void StartSlicer(QStringList args);
-
-public:
-    SlicerStartCaller() {}
-    void operator()(QStringList args) { emit StartSlicer(args); }
-};
-
 #endif // FBORENDERER_H

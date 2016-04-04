@@ -260,82 +260,103 @@ void ComboRendering::SetViewSize(float width, float height)
 
 void ComboRendering::ApplyRot(float x, float y)
 {
-    // We need to transform the rotation axis into screen space by applying the inverse of the rotation
-    // currently being applied to our scene
+    // Apply the transformation asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        // We need to transform the rotation axis into screen space by applying the inverse of the rotation
+        // currently being applied to our scene
 
-    // We also need to scale the roation to the screen size and aspect ratio
-    // TODO: add dpi scaling
-    // For some reason the x rot is in the inverse direction of the mouse movement
-    // TODO: 3.0 ?
-    float yAng = (x / GlobalSettings::BedWidth.Get() * 1.1) / 3.0;
-    float xAng = -(y / GlobalSettings::BedLength.Get() *
-                   (1.1 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / 3.0;
-    glm::vec2 axis = glm::vec2(xAng, yAng);
-    auto l = glm::length(axis); // doesnt work
-    if (l == 0) // This is important to avoid normaliztion disasters ahead
-        return;
+        // We also need to scale the roation to the screen size and aspect ratio
+        // TODO: add dpi scaling
+        // For some reason the x rot is in the inverse direction of the mouse movement
+        // TODO: 3.0 ?
+        float yAng = (x / GlobalSettings::BedWidth.Get() * 1.1) / 3.0;
+        float xAng = -(y / GlobalSettings::BedLength.Get() *
+                       (1.1 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / 3.0;
+        glm::vec2 axis = glm::vec2(xAng, yAng);
+        auto l = glm::length(axis); // doesnt work
+        if (l == 0) // This is important to avoid normaliztion disasters ahead
+            return;
 
-    axis = glm::normalize(axis);
-    glm::vec4 dir = glm::vec4(axis.x, axis.y, 0.0f, 0.0f);
-    glm::quat inv = sceneRot;
-    inv.w *= -1;
-    dir = inv * dir;
-    dir = glm::normalize(dir);
+        axis = glm::normalize(axis);
+        glm::vec4 dir = glm::vec4(axis.x, axis.y, 0.0f, 0.0f);
+        glm::quat inv = sceneRot;
+        inv.w *= -1;
+        dir = inv * dir;
+        dir = glm::normalize(dir);
 
-    // Now we need to rotate accordingly around the calculated centre
-    sceneTrans = rotOrg;
-    sceneRot *= glm::angleAxis(l, glm::vec3(dir.x, dir.y, dir.z));
-    sceneTrans *= glm::mat4_cast(sceneRot);
-    sceneTrans *= rotOrgInv;
+        // Now we need to rotate accordingly around the calculated centre
+        sceneTrans = rotOrg;
+        sceneRot *= glm::angleAxis(l, glm::vec3(dir.x, dir.y, dir.z));
+        sceneTrans *= glm::mat4_cast(sceneRot);
+        sceneTrans *= rotOrgInv;
 
-    // Flag the renderers to update their scene matrices
-    GridRendering::SceneMatDirty();
-    STLRendering::SceneMatDirty();
-    ToolpathRendering::SceneMatDirty();
+        // Flag the renderers to update their scene matrices
+        GridRendering::SceneMatDirty();
+        STLRendering::SceneMatDirty();
+        ToolpathRendering::SceneMatDirty();
 
-    // Call OpenGL upate
-    Update();
+        // Call OpenGL upate
+        Update();
+    });
 }
 
 void ComboRendering::Move(float x, float y)
 {
-    // The direction of mouse movement is inverse of the view movement
-    // We need to scale the move distance to the size of the viewport
-    // We want a constant move distance for a viewport length and take
-    // aspect ration into account
-    // TODO: add dpi support
-    aimX -= (x / GlobalSettings::BedWidth.Get() * 65) / zoom;
-    aimY -= (y / GlobalSettings::BedLength.Get()
-             * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
+    // Apply the transformation asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        // The direction of mouse movement is inverse of the view movement
+        // We need to scale the move distance to the size of the viewport
+        // We want a constant move distance for a viewport length and take
+        // aspect ration into account
+        // TODO: add dpi support
+        aimX -= (x / GlobalSettings::BedWidth.Get() * 65) / zoom;
+        aimY -= (y / GlobalSettings::BedLength.Get()
+                 * (65 * GlobalSettings::BedLength.Get() / GlobalSettings::BedWidth.Get())) / zoom;
 
-    UpdateProjection();
+        UpdateProjection();
 
-    // Call OpenGL upate
-    Update();
+        // Call OpenGL upate
+        Update();
+    });
 }
 
 void ComboRendering::Zoom(float scale)
 {
-    zoom *= scale;
-    UpdateProjection();
-    Update();
+    // Apply the transformation asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        zoom *= scale;
+        UpdateProjection();
+
+        // Call OpenGL upate
+        Update();
+    });
 }
 
 void ComboRendering::ResetView(bool updateNow)
 {
-    zoom = DefaultZoom;
+    // Apply the transformation asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        zoom = DefaultZoom;
 
-    aimX = (GlobalSettings::BedWidth.Get() / 2.0f);
-    aimY = (GlobalSettings::BedLength.Get() / 2.0f);
-    RecalculateView();
+        aimX = (GlobalSettings::BedWidth.Get() / 2.0f);
+        aimY = (GlobalSettings::BedLength.Get() / 2.0f);
+        RecalculateView();
 
-    GridRendering::SceneMatDirty();
-    STLRendering::SceneMatDirty();
-    ToolpathRendering::SceneMatDirty();
+        GridRendering::SceneMatDirty();
+        STLRendering::SceneMatDirty();
+        ToolpathRendering::SceneMatDirty();
 
-    // Call OpenGL upate
-    if (updateNow)
+        // Call OpenGL upate
+        if (updateNow)
+            Update();
+
+        // Call OpenGL upate
         Update();
+    });
 }
 
 void ComboRendering::Init()
@@ -374,62 +395,66 @@ void ComboRendering::Draw()
         ToolpathRendering::Draw();
 }
 
-void ComboRendering::TestMouseIntersection(float x, float y)//, bool &needUpdate)
+void ComboRendering::TestMouseIntersection(float x, float y)
 {
-    // TODO: this should only run if the STLs are visible
+    // Run the test asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::async(std::launch::async, [=]() {
+        // TODO: this should only run if the STLs are visible
 
-    // Normalized screen coordinates
-    float screenX = (2.0f * x) / viewWidth - 1.0f;
-    float screenY = (2.0 * y) / viewHeight - 1.0f;
+        // Normalized screen coordinates
+        float screenX = (2.0f * x) / viewWidth - 1.0f;
+        float screenY = (2.0 * y) / viewHeight - 1.0f;
 
-    // Calculate the farthest and closest points from a line caused by the cursor
-    // TODO: cache some of this shit
-    glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
-    glm::mat4 invMat = glm::inverse(MV);
-    glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
-    glm::vec4 worldCoords = invMat * clipCoords;
-    glm::vec3 near = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
-    clipCoords.z = 1.0f;
-    worldCoords = invMat * clipCoords;
-    glm::vec3 far = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
+        // Calculate the farthest and closest points from a line caused by the cursor
+        // TODO: cache some of this shit
+        glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
+        glm::mat4 invMat = glm::inverse(MV);
+        glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
+        glm::vec4 worldCoords = invMat * clipCoords;
+        glm::vec3 near = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
+        clipCoords.z = 1.0f;
+        worldCoords = invMat * clipCoords;
+        glm::vec3 far = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
 
-    Mesh *highestMesh = nullptr;
-    float z = 2.0f;
+        Mesh *highestMesh = nullptr;
+        float z = 2.0f;
 
-    // Find the mesh with the 'highest' intersection
-    // (the most negative z value)
-    for (Mesh *mesh : stlMeshes)
-    {
-        float nZ;
-        if (STLRendering::TestMeshIntersection(mesh, near, far, MV, nZ))
+        // Find the mesh with the 'highest' intersection
+        // (the most negative z value)
+        for (Mesh *mesh : stlMeshes)
         {
-            if (nZ < z)
+            float nZ;
+            if (STLRendering::TestMeshIntersection(mesh, near, far, MV, nZ))
             {
-                highestMesh = mesh;
-                z = nZ;
+                if (nZ < z)
+                {
+                    highestMesh = mesh;
+                    z = nZ;
+                }
             }
         }
-    }
 
-    if (highestMesh != nullptr)
-    {
-        // (de)select the mesh
-        if (selectedMeshes.count(highestMesh) != 0)
+        if (highestMesh != nullptr)
         {
-            // Deslect
-            selectedMeshes.erase(highestMesh);
-            STLRendering::ColorMesh(highestMesh, normalMeshCol);
-        }
-        else
-        {
-            // Select
-            selectedMeshes.insert(highestMesh);
-            STLRendering::ColorMesh(highestMesh, selectedMeshCol);
-        }
+            // (de)select the mesh
+            if (selectedMeshes.count(highestMesh) != 0)
+            {
+                // Deslect
+                selectedMeshes.erase(highestMesh);
+                STLRendering::ColorMesh(highestMesh, normalMeshCol);
+            }
+            else
+            {
+                // Select
+                selectedMeshes.insert(highestMesh);
+                STLRendering::ColorMesh(highestMesh, selectedMeshCol);
+            }
 
-        // Call OpenGL upate
-        Update();
-    }
+            // Call OpenGL upate
+            Update();
+        }
+    });
 }
 
 const std::set<Mesh*> &ComboRendering::getSelectedMeshes()
