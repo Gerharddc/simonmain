@@ -32,6 +32,11 @@ namespace QtSettingsInternal {
     SignalWrapper bedWidthSignal(&QtSettings::bedWidthChanged);
     SignalWrapper bedHeightSignal(&QtSettings::bedHeightChanged);
     SignalWrapper bedLengthSignal(&QtSettings::bedLengthChanged);
+    SignalWrapper infillDensitySignal(&QtSettings::infillDensityChanged);
+    SignalWrapper layerHeightSignal(&QtSettings::layerHeightChanged);
+    SignalWrapper skirtLineCountSignal(&QtSettings::skirtLineCountChanged);
+    SignalWrapper skirtDistanceSignal(&QtSettings::skirtDistanceChanged);
+    SignalWrapper printSpeedSignal(&QtSettings::printSpeedChanged);
 }
 
 using namespace QtSettingsInternal;
@@ -42,4 +47,9 @@ QtSettings::QtSettings(QObject *parent) : QObject(parent)
     GlobalSettings::BedWidth.RegisterHandler(HandleWithSignal<float>, &bedWidthSignal);
     GlobalSettings::BedHeight.RegisterHandler(HandleWithSignal<float>, &bedHeightSignal);
     GlobalSettings::BedLength.RegisterHandler(HandleWithSignal<float>, &bedLengthSignal);
+    GlobalSettings::InfillDensity.RegisterHandler(HandleWithSignal<float>, &infillDensitySignal);
+    GlobalSettings::LayerHeight.RegisterHandler(HandleWithSignal<float>, &layerHeightSignal);
+    GlobalSettings::SkirtLineCount.RegisterHandler(HandleWithSignal<int>, &skirtLineCountSignal);
+    GlobalSettings::SkirtDistance.RegisterHandler(HandleWithSignal<float>, &skirtDistanceSignal);
+    GlobalSettings::PrintSpeed.RegisterHandler(HandleWithSignal<float>, &printSpeedSignal);
 }

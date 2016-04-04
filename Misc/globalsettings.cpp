@@ -325,3 +325,4 @@ GlobalSetting<float> GlobalSettings::TravelSpeed = GlobalSetting<float>("TravelS
 
 // Explicitly specialize the GS classes
 template class GlobalSetting<float>;
+template class GlobalSetting<int>;
