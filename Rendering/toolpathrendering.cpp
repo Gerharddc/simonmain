@@ -9,6 +9,7 @@
 #include "mathhelper.h"
 #include "gcodeimporting.h"
 #include "comborendering.h"
+#include "Misc/globalsettings.h"
 
 namespace ToolpathRendering {
     struct GroupGLData
@@ -226,7 +227,9 @@ void ToolpathRendering::Draw()
         glEnableVertexAttribArray(mSideAttribLocation);
         glVertexAttribPointer(mSideAttribLocation, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
-        glUniform1f(mRadiusUniformLocation, 0.2f);
+        // TODO: derive the layer height from the actual gcode instead
+        // or maybe rather use the extrusion diameter
+        glUniform1f(mRadiusUniformLocation, 0.225f); // Almost half 0.5f
 
         glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
     }

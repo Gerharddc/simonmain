@@ -3,6 +3,7 @@ import "qrc:/Controls"
 
 BottomPage {
     id: slicePage
+    contentHeight: settingsModel.count * 90 + 150
 
     Item {
         anchors.left: parent.left
@@ -11,13 +12,23 @@ BottomPage {
         anchors.leftMargin: 20
         anchors.rightMargin: 20
 
+        Label {
+            id: txtStatus
+            text: 'Satus: ' + renderer.slicerStatus
+            anchors.top: parent.top
+            anchors.topMargin: 5
+            anchors.left: parent.left
+            anchors.right: parent.right
+            isDimmable: true
+        }
+
         Button {
             id: btnSlice
             text: renderer.slicerRunning ? "Stop slicing" : "Start slicing"
-            anchors.top: parent.top
+            anchors.top: txtStatus.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.topMargin: 5
+            anchors.topMargin: 15
             isDimmable: true
 
             onClicked: {
@@ -25,22 +36,25 @@ BottomPage {
             }
         }
 
-        Label {
-            id: txtSave
-            text: 'Satus: ' + renderer.slicerStatus
-            anchors.top: btnSlice.bottom
-            anchors.topMargin: 15
-            anchors.left: parent.left
-            anchors.right: parent.right
-            isDimmable: true
-        }
-
         ListModel {
             id: settingsModel
             ListElement { title: "Bed Width"; setting: "bedWidth"; }
             ListElement { title: "Bed Length"; setting: "bedLength"; }
             ListElement { title: "Bed Height"; setting: "bedHeight"; }
+            ListElement { title: "Infill Density"; setting: "infillDensity"; }
+            ListElement { title: "Layer Height"; setting: "layerHeight"; }
+            ListElement { title: "Skirt Line Count"; setting: "skirtLineCount"; }
+            ListElement { title: "Skirt Distance"; setting: "skirtDistance"; }
+            ListElement { title: "Print Speed"; setting: "printSpeed"; }
             ListElement { title: "Infill Speed"; setting: "infillSpeed"; }
+            ListElement { title: "Top/Bottom Speed"; setting: "topBottomSpeed"; }
+            ListElement { title: "First Line Speed"; setting: "firstLineSpeed"; }
+            ListElement { title: "Travel Speed"; setting: "travelSpeed"; }
+            ListElement { title: "Retraction Speed"; setting: "retractionSpeed"; }
+            ListElement { title: "Retraction Distance"; setting: "retractionDistance"; }
+            ListElement { title: "Shell Thickness"; setting: "shellThickness"; }
+            ListElement { title: "Top Bottom Thickness"; setting: "topBottomThickness"; }
+            ListElement { title: "Print Temperature"; setting: "printTemperature"; }
         }
 
         Component {
@@ -54,6 +68,7 @@ BottomPage {
                     id: setLabel
                     text: title + ":"
                     width: parent.width
+                    isDimmable: true
                 }
 
                 TextBox {
@@ -61,10 +76,11 @@ BottomPage {
                     anchors.top: setLabel.bottom
                     anchors.topMargin: 5
                     width: parent.width
+                    isDimmable: true
 
                     Binding on text {
                         when: !setTBox.isActive
-                        value: settings[setting]
+                        value: settings[setting].toFixed(2).replace(/\.?0+$/, "")
                     }
 
                     Binding {
@@ -81,7 +97,7 @@ BottomPage {
             spacing: 10
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.top: txtSave.bottom
+            anchors.top: btnSlice.bottom
             anchors.topMargin: 15
 
             Repeater {
@@ -90,25 +106,4 @@ BottomPage {
             }
         }
     }
-
-    /*Slider {
-        x: 100
-        y: 100
-        width: 300
-        isDimmable: true
-    }
-
-    Button {
-        width: 300
-        text: "twee"
-        anchors.centerIn: parent
-        isDimmable: true
-    }
-
-    ProgressBar {
-        x: 100
-        y: 450
-        width: 300
-        isDimmable: true
-    }*/
 }

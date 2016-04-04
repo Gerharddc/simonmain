@@ -355,21 +355,6 @@ BottomPage {
                 }
             }
         }
-
-        /*DropTextBox {
-            anchors.top: btn1.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 15
-            isDimmable: true
-            options: ListModel {
-                            ListElement { option: "Een" }
-                            ListElement { option: "Twee" }
-                            ListElement { option: "Drie" }
-                            ListElement { option: "Vier" }
-                            ListElement { option: "Vyf" }
-                        }
-        }*/
     }
 }
 
