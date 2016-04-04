@@ -29,14 +29,22 @@ namespace QtSettingsInternal {
     }
 
     // We need to create a wrapper for each signal
-    SignalWrapper bedWidthSignal(&QtSettings::bedWidthChanged);
-    SignalWrapper bedHeightSignal(&QtSettings::bedHeightChanged);
-    SignalWrapper bedLengthSignal(&QtSettings::bedLengthChanged);
-    SignalWrapper infillDensitySignal(&QtSettings::infillDensityChanged);
-    SignalWrapper layerHeightSignal(&QtSettings::layerHeightChanged);
-    SignalWrapper skirtLineCountSignal(&QtSettings::skirtLineCountChanged);
-    SignalWrapper skirtDistanceSignal(&QtSettings::skirtDistanceChanged);
-    SignalWrapper printSpeedSignal(&QtSettings::printSpeedChanged);
+#define AUTO_WRAPPER(NAME) \
+    SignalWrapper NAME##Signal(&QtSettings::NAME##Changed);
+
+    AUTO_WRAPPER(bedWidth)
+    AUTO_WRAPPER(bedHeight)
+    AUTO_WRAPPER(bedLength)
+    AUTO_WRAPPER(infillDensity)
+    AUTO_WRAPPER(layerHeight)
+    AUTO_WRAPPER(skirtLineCount)
+    AUTO_WRAPPER(skirtDistance)
+    AUTO_WRAPPER(printSpeed)
+    AUTO_WRAPPER(infillSpeed)
+    AUTO_WRAPPER(topBottomSpeed)
+    AUTO_WRAPPER(firstLineSpeed)
+    AUTO_WRAPPER(travelSpeed)
+#undef AUTO_WRAPPER
 }
 
 using namespace QtSettingsInternal;
@@ -44,12 +52,20 @@ using namespace QtSettingsInternal;
 QtSettings::QtSettings(QObject *parent) : QObject(parent)
 {
     // Connect the qt signals to the the settings backend
-    GlobalSettings::BedWidth.RegisterHandler(HandleWithSignal<float>, &bedWidthSignal);
-    GlobalSettings::BedHeight.RegisterHandler(HandleWithSignal<float>, &bedHeightSignal);
-    GlobalSettings::BedLength.RegisterHandler(HandleWithSignal<float>, &bedLengthSignal);
-    GlobalSettings::InfillDensity.RegisterHandler(HandleWithSignal<float>, &infillDensitySignal);
-    GlobalSettings::LayerHeight.RegisterHandler(HandleWithSignal<float>, &layerHeightSignal);
-    GlobalSettings::SkirtLineCount.RegisterHandler(HandleWithSignal<int>, &skirtLineCountSignal);
-    GlobalSettings::SkirtDistance.RegisterHandler(HandleWithSignal<float>, &skirtDistanceSignal);
-    GlobalSettings::PrintSpeed.RegisterHandler(HandleWithSignal<float>, &printSpeedSignal);
+#define AUTO_CONNECT(TYPE, NAME, NAMECAP) \
+    GlobalSettings::NAMECAP.RegisterHandler(HandleWithSignal<TYPE>, &NAME##Signal);
+
+    AUTO_CONNECT(float, bedWidth, BedWidth)
+    AUTO_CONNECT(float, bedHeight, BedHeight)
+    AUTO_CONNECT(float, bedLength, BedLength)
+    AUTO_CONNECT(float, infillDensity, InfillDensity)
+    AUTO_CONNECT(float, layerHeight, LayerHeight)
+    AUTO_CONNECT(int, skirtLineCount, SkirtLineCount)
+    AUTO_CONNECT(float, skirtDistance, SkirtDistance)
+    AUTO_CONNECT(float, printSpeed, PrintSpeed)
+    AUTO_CONNECT(float, infillSpeed, InfillSpeed)
+    AUTO_CONNECT(float, topBottomSpeed, TopBottomSpeed)
+    AUTO_CONNECT(float, firstLineSpeed, FirstLineSpeed)
+    AUTO_CONNECT(float, travelSpeed, TravelSpeed)
+#undef AUTO_CONNECT
 }

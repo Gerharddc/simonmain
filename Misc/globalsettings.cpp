@@ -310,18 +310,22 @@ template<typename T> void GlobalSetting<T>::UnregisterHandler(ChangedHandler han
 
 // Init the settings
 // This needs to be at the end to prevent a crash
-GlobalSetting<float> GlobalSettings::BedWidth = GlobalSetting<float>("BedWidth", 100.0f);
-GlobalSetting<float> GlobalSettings::BedLength = GlobalSetting<float>("Bedlength", 100.0f);
-GlobalSetting<float> GlobalSettings::BedHeight = GlobalSetting<float>("BedHeight", 100.0f);
-GlobalSetting<float> GlobalSettings::InfillDensity = GlobalSetting<float>("InfillDensity", 20.0f);
-GlobalSetting<float> GlobalSettings::LayerHeight = GlobalSetting<float>("LayerHeight", 0.2f);
-GlobalSetting<int> GlobalSettings::SkirtLineCount = GlobalSetting<int>("SkirtLineCount", 3);
-GlobalSetting<float> GlobalSettings::SkirtDistance = GlobalSetting<float>("SkirtDistance", 5.0f);
-GlobalSetting<float> GlobalSettings::PrintSpeed = GlobalSetting<float>("PrintSpeed", 60.0f);
-GlobalSetting<float> GlobalSettings::InfillSpeed = GlobalSetting<float>("InfillSpeed", 100.0f);
-GlobalSetting<float> GlobalSettings::TopBottomSpeed = GlobalSetting<float>("TopBottomSpeed", 15.0f);
-GlobalSetting<float> GlobalSettings::FirstLineSpeed = GlobalSetting<float>("FirstLineSpeed", 15.0f);
-GlobalSetting<float> GlobalSettings::TravelSpeed = GlobalSetting<float>("TravelSpeed", 15.0f);
+#define AUTO_SET(NAME, TYPE, VALUE) \
+    GlobalSetting<TYPE> GlobalSettings::NAME = GlobalSetting<TYPE>(#NAME, VALUE);
+
+AUTO_SET(BedWidth, float, 100.0f)
+AUTO_SET(BedLength, float, 100.0f)
+AUTO_SET(BedHeight, float, 100.0f)
+AUTO_SET(InfillDensity, float, 20.0f)
+AUTO_SET(LayerHeight, float, 0.2f)
+AUTO_SET(SkirtLineCount, int, 3)
+AUTO_SET(SkirtDistance, float, 5.0f)
+AUTO_SET(PrintSpeed, float, 60.0f)
+AUTO_SET(InfillSpeed, float, 100.0f)
+AUTO_SET(TopBottomSpeed, float, 15.0f)
+AUTO_SET(FirstLineSpeed, float, 15.0f)
+AUTO_SET(TravelSpeed, float, 80.0f)
+#undef AUTO_SET
 
 // Explicitly specialize the GS classes
 template class GlobalSetting<float>;

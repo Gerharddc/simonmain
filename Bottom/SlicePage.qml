@@ -40,6 +40,7 @@ BottomPage {
             ListElement { title: "Bed Width"; setting: "bedWidth"; }
             ListElement { title: "Bed Length"; setting: "bedLength"; }
             ListElement { title: "Bed Height"; setting: "bedHeight"; }
+            ListElement { title: "Infill Speed"; setting: "infillSpeed"; }
         }
 
         Component {
