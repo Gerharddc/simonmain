@@ -1,10 +1,18 @@
 #include "glhelper.h"
 
+#include <iostream>
+#include <errno.h>
+#include <cstring>
+#include <QCoreApplication>
+#include <QString>
+
 std::string GLHelper::ReadEntireFile(const std::string &path)
 {
-    std::ifstream in(path, std::ios::in);
+    QString np = QCoreApplication::applicationDirPath() + "/" + QString::fromStdString(path);
 
-    if (!in.fail())
+    std::ifstream in(np.toStdString(), std::ios::in);
+
+    if (in.is_open())
     {
         std::string contents;
         in.seekg(0, std::ios::end);
@@ -15,7 +23,10 @@ std::string GLHelper::ReadEntireFile(const std::string &path)
         return contents;
     }
     else
+    {
+        std::cout << "Could not open " << np.toStdString() << " error: " << strerror(errno) << std::endl;
         throw "Could not open gl file"; // TODO: make this better
+    }
 }
 
 GLuint GLHelper::CompileShader(GLenum type, const std::string &source)

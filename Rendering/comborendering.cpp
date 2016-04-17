@@ -8,6 +8,7 @@
 #include <glm/gtx/intersect.hpp>
 #include <algorithm>
 #include <fstream>
+#include <thread>
 
 #include "stlimporting.h"
 #include "stlexporting.h"
@@ -146,82 +147,74 @@ int ComboRendering::getMeshCount()
     return stlMeshes.size();
 }
 
-void ComboRendering::LoadMesh(const char *path)
+void ComboRendering::LoadMesh(std::string path)
 {
-    // Load the mesh asynchronously because it can take some time
-    // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
-        auto mesh = STLImporting::ImportSTL(path);
-        stlMeshes.insert(mesh);
-        STLRendering::AddMesh(mesh);
-        curMeshesSaved = false;
+    auto mesh = STLImporting::ImportSTL(path.c_str());
+    stlMeshes.insert(mesh);
+    STLRendering::AddMesh(mesh);
+    curMeshesSaved = false;
 
-        // Call OpenGL upate
-        Update();
-    });
+    // Call OpenGL upate
+    Update();
 }
 
-void ComboRendering::LoadToolpath(const char *path)
+void ComboRendering::LoadToolpath(std::string path)
 {
     // Load the toolpath asynchronously because it can take some time
     // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
+    std::thread([=]() {
         if (gcodePath != nullptr)
             delete gcodePath;
 
-        gcodePath = GCodeImporting::ImportGCode(path);
+        gcodePath = GCodeImporting::ImportGCode(path.c_str());
         ToolpathRendering::SetToolpath(gcodePath);
 
         // Call OpenGL upate
         Update();
-    });
+    }).detach();
 }
 
-std::future<std::string> ComboRendering::SaveMeshes(std::string fileName)
+std::string ComboRendering::SaveMeshes(std::string fileName)
 {
     // Save the meshes asynchronously because it can take some time
     // TODO: tell the user that we are busy
     // TODO: implement error reporting on this
-    std::future<std::string> result(std::async(std::launch::async, [=]() {
-        // Remove illegal characters
-        std::string fN(fileName);
-        removeCharsFromString(fN, "./\\|"); // TODO: complete this list
-        const std::string saveDir = "/home/Simon/Saved/";
-        std::string savePath = saveDir + fN + ".stl";
-        std::string error = "";
+    // Remove illegal characters
+    std::string fN(fileName);
+    removeCharsFromString(fN, "./\\|"); // TODO: complete this list
+    const std::string saveDir = "/home/Simon/Saved/";
+    std::string savePath = saveDir + fN + ".stl";
+    std::string error = "";
 
-        // Copy if already saved
-        QString src = QString::fromStdString(curMeshesPath);
-        QString dest = QString::fromStdString(savePath);
-        if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved && QFile::exists(src))
+    // Copy if already saved
+    QString src = QString::fromStdString(curMeshesPath);
+    QString dest = QString::fromStdString(savePath);
+    if (!STLRendering::PrepMeshesSave(stlMeshes) && curMeshesSaved && QFile::exists(src))
+    {
+        // TODO: do not use Qt here
+        if (curMeshesPath != savePath)
         {
-            // TODO: do not use Qt here
-            if (curMeshesPath != savePath)
+            if (QFile::exists(dest))
             {
-                if (QFile::exists(dest))
-                {
-                    QFile::remove(dest);
-                }
-
-                QFile::copy(src, dest);
+                QFile::remove(dest);
             }
-        }
-        else
-        {
-            STLExporting::ExportSTL(savePath, stlMeshes, error);
-        }
 
-        if (error == "")
-        {
-            curMeshesSaved = true;
-            curMeshesPath = savePath;
-            return savePath;
+            QFile::copy(src, dest);
         }
+    }
+    else
+    {
+        STLExporting::ExportSTL(savePath, stlMeshes, error);
+    }
 
-        return error;
-    }));
+    if (error == "")
+    {
+        curMeshesSaved = true;
+        curMeshesPath = savePath;
+        return savePath;
+    }
 
-    return result;
+    return error;
 }
 
 std::string ComboRendering::SliceMeshes(std::string fileName)
@@ -233,18 +226,14 @@ std::string ComboRendering::SliceMeshes(std::string fileName)
 
 void ComboRendering::RemoveMesh(Mesh *mesh)
 {
-    // Unload the mesh asynchronously because it can take some time
-    // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
-        STLRendering::RemoveMesh(mesh);
-        stlMeshes.erase(mesh);
-        selectedMeshes.erase(mesh);
-        delete mesh;
-        curMeshesSaved = false;
+    STLRendering::RemoveMesh(mesh);
+    stlMeshes.erase(mesh);
+    selectedMeshes.erase(mesh);
+    delete mesh;
+    curMeshesSaved = false;
 
-        // Call OpenGL upate
-        Update();
-    });
+    // Call OpenGL upate
+    Update();
 }
 
 void ComboRendering::SetViewSize(float width, float height)
@@ -262,7 +251,7 @@ void ComboRendering::ApplyRot(float x, float y)
 {
     // Apply the transformation asynchronously because it can take some time
     // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
+    std::thread([=]() {
         // We need to transform the rotation axis into screen space by applying the inverse of the rotation
         // currently being applied to our scene
 
@@ -298,14 +287,14 @@ void ComboRendering::ApplyRot(float x, float y)
 
         // Call OpenGL upate
         Update();
-    });
+    }).detach();
 }
 
 void ComboRendering::Move(float x, float y)
 {
     // Apply the transformation asynchronously because it can take some time
     // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
+    std::thread([=]() {
         // The direction of mouse movement is inverse of the view movement
         // We need to scale the move distance to the size of the viewport
         // We want a constant move distance for a viewport length and take
@@ -319,27 +308,27 @@ void ComboRendering::Move(float x, float y)
 
         // Call OpenGL upate
         Update();
-    });
+    }).detach();
 }
 
 void ComboRendering::Zoom(float scale)
 {
     // Apply the transformation asynchronously because it can take some time
     // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
+    std::thread([=]() {
         zoom *= scale;
         UpdateProjection();
 
         // Call OpenGL upate
         Update();
-    });
+    }).detach();
 }
 
 void ComboRendering::ResetView(bool updateNow)
 {
     // Apply the transformation asynchronously because it can take some time
     // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
+    std::thread([=]() {
         zoom = DefaultZoom;
 
         aimX = (GlobalSettings::BedWidth.Get() / 2.0f);
@@ -356,7 +345,7 @@ void ComboRendering::ResetView(bool updateNow)
 
         // Call OpenGL upate
         Update();
-    });
+    }).detach();
 }
 
 void ComboRendering::Init()
@@ -397,64 +386,60 @@ void ComboRendering::Draw()
 
 void ComboRendering::TestMouseIntersection(float x, float y)
 {
-    // Run the test asynchronously because it can take some time
-    // TODO: tell the user that we are busy
-    std::async(std::launch::async, [=]() {
-        // TODO: this should only run if the STLs are visible
+    // TODO: this should only run if the STLs are visible
 
-        // Normalized screen coordinates
-        float screenX = (2.0f * x) / viewWidth - 1.0f;
-        float screenY = (2.0 * y) / viewHeight - 1.0f;
+    // Normalized screen coordinates
+    float screenX = (2.0f * x) / viewWidth - 1.0f;
+    float screenY = (2.0 * y) / viewHeight - 1.0f;
 
-        // Calculate the farthest and closest points from a line caused by the cursor
-        // TODO: cache some of this shit
-        glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
-        glm::mat4 invMat = glm::inverse(MV);
-        glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
-        glm::vec4 worldCoords = invMat * clipCoords;
-        glm::vec3 near = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
-        clipCoords.z = 1.0f;
-        worldCoords = invMat * clipCoords;
-        glm::vec3 far = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
+    // Calculate the farthest and closest points from a line caused by the cursor
+    // TODO: cache some of this shit
+    glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
+    glm::mat4 invMat = glm::inverse(MV);
+    glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
+    glm::vec4 worldCoords = invMat * clipCoords;
+    glm::vec3 near = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
+    clipCoords.z = 1.0f;
+    worldCoords = invMat * clipCoords;
+    glm::vec3 far = glm::vec3(worldCoords.x, worldCoords.y, worldCoords.z);
 
-        Mesh *highestMesh = nullptr;
-        float z = 2.0f;
+    Mesh *highestMesh = nullptr;
+    float z = 2.0f;
 
-        // Find the mesh with the 'highest' intersection
-        // (the most negative z value)
-        for (Mesh *mesh : stlMeshes)
+    // Find the mesh with the 'highest' intersection
+    // (the most negative z value)
+    for (Mesh *mesh : stlMeshes)
+    {
+        float nZ;
+        if (STLRendering::TestMeshIntersection(mesh, near, far, MV, nZ))
         {
-            float nZ;
-            if (STLRendering::TestMeshIntersection(mesh, near, far, MV, nZ))
+            if (nZ < z)
             {
-                if (nZ < z)
-                {
-                    highestMesh = mesh;
-                    z = nZ;
-                }
+                highestMesh = mesh;
+                z = nZ;
             }
         }
+    }
 
-        if (highestMesh != nullptr)
+    if (highestMesh != nullptr)
+    {
+        // (de)select the mesh
+        if (selectedMeshes.count(highestMesh) != 0)
         {
-            // (de)select the mesh
-            if (selectedMeshes.count(highestMesh) != 0)
-            {
-                // Deslect
-                selectedMeshes.erase(highestMesh);
-                STLRendering::ColorMesh(highestMesh, normalMeshCol);
-            }
-            else
-            {
-                // Select
-                selectedMeshes.insert(highestMesh);
-                STLRendering::ColorMesh(highestMesh, selectedMeshCol);
-            }
-
-            // Call OpenGL upate
-            Update();
+            // Deslect
+            selectedMeshes.erase(highestMesh);
+            STLRendering::ColorMesh(highestMesh, normalMeshCol);
         }
-    });
+        else
+        {
+            // Select
+            selectedMeshes.insert(highestMesh);
+            STLRendering::ColorMesh(highestMesh, selectedMeshCol);
+        }
+
+        // Call OpenGL upate
+        Update();
+    }
 }
 
 const std::set<Mesh*> &ComboRendering::getSelectedMeshes()

@@ -66,7 +66,8 @@ android {
     DEFINES += GLES
     DEFINES += ANDROID
 } else {
-    # other platforms
+    #target.path = $$OUT_PWD
+    #INSTALLS += target
     SAMPLES_INSTALL_PATH = $$OUT_PWD
 }
 

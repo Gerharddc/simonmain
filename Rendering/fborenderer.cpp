@@ -10,8 +10,9 @@
 #include "toolpathrendering.h"
 #include "gridrendering.h"
 #include "Misc/globalsettings.h"
-#include <future>
 #include <QObject>
+#include <iostream>
+#include <thread>
 
 class ComboFBORenderer : public QQuickFramebufferObject::Renderer
 {
@@ -113,7 +114,9 @@ void FBORenderer::autoArrangeMeshes()
 QString FBORenderer::saveMeshes()
 {
     // TODO: saving is done async; implement error reporting
-    ComboRendering::SaveMeshes(saveName().toStdString());
+    std::thread([=]() {
+        ComboRendering::SaveMeshes(saveName().toStdString());
+    }).detach();
     return "";
 }
 
@@ -128,10 +131,12 @@ void FBORenderer::EmitMeshProps()
 
 void FBORenderer::loadMesh(QString path)
 {
-    ComboRendering::LoadMesh(path.toStdString().c_str());
+    std::thread([=]() {
+        ComboRendering::LoadMesh(path.toStdString());
 
-    EmitMeshProps();
-    emit meshCountChanged();
+        EmitMeshProps();
+        emit meshCountChanged();
+    }).detach();
 }
 
 int FBORenderer::meshCount()
@@ -143,17 +148,17 @@ void FBORenderer::testMouseIntersection(float x, float y)
 {
     // Test for mouse intersection with objects and alert the gui
     // if we have moved between a point of no or any mesh selection
-    //bool needUpdate = false;
-    int old = meshesSelected();
-    ComboRendering::TestMouseIntersection(x, y);//, needUpdate);
 
-    if (meshesSelected() != old)
-        emit meshesSelectedChanged();
+    std::thread([=]() {
+        int old = meshesSelected();
+        ComboRendering::TestMouseIntersection(x, y);
 
-    if (old != 1 && meshesSelected() == 1)
-    {
-        EmitMeshProps();
-    }
+        if (meshesSelected() != old)
+            emit meshesSelectedChanged();
+
+        if (old != 1 && meshesSelected() == 1)
+            EmitMeshProps();
+    }).detach();
 }
 
 void FBORenderer::setMeshOpacity(float o)
@@ -310,14 +315,15 @@ QString FBORenderer::sliceMeshes()
     emit slicerStatusChanged();
 
     // We wait async for the mesh that is being saved async and then start the slicer
-    std::async(std::launch::async, [](FBORenderer *fbo) {
-        QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(fbo->saveName().toStdString()).get());
+    std::thread([](FBORenderer *fbo) {
+        QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(fbo->saveName().toStdString()));
         fbo->gcodePath = QString(stlName);
         fbo->gcodePath.replace(".stl", ".gcode");
 
         QStringList arguments;
         arguments << "slice" << "-v";
         arguments << "-j" << "/home/Simon/.Cura/simon.json";
+        arguments << "-v";
         arguments << "-o" << fbo->gcodePath;
         arguments << "-s" << "infill_sparse_density=" + QString::number(GlobalSettings::InfillDensity.Get());
         arguments << "-s" << "layer_height=" + QString::number(GlobalSettings::LayerHeight.Get());
@@ -337,7 +343,7 @@ QString FBORenderer::sliceMeshes()
 
         // Start the slicer through the message queue (thread safe)
         QMetaObject::invokeMethod(fbo, "StartSliceThread", Q_ARG(QStringList, arguments));
-    }, this);
+    }, this).detach();
 
     return "started";
 }
@@ -357,22 +363,25 @@ void FBORenderer::SlicerFinsihed(int)
     emit slicerRunningChanged();
     emit slicerStatusChanged();
 
-    ComboRendering::LoadToolpath(gcodePath.toStdString().c_str());
+    ComboRendering::LoadToolpath(gcodePath.toStdString());
 }
 
 void FBORenderer::StartSliceThread(QStringList arguments)
 {
-    const QString program = "/home/Simon/.Cura/CuraEngine";
+    //const QString program = "/home/Simon/.Cura/CuraEngine";
+    const QString program = "CuraEngine";
 
     sliceProcess->start(program, arguments);
 }
 
 void FBORenderer::removeSelectedMeshes()
 {
-    for (Mesh *mesh : std::set<Mesh*>(ComboRendering::getSelectedMeshes()))
-        ComboRendering::RemoveMesh(mesh);
+    std::thread([=]() {
+        for (Mesh *mesh : std::set<Mesh*>(ComboRendering::getSelectedMeshes()))
+            ComboRendering::RemoveMesh(mesh);
 
-    emit meshesSelectedChanged();
-    emit meshCountChanged();
-    EmitMeshProps();
+        emit meshesSelectedChanged();
+        emit meshCountChanged();
+        EmitMeshProps();
+    }).detach();
 }

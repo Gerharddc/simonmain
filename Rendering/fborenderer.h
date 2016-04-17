@@ -15,12 +15,12 @@ class FBORenderer : public QQuickFramebufferObject
     Q_OBJECT
 
 private:
-    void EmitMeshProps();
     QString m_saveName = "Untitled";
     bool m_slicerRunning = false;
     QString m_slicerStatus = "Not running";
     QProcess *sliceProcess;
     QString gcodePath = "";
+    void EmitMeshProps();
 
 public:
     FBORenderer();

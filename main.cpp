@@ -13,6 +13,7 @@
 #include <QFile>
 #include <QString>
 #include <QDebug>
+#include <iostream>
 
 int main(int argc, char *argv[])
 {
@@ -57,6 +58,7 @@ int main(int argc, char *argv[])
 
 #ifdef ROTATE_SCREEN
 #define ROOTQML "qrc:/Rotated.qml"
+    std::cout << "Running rotated" << std::endl;
 #else
 #define ROOTQML "qrc:/MainScreen.qml"
 #endif
