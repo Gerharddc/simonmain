@@ -161,8 +161,10 @@ class TPDataChunk
     friend class Toolpath;
 
 private:
+    bool indicesCopied = false;
+    bool lineIdxsCopied = false;
     ushort *indices = nullptr;
-    void NullPtrs();
+    ushort *lineIdxs = nullptr;
 
 public:
     float *curFloats = nullptr;
@@ -175,10 +177,10 @@ public:
     uint32_t nextFloatCount = 0;
     uint32_t sideFloatCount = 0;
     uint16_t idxCount = 0;
-
-    bool indicesCopied = false;
+    uint16_t lineIdxCount = 0;
 
     ushort *getIndices();
+    ushort *getLineIdxs();
     void ShrinkToSize();
 
     TPDataChunk();

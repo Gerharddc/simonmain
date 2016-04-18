@@ -4,6 +4,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <thread>
+#include <iostream>
+#include <time.h>
 
 #include "glhelper.h"
 #include "mathhelper.h"
@@ -22,7 +25,9 @@ namespace ToolpathRendering {
         GLuint mSideBuffer = 0;
 
         uint16_t *indices;
+        uint16_t *lineIdxs;
         short idxCount = 0;
+        short lineIdxCount = 0;
     };
 
     GLuint mProgram = 0;
@@ -154,7 +159,9 @@ void ToolpathRendering::LoadPath()
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * dc->sideFloatCount, dc->sides, GL_STATIC_DRAW);
 
         gd->indices = dc->getIndices();
+        gd->lineIdxs = dc->getLineIdxs();
         gd->idxCount = dc->idxCount;
+        gd->lineIdxCount = dc->lineIdxCount;
     }
 
     delete chunks;
@@ -180,6 +187,32 @@ void ToolpathRendering::Init()
     mPrevPosAttribLocation = glGetAttribLocation(mProgram, "aPrevPos");
     mSideAttribLocation = glGetAttribLocation(mProgram, "aSide");
 }
+
+// If the gcode rendering is becoing too slow then we need to temporarily fall back
+// a simpler rendering method. We then have a flag that redraws the current frame
+// if it has been idle for long enough.
+
+static bool complexify = false;
+
+static clock_t lastDrawTime = clock();
+
+static void checkComplexify()
+{
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::cout << "ping" << std::endl;
+
+        if (complexify)
+        {
+            lastDrawTime = clock();
+            ComboRendering::Update();
+            complexify = false;
+        }
+    }
+}
+
+static std::thread complexifyThread(checkComplexify);
 
 void ToolpathRendering::Draw()
 {
@@ -209,6 +242,12 @@ void ToolpathRendering::Draw()
         dirtyColor = false;
     }
 
+    clock_t now = clock();
+    double elapsed = (double)(now - lastDrawTime) * 1000.0 / CLOCKS_PER_SEC;
+    lastDrawTime = now;
+    std::cout << "Elapsed: " << elapsed << std::endl;
+    bool simpleDraw = (elapsed > 3.0);
+
     for (std::size_t i = 0; i < groupCount; i++)
     {
         GroupGLData *ld = groupDatas + i;
@@ -229,13 +268,23 @@ void ToolpathRendering::Draw()
         glEnableVertexAttribArray(mSideAttribLocation);
         glVertexAttribPointer(mSideAttribLocation, 1, GL_FLOAT, GL_FALSE, 0, 0);
 
+        // TODO: implement line rendering using strips and fix issues
+
         // TODO: derive the layer height from the actual gcode instead
         // or maybe rather use the extrusion diameter
-        glUniform1f(mRadiusUniformLocation, 0.225f); // Almost half 0.5f
-        glUniform1i(mLineOnlyUnformLocation, false);
+        glUniform1f(mRadiusUniformLocation, 0.225f); // Almost half 0.5f       
 
-        glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
-        //glDrawElements(GL_LINES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
+        if (simpleDraw)
+        {
+            glUniform1i(mLineOnlyUnformLocation, true);
+            glDrawElements(GL_LINES, ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
+            complexify = true;
+        }
+        else
+        {
+            glUniform1i(mLineOnlyUnformLocation, false);
+            glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
+        }
     }
 }
 

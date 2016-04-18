@@ -144,18 +144,20 @@ inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, uin
 // needed part
 const uint16_t maxIdx = 10000;//UINT16_MAX; // TODO: variable data type
 
-inline void NewChunk(ushort &idxPos, ushort &saveIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
+inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
 {
     // We need to shrink the previous chunk to size
     if (dc != nullptr)
     {
         dc->idxCount = idxPos;
+        dc->lineIdxCount = lineIdx;
         dc->sideFloatCount = saveIdx;
         dc->ShrinkToSize();
     }
 
     idxPos = 0;
     saveIdx = 0;
+    lineIdx = 0;
     chunks->emplace_back();
     dc = &(chunks->back());
 }
@@ -164,11 +166,12 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
 {
     ushort idxPos = 0;
     ushort saveIdx = 0;
+    ushort lineIdx = 0;
     std::vector<TPDataChunk> *chunks = new std::vector<TPDataChunk>();
     TPDataChunk *dc = nullptr;
 
     // Use a MACRO to easily push a new chunk
-    #define NEWCHUNK() NewChunk(idxPos, saveIdx, chunks, dc)
+    #define NEWCHUNK() NewChunk(idxPos, saveIdx, lineIdx, chunks, dc)
     NEWCHUNK();
 
     for (Layer layer : layers)
@@ -315,6 +318,11 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     dc->indices[idxPos + 4] = saveIdx + 3;
                     dc->indices[idxPos + 5] = saveIdx + 1;
 
+                    // Line
+                    dc->lineIdxs[lineIdx] = saveIdx;
+                    dc->lineIdxs[lineIdx + 1] = saveIdx + 3;
+                    lineIdx += 2;
+
                     idxPos += 6;
                     saveIdx += 2;
                 }
@@ -365,6 +373,11 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     dc->indices[idxPos + 10] = saveIdx + 5;
                     dc->indices[idxPos + 11] = saveIdx + 6;
 
+                    // Line
+                    dc->lineIdxs[lineIdx] = saveIdx;
+                    dc->lineIdxs[lineIdx + 1] = saveIdx + 6;
+                    lineIdx += 2;
+
                     idxPos += 12;
                     saveIdx += 5;
                 }
@@ -374,6 +387,7 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
 
     // Finish up the last chunk
     dc->idxCount = idxPos;
+    dc->lineIdxCount = lineIdx;
     dc->sideFloatCount = saveIdx;
     dc->ShrinkToSize();
 
@@ -381,15 +395,16 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     return chunks;
 }
 
-void TPDataChunk::NullPtrs()
-{
-
-}
-
 ushort *TPDataChunk::getIndices()
 {
     indicesCopied = true;
     return indices;
+}
+
+ushort *TPDataChunk::getLineIdxs()
+{
+    lineIdxsCopied = true;
+    return lineIdxs;
 }
 
 void TPDataChunk::ShrinkToSize()
@@ -399,6 +414,7 @@ void TPDataChunk::ShrinkToSize()
     prevFloats  = (float*) realloc (prevFloats, prevFloatCount * sizeof(float));
     sides       = (float*) realloc (sides, sideFloatCount * sizeof(float));
     indices     = (ushort*)realloc (indices, idxCount * sizeof(uint16_t));
+    lineIdxs    = (ushort*)realloc (lineIdxs, lineIdxCount * sizeof(uint16_t));
 }
 
 TPDataChunk::TPDataChunk()
@@ -408,6 +424,7 @@ TPDataChunk::TPDataChunk()
     prevFloats = (float*) malloc (maxIdx * 10 * sizeof(float));
     sides      = (float*) malloc (maxIdx * 5 * sizeof(float));
     indices    = (ushort*)malloc (maxIdx * 12 * sizeof(ushort));
+    lineIdxs   = (ushort*)malloc (maxIdx * sizeof(ushort));
 }
 
 TPDataChunk::TPDataChunk(TPDataChunk &&copier)
@@ -417,19 +434,23 @@ TPDataChunk::TPDataChunk(TPDataChunk &&copier)
     nextFloats = copier.nextFloats;
     sides = copier.sides;
     indices = copier.indices;
+    lineIdxs = copier.lineIdxs;
 
     curFloatCount = copier.curFloatCount;
     prevFloatCount = copier.prevFloatCount;
     nextFloatCount = copier.nextFloatCount;
     sideFloatCount = copier.sideFloatCount;
     idxCount = copier.idxCount;
+    lineIdxCount = copier.lineIdxCount;
     indicesCopied = copier.indicesCopied;
+    lineIdxsCopied = copier.lineIdxsCopied;
 
     copier.curFloats = nullptr;
     copier.prevFloats = nullptr;
     copier.nextFloats = nullptr;
     copier.sides = nullptr;
     copier.indices = nullptr;
+    copier.lineIdxs = nullptr;
 }
 
 TPDataChunk::~TPDataChunk()
@@ -447,4 +468,6 @@ TPDataChunk::~TPDataChunk()
     // the renderer will be responsible for freeing the memory used by that array
     if (!indicesCopied && indices != nullptr)
         free (indices);
+    if (!lineIdxsCopied && lineIdxs != nullptr)
+        free (lineIdxs);
 }

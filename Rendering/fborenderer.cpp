@@ -339,6 +339,7 @@ QString FBORenderer::sliceMeshes()
         arguments << "-s" << "shell_thickness=" + QString::number(GlobalSettings::ShellThickness.Get());
         arguments << "-s" << "top_bottom_thickness=" + QString::number(GlobalSettings::TopBottomThickness.Get());
         arguments << "-s" << "material_print_temperature=" + QString::number(GlobalSettings::PrintTemperature.Get());
+        arguments << "-s" << "support_enable=false";
         arguments << "-l" << stlName;
 
         // Start the slicer through the message queue (thread safe)
@@ -352,8 +353,8 @@ void FBORenderer::ReadSlicerOutput()
 {
     QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
 
-    for (QString str : sl)
-        std::cout << str.toStdString();
+    //for (QString str : sl)
+      //  std::cout << str.toStdString();
 
     if (sl.last() == "")
         sl.removeLast(); // The last one is usually empty
