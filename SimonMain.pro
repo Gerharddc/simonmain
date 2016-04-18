@@ -66,8 +66,10 @@ android {
     DEFINES += GLES
     DEFINES += ANDROID
 } else {
-    #target.path = $$OUT_PWD
-    #INSTALLS += target
+    SIMON {
+        target.path = $$OUT_PWD
+        INSTALLS += target
+    }
     SAMPLES_INSTALL_PATH = $$OUT_PWD
 }
 

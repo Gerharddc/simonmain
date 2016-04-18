@@ -33,5 +33,6 @@ extern void glVertexAttribPointer(GLuint indx, GLint size, GLenum type, GLboolea
 extern void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern void glUniform4fv(GLint location, GLsizei count, const GLfloat *value);
 extern void glUniform1f(GLint location,  GLfloat v0);
+extern void glUniform1i(GLint location,  GLint value);
 
 #endif // LOADEDGL_H

@@ -64,15 +64,16 @@ InterPoint Intersection(float x1, float x2, float x3, float x4,
     return inter;
 }
 
-// snd = 10; centre = 20; fst = 30; fstOnly = 40; sndOnly = 50;
-
-/*bool Almost(float a, float b)
-{
-    return (abs(a - b) < 5.0);
-}*/
-
 void main(void)
 {
+    // Detect lightweight rendering
+    if (uLineOnly)
+    {
+        vColor = uColor;
+        gl_Position = uProjMatrix * uModelMatrix * vec4(aCurPos, 1.0);
+        return;
+    }
+
     // Project the positions into view space
     vec4 curPos = uModelMatrix * vec4(aCurPos, 1.0);
     vec4 prevPos = uModelMatrix * vec4(aPrevPos, aCurPos.z, 1.0);

@@ -38,6 +38,7 @@ namespace ToolpathRendering {
     GLint mRadiusUniformLocation = 0;
     GLint mProjUniformLocation = 0;
     GLint mColorUniformLocation = 0;
+    GLint mLineOnlyUnformLocation = 0;
 
     GroupGLData *groupDatas = nullptr;
     std::size_t groupCount = 0;
@@ -171,8 +172,9 @@ void ToolpathRendering::Init()
     mModelUniformLocation = glGetUniformLocation(mProgram, "uModelMatrix");
     mRadiusUniformLocation = glGetUniformLocation(mProgram, "uFilamentRadius");
     mColorUniformLocation = glGetUniformLocation(mProgram, "uColor");
-
+    mLineOnlyUnformLocation = glGetUniformLocation(mProgram, "uLineOnly");
     mProjUniformLocation = glGetUniformLocation(mProgram, "uProjMatrix");
+
     mCurPosAttribLocation = glGetAttribLocation(mProgram, "aCurPos");
     mNextPosAttribLocation = glGetAttribLocation(mProgram, "aNextPos");
     mPrevPosAttribLocation = glGetAttribLocation(mProgram, "aPrevPos");
@@ -230,8 +232,10 @@ void ToolpathRendering::Draw()
         // TODO: derive the layer height from the actual gcode instead
         // or maybe rather use the extrusion diameter
         glUniform1f(mRadiusUniformLocation, 0.225f); // Almost half 0.5f
+        glUniform1i(mLineOnlyUnformLocation, false);
 
         glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
+        //glDrawElements(GL_LINES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
     }
 }
 

@@ -231,4 +231,12 @@ void glUniform1f(GLint location,  GLfloat v0)
     glFuncs->glUniform1f(location, v0);
 }
 
+void glUniform1i(GLint location,  GLint value)
+{
+    if (ThrowInactive())
+        return;
+
+    glFuncs->glUniform1i(location, value);
+}
+
 #endif //GLES

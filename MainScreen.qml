@@ -108,9 +108,10 @@ Rectangle {
                 anchors.leftMargin: 7
                 width: 150
                 isDimmable: true
-                opacity: 0.6
+                opacity: bottomDrawer.isExpanded ? 0.0 : 0.6
                 nameA: 'Pan'
                 nameB: 'Rotate'
+                visible: !bottomDrawer.isExpanded
                 z: 200
             }
 
@@ -118,7 +119,7 @@ Rectangle {
                 anchors.top: toggler.top
                 anchors.right: parent.right
                 anchors.rightMargin: 7
-                opacity: 0.6
+                opacity: bottomDrawer.isExpanded ? 0.0 : 0.6
                 isDimmable: true
                 text: "Reset view"
                 width: 150

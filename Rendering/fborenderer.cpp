@@ -323,7 +323,7 @@ QString FBORenderer::sliceMeshes()
         QStringList arguments;
         arguments << "slice" << "-v";
         arguments << "-j" << "/home/Simon/.Cura/simon.json";
-        arguments << "-v";
+        arguments << "-v" << "-p";
         arguments << "-o" << fbo->gcodePath;
         arguments << "-s" << "infill_sparse_density=" + QString::number(GlobalSettings::InfillDensity.Get());
         arguments << "-s" << "layer_height=" + QString::number(GlobalSettings::LayerHeight.Get());
@@ -351,9 +351,15 @@ QString FBORenderer::sliceMeshes()
 void FBORenderer::ReadSlicerOutput()
 {
     QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
-    sl.removeLast(); // The last one is usually empty
-    m_slicerStatus = sl.back();
-    emit slicerStatusChanged();
+
+    for (QString str : sl)
+        std::cout << str.toStdString();
+
+    if (sl.last() == "")
+        sl.removeLast(); // The last one is usually empty
+    if (sl.count() > 0)
+        m_slicerStatus = sl.back();
+        emit slicerStatusChanged();
 }
 
 void FBORenderer::SlicerFinsihed(int)
@@ -368,7 +374,6 @@ void FBORenderer::SlicerFinsihed(int)
 
 void FBORenderer::StartSliceThread(QStringList arguments)
 {
-    //const QString program = "/home/Simon/.Cura/CuraEngine";
     const QString program = "CuraEngine";
 
     sliceProcess->start(program, arguments);
