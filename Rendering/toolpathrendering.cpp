@@ -62,6 +62,31 @@ namespace ToolpathRendering {
     float opacity = 1.0f;
 }
 
+// If the gcode rendering is becoing too slow then we need to temporarily fall back
+// a simpler rendering method. We then have a flag that redraws the current frame
+// if it has been idle for long enough.
+
+static bool complexify = false;
+
+static clock_t lastDrawTime = clock();
+
+static void checkComplexify()
+{
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        if (complexify)
+        {
+            lastDrawTime = clock();
+            ComboRendering::Update();
+            complexify = false;
+        }
+    }
+}
+
+static std::thread *complexifyThread = nullptr;
+
 void ToolpathRendering::FreeMemory()
 {
     if (mProgram != 0)
@@ -75,6 +100,9 @@ void ToolpathRendering::FreeMemory()
         delete[] groupDatas;
         groupDatas = nullptr;
     }
+
+    if (complexifyThread != nullptr)
+        delete complexifyThread;
 }
 
 void ToolpathRendering::SceneMatDirty()
@@ -186,33 +214,11 @@ void ToolpathRendering::Init()
     mNextPosAttribLocation = glGetAttribLocation(mProgram, "aNextPos");
     mPrevPosAttribLocation = glGetAttribLocation(mProgram, "aPrevPos");
     mSideAttribLocation = glGetAttribLocation(mProgram, "aSide");
+
+    // Start the complexifying thread
+    complexifyThread = new std::thread(checkComplexify);
+    complexifyThread->detach();
 }
-
-// If the gcode rendering is becoing too slow then we need to temporarily fall back
-// a simpler rendering method. We then have a flag that redraws the current frame
-// if it has been idle for long enough.
-
-static bool complexify = false;
-
-static clock_t lastDrawTime = clock();
-
-static void checkComplexify()
-{
-    while (true)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        std::cout << "ping" << std::endl;
-
-        if (complexify)
-        {
-            lastDrawTime = clock();
-            ComboRendering::Update();
-            complexify = false;
-        }
-    }
-}
-
-static std::thread complexifyThread(checkComplexify);
 
 void ToolpathRendering::Draw()
 {
@@ -306,4 +312,9 @@ void ToolpathRendering::SetColor(glm::vec3 color)
 {
     _color = color;
     dirtyColor = true;
+}
+
+bool ToolpathRendering::ToolpathLoaded()
+{
+    return (groupCount > 0);
 }

@@ -17,8 +17,11 @@ class FBORenderer : public QQuickFramebufferObject
 private:
     QString m_saveName = "Untitled";
     bool m_slicerRunning = false;
+    bool m_printRunning = false;
     QString m_slicerStatus = "Not running";
+    QString m_printStatus = "Not running";
     QProcess *sliceProcess;
+    QProcess *printProcess;
     QString gcodePath = "";
     void EmitMeshProps();
 
@@ -37,6 +40,7 @@ public:
     Q_INVOKABLE void autoArrangeMeshes();
     Q_INVOKABLE QString saveMeshes();
     Q_INVOKABLE QString sliceMeshes();
+    Q_INVOKABLE QString printToolpath();
 
     Q_PROPERTY(float meshOpacity READ meshOpacity WRITE setMeshOpacity NOTIFY meshOpacityChanged)
     bool meshOpacity() { return STLRendering::GetBaseOpacity(); }
@@ -68,6 +72,9 @@ public:
     Q_PROPERTY(int meshCount READ meshCount NOTIFY meshCountChanged)
     int meshCount();
 
+    Q_PROPERTY(bool toolPathLoaded READ toolPathLoaded NOTIFY toolPathLoadedChanged)
+    bool toolPathLoaded() { return ToolpathRendering::ToolpathLoaded(); }
+
     Q_PROPERTY(QString saveName READ saveName WRITE setSaveName NOTIFY saveNameChanged)
     QString saveName() { return m_saveName; }
     void setSaveName(QString sav);
@@ -77,6 +84,9 @@ public:
 
     Q_PROPERTY(QString slicerStatus READ slicerStatus NOTIFY slicerStatusChanged)
     QString slicerStatus() { return m_slicerStatus; }
+
+    Q_PROPERTY(QString printStatus READ printStatus NOTIFY printStatusChanged)
+    QString printStatus() { return m_printStatus; }
 
 public slots:
     void ReadSlicerOutput();
@@ -95,6 +105,8 @@ signals:
    void saveNameChanged();
    void slicerRunningChanged();
    void slicerStatusChanged();
+   void printStatusChanged();
+   void toolPathLoadedChanged();
 };
 
 #endif // FBORENDERER_H

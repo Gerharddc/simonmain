@@ -349,6 +349,20 @@ QString FBORenderer::sliceMeshes()
     return "started";
 }
 
+QString FBORenderer::printToolpath()
+{
+    if (!toolPathLoaded())
+        return "";
+
+    QStringList arguments;
+    /*arguments << "slice" << "-v";
+    arguments << "-j" << "/home/Simon/.Cura/simon.json";
+    arguments << "-v" << "-p";
+    arguments << "-o" << fbo->gcodePath;*/
+
+    printProcess->start("pronsole.py", arguments);
+}
+
 void FBORenderer::ReadSlicerOutput()
 {
     QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
@@ -370,7 +384,10 @@ void FBORenderer::SlicerFinsihed(int)
     emit slicerRunningChanged();
     emit slicerStatusChanged();
 
+    // TODO: async fokop
     ComboRendering::LoadToolpath(gcodePath.toStdString());
+
+    emit toolPathLoadedChanged();
 }
 
 void FBORenderer::StartSliceThread(QStringList arguments)
