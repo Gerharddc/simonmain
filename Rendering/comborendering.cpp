@@ -15,103 +15,100 @@
 #include "gcodeimporting.h"
 #include "Misc/globalsettings.h"
 
-namespace ComboRendering
+// TODO: make relative to bed size
+static const float DefaultZoom = 3.0f;
+
+static float viewWidth = 0.0f;
+static float viewHeight = 0.0f;
+
+static float centreX = 0.0f;
+static float centreY = 0.0f;
+
+static float aimX = 0.0f;
+static float aimY = 0.0f;
+static float zoom = DefaultZoom;
+
+static glm::mat4 sceneTrans = glm::mat4();
+static glm::mat4 sceneProj = glm::mat4();
+
+static glm::mat4 rotOrg = glm::mat4();
+static glm::mat4 rotOrgInv = glm::mat4();
+static glm::quat sceneRot = glm::quat();
+
+static std::set<Mesh*> stlMeshes;
+static std::set<Mesh*> selectedMeshes;
+
+static Toolpath *gcodePath = nullptr;
+
+static bool curMeshesSaved = false;
+static std::string curMeshesPath = "";
+
+// These are used to delegate an opengl update call
+static ComboRendering::UpdateHandler updateHandler;
+static void *updateContext = nullptr;
+
+static void UpdateGridHandler(void*, float)
 {
-    // TODO: make relative to bed size
-    const float DefaultZoom = 3.0f;
+    GridRendering::GridDirty();
+    ComboRendering::ResetView(true);
+}
 
-    float viewWidth = 0.0f;
-    float viewHeight = 0.0f;
+static void RecalculateCentre()
+{
+    // We need to translate the centre of the box to the origin for rotation
+    float midX = GlobalSettings::BedWidth.Get() / 2.0f;
+    float midY = GlobalSettings::BedLength.Get() / 2.0f;
 
-    float centreX = 0.0f;
-    float centreY = 0.0f;
+    rotOrg = glm::translate(glm::mat4(), glm::vec3(midX, midY, 0.0f));
+    rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-midX, -midY, 0.0f));
+}
 
-    float aimX = 0.0f;
-    float aimY = 0.0f;
-    float zoom = DefaultZoom;
+static void UpdateProjection()
+{
+    // Calculate an orthographic projection that centres the view at the aiming position and applies the zoom
+    float left = aimX - (centreX / zoom);
+    float right = aimX + (centreX / zoom);
+    float bottom = aimY - (centreY / zoom);
+    float top = aimY + (centreY / zoom);
 
-    glm::mat4 sceneTrans = glm::mat4();
-    glm::mat4 sceneProj = glm::mat4();
+    // With the orthographic system we need a negative and positive clip plane of enough distance
+    sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10,
+                           GlobalSettings::BedHeight.Get() * 10);
 
-    glm::mat4 rotOrg = glm::mat4();
-    glm::mat4 rotOrgInv = glm::mat4();
-    glm::quat sceneRot = glm::quat();
+    // Flag the renderers to update their proj matrices
+    GridRendering::ProjMatDirty();
+    STLRendering::ProjMatDirty();
+    ToolpathRendering::ProjMatDirty();
+}
 
-    std::set<Mesh*> stlMeshes;
-    std::set<Mesh*> selectedMeshes;
+static void RecalculateView()
+{
+    // Update the projection
+    UpdateProjection();
 
-    Toolpath *gcodePath = nullptr;
+    // Reset the scene view looking at the centre of the box from a height above the origin
+    RecalculateCentre();
+    sceneTrans = rotOrg;
+    sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::quat inv = sceneRot;
+    inv.w *= -1; // Invert the angle
+    glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
+    xDir = inv * xDir;
+    sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
+    sceneTrans *= glm::mat4_cast(sceneRot);
+    sceneTrans *= rotOrgInv;
+}
 
-    bool curMeshesSaved = false;
-    std::string curMeshesPath = "";
+static void removeCharsFromString(std::string &str, const char* charsToRemove ) {
+   for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
+      str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
+   }
+}
 
-    // These are used to delegate an opengl update call
-    UpdateHandler updateHandler;
-    void *updateContext = nullptr;
-
-    void SetUpdateHandler(UpdateHandler handler, void *context)
-    {
-        updateHandler = handler;
-        updateContext = context;
-    }
-
-    void UpdateGridHandler(void*, float)
-    {
-        GridRendering::GridDirty();
-        ResetView(true);
-    }
-
-    void RecalculateCentre()
-    {
-        // We need to translate the centre of the box to the origin for rotation
-        float midX = GlobalSettings::BedWidth.Get() / 2.0f;
-        float midY = GlobalSettings::BedLength.Get() / 2.0f;
-
-        rotOrg = glm::translate(glm::mat4(), glm::vec3(midX, midY, 0.0f));
-        rotOrgInv = glm::translate(glm::mat4(), glm::vec3(-midX, -midY, 0.0f));
-    }
-
-    void UpdateProjection()
-    {
-        // Calculate an orthographic projection that centres the view at the aiming position and applies the zoom
-        float left = aimX - (centreX / zoom);
-        float right = aimX + (centreX / zoom);
-        float bottom = aimY - (centreY / zoom);
-        float top = aimY + (centreY / zoom);
-
-        // With the orthographic system we need a negative and positive clip plane of enough distance
-        sceneProj = glm::ortho(left, right, bottom, top, -GlobalSettings::BedHeight.Get() * 10,
-                               GlobalSettings::BedHeight.Get() * 10);
-
-        // Flag the renderers to update their proj matrices
-        GridRendering::ProjMatDirty();
-        STLRendering::ProjMatDirty();
-        ToolpathRendering::ProjMatDirty();
-    }
-
-    void RecalculateView()
-    {
-        // Update the projection
-        UpdateProjection();
-
-        // Reset the scene view looking at the centre of the box from a height above the origin
-        RecalculateCentre();
-        sceneTrans = rotOrg;
-        sceneRot = glm::angleAxis(glm::radians(180.0f + 45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        glm::quat inv = sceneRot;
-        inv.w *= -1; // Invert the angle
-        glm::vec4 xDir(1.0f, 0.0f, 0.0f, 1.0f);
-        xDir = inv * xDir;
-        sceneRot *= glm::angleAxis(glm::radians(45.0f), glm::vec3(xDir.x, xDir.y, 0.0f));
-        sceneTrans *= glm::mat4_cast(sceneRot);
-        sceneTrans *= rotOrgInv;
-    }
-
-    void removeCharsFromString(std::string &str, const char* charsToRemove ) {
-       for ( unsigned int i = 0; i < strlen(charsToRemove); ++i ) {
-          str.erase( std::remove(str.begin(), str.end(), charsToRemove[i]), str.end() );
-       }
-    }
+void ComboRendering::SetUpdateHandler(ComboRendering::UpdateHandler handler, void *context)
+{
+    updateHandler = handler;
+    updateContext = context;
 }
 
 void ComboRendering::Update()
@@ -394,7 +391,7 @@ void ComboRendering::TestMouseIntersection(float x, float y)
 
     // Calculate the farthest and closest points from a line caused by the cursor
     // TODO: cache some of this shit
-    glm::mat4 MV = ComboRendering::sceneProj * ComboRendering::sceneTrans;
+    glm::mat4 MV = sceneProj * sceneTrans;
     glm::mat4 invMat = glm::inverse(MV);
     glm::vec4 clipCoords = glm::vec4(screenX, screenY, -1.0f, 1.0f);
     glm::vec4 worldCoords = invMat * clipCoords;

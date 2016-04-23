@@ -14,59 +14,51 @@
 #include "comborendering.h"
 #include "Misc/globalsettings.h"
 
-namespace ToolpathRendering {
-    struct GroupGLData
-    {
-        ~GroupGLData();
+struct GroupGLData
+{
+    ~GroupGLData();
 
-        GLuint mCurPosBuffer = 0;
-        GLuint mNextPosBuffer = 0;
-        GLuint mPrevPosBuffer = 0;
-        GLuint mSideBuffer = 0;
+    GLuint mCurPosBuffer = 0;
+    GLuint mNextPosBuffer = 0;
+    GLuint mPrevPosBuffer = 0;
+    GLuint mSideBuffer = 0;
 
-        uint16_t *indices;
-        uint16_t *lineIdxs;
-        short idxCount = 0;
-        short lineIdxCount = 0;
-    };
+    uint16_t *indices;
+    uint16_t *lineIdxs;
+    short idxCount = 0;
+    short lineIdxCount = 0;
+};
 
-    GLuint mProgram = 0;
-    GLsizei mWindowWidth = 0;
-    GLsizei mWindowHeight = 0;
+static GLuint mProgram = 0;
+static GLint mCurPosAttribLocation = 0;
+static GLint mNextPosAttribLocation = 0;
+static GLint mPrevPosAttribLocation = 0;
+static GLint mSideAttribLocation = 0;
 
-    GLint mCurPosAttribLocation = 0;
-    GLint mNextPosAttribLocation = 0;
-    GLint mPrevPosAttribLocation = 0;
-    GLint mSideAttribLocation = 0;
+static GLint mModelUniformLocation = 0;
+static GLint mRadiusUniformLocation = 0;
+static GLint mProjUniformLocation = 0;
+static GLint mColorUniformLocation = 0;
+static GLint mLineOnlyUnformLocation = 0;
 
-    GLint mModelUniformLocation = 0;
-    GLint mRadiusUniformLocation = 0;
-    GLint mProjUniformLocation = 0;
-    GLint mColorUniformLocation = 0;
-    GLint mLineOnlyUnformLocation = 0;
+static GroupGLData *groupDatas = nullptr;
+static std::size_t groupCount = 0;
 
-    GroupGLData *groupDatas = nullptr;
-    std::size_t groupCount = 0;
+// We need flags to determine when matrices have changed as
+// to be able to give new ones to opengl
+static bool dirtyProjMat = true;
+static bool dirtySceneMat = true;
+static bool dirtyPath = false;
+static bool dirtyColor = true;
 
-    inline void LoadPath();
-    Toolpath *path;
-
-    // We need flags to determine when matrices have changed as
-    // to be able to give new ones to opengl
-    bool dirtyProjMat = true;
-    bool dirtySceneMat = true;
-    bool dirtyPath = false;
-    bool dirtyColor = true;
-
-    glm::vec3 _color = glm::vec3(0.2f, 0.2f, 0.8f);
-    float opacity = 1.0f;
-}
+static glm::vec3 _color = glm::vec3(0.2f, 0.2f, 0.8f);
+static float opacity = 1.0f;
 
 // If the gcode rendering is becoing too slow then we need to temporarily fall back
 // a simpler rendering method. We then have a flag that redraws the current frame
 // if it has been idle for long enough.
 
-static bool complexify = false;
+static volatile bool complexify = false;
 
 static clock_t lastDrawTime = clock();
 
@@ -105,56 +97,9 @@ void ToolpathRendering::FreeMemory()
         delete complexifyThread;
 }
 
-void ToolpathRendering::SceneMatDirty()
-{
-    dirtySceneMat = true;
-}
+static Toolpath *path;
 
-void ToolpathRendering::ProjMatDirty()
-{
-    dirtyProjMat = true;
-}
-
-void ToolpathRendering::SetToolpath(Toolpath *tp)
-{
-    path = tp;
-    dirtyPath = true;
-}
-
-ToolpathRendering::GroupGLData::~GroupGLData()
-{
-    if (mCurPosBuffer != 0)
-    {
-        glDeleteBuffers(1, &mCurPosBuffer);
-        mCurPosBuffer = 0;
-    }
-
-    if (mNextPosBuffer != 0)
-    {
-        glDeleteBuffers(1, &mNextPosBuffer);
-        mNextPosBuffer = 0;
-    }
-
-    if (mPrevPosBuffer != 0)
-    {
-        glDeleteBuffers(1, &mPrevPosBuffer);
-        mPrevPosBuffer = 0;
-    }
-
-    if (mSideBuffer != 0)
-    {
-        glDeleteBuffers(1, &mSideBuffer);
-        mSideBuffer = 0;
-    }
-
-    if (indices != nullptr)
-    {
-        delete[] indices;
-        indices = nullptr;
-    }
-}
-
-void ToolpathRendering::LoadPath()
+static void LoadPath()
 {
     dirtyPath = false;
 
@@ -193,6 +138,55 @@ void ToolpathRendering::LoadPath()
     }
 
     delete chunks;
+}
+
+void ToolpathRendering::SceneMatDirty()
+{
+    dirtySceneMat = true;
+}
+
+void ToolpathRendering::ProjMatDirty()
+{
+    dirtyProjMat = true;
+}
+
+void ToolpathRendering::SetToolpath(Toolpath *tp)
+{
+    path = tp;
+    dirtyPath = true;
+}
+
+GroupGLData::~GroupGLData()
+{
+    if (mCurPosBuffer != 0)
+    {
+        glDeleteBuffers(1, &mCurPosBuffer);
+        mCurPosBuffer = 0;
+    }
+
+    if (mNextPosBuffer != 0)
+    {
+        glDeleteBuffers(1, &mNextPosBuffer);
+        mNextPosBuffer = 0;
+    }
+
+    if (mPrevPosBuffer != 0)
+    {
+        glDeleteBuffers(1, &mPrevPosBuffer);
+        mPrevPosBuffer = 0;
+    }
+
+    if (mSideBuffer != 0)
+    {
+        glDeleteBuffers(1, &mSideBuffer);
+        mSideBuffer = 0;
+    }
+
+    if (indices != nullptr)
+    {
+        delete[] indices;
+        indices = nullptr;
+    }
 }
 
 void ToolpathRendering::Init()
@@ -249,10 +243,13 @@ void ToolpathRendering::Draw()
     }
 
     clock_t now = clock();
-    double elapsed = (double)(now - lastDrawTime) * 1000.0 / CLOCKS_PER_SEC;
+    clock_t deltaTicks = now - lastDrawTime;
+    clock_t fps = 0;
+    if (deltaTicks > 0)
+        fps = CLOCKS_PER_SEC / deltaTicks / 6.0; // Not sure why 6
+    //std::cout << "FPS: " << fps << std::endl;
     lastDrawTime = now;
-    std::cout << "Elapsed: " << elapsed << std::endl;
-    bool simpleDraw = (elapsed > 3.0);
+    bool simpleDraw = (fps < 30.0);
 
     for (std::size_t i = 0; i < groupCount; i++)
     {

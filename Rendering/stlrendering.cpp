@@ -16,56 +16,65 @@
 #include "comborendering.h"
 #include "Misc/globalsettings.h"
 
-namespace STLRendering {
-    GLuint mProgram = 0;
-    GLsizei mWindowWidth = 0;
-    GLsizei mWindowHeight = 0;
+static GLuint mProgram = 0;
+static GLint mPositionAttribLocation = 0;
+static GLint mNormalAttribLocation = 0;
 
-    GLint mPositionAttribLocation;
-    GLint mNormalAttribLocation;
+static GLint mModelUniformLocation = 0;
+static GLint mProjUniformLocation = 0;
+static GLint mNormUniformLocation = 0;
+static GLint mColorUniformLocation = 0;
 
-    GLint mModelUniformLocation;
-    GLint mProjUniformLocation;
-    GLint mNormUniformLocation;
-    GLint mColorUniformLocation;
+static std::map<Mesh*, MeshGroupData*> meshGroups;
+static std::queue<MeshGroupData*> toDelete;
 
-    void LoadMesh(MeshGroupData &mg, Mesh *mesh);
-    std::map<Mesh*, MeshGroupData*> meshGroups;
-    std::queue<MeshGroupData*> toDelete;
+// We need flags to determine when matrices have changed as
+// to be able to give new ones to opengl
+static bool dirtyProjMat = true;
+static bool dirtySceneMat = true;
+static bool dirtyMesh = false;
 
-    // We need flags to determine when matrices have changed as
-    // to be able to give new ones to opengl
-    bool dirtyProjMat = true;
-    bool dirtySceneMat = true;
-    bool dirtyMesh = false;
+static void LoadMesh(MeshGroupData &mg, Mesh *mesh)
+{
+    glGenBuffers(1, &mg.mVertexPositionBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatVerts(), GL_STATIC_DRAW);
+    mesh->dumpFlatVerts();
 
-    // This updates the Mesh in normal memory for saving but does not
-    // affect the mesh loaded in GPU memory
-    void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
+    glGenBuffers(1, &mg.mVertexNormalBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexNormalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
+    mesh->dumpFlatNorms();
+
+    mg.meshDirty = false;
+}
+
+// This updates the Mesh in normal memory for saving but does not
+// affect the mesh loaded in GPU memory
+static void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
+{
+    //Apply the matrix to the mesh
+    for (std::size_t i = 0; i < mesh->vertexCount; i++)
     {
-        //Apply the matrix to the mesh
-        for (std::size_t i = 0; i < mesh->vertexCount; i++)
-        {
-            // TODO: optomize...
-            auto idx = i * 3;
-            glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
-            v = mg->gpuMat * glm::inverse(mg->meshMat) * v;
-            mesh->vertexFloats[idx + 0] = v.x;
-            mesh->vertexFloats[idx + 1] = v.y;
-            mesh->vertexFloats[idx + 2] = v.z;
-        }
-
-        // Update the parameters
-        mg->rotOnMesh = mg->rotOnMat;
-        mg->scaleOnMesh = mg->scaleOnMat;
-        mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
-        mg->meshMat = mg->gpuMat;
-        mg->meshMatDirty = false;
+        // TODO: optomize...
+        auto idx = i * 3;
+        glm::vec4 v = glm::vec4(mesh->vertexFloats[idx + 0], mesh->vertexFloats[idx + 1], mesh->vertexFloats[idx + 2], 1.0f);
+        v = mg->gpuMat * glm::inverse(mg->meshMat) * v;
+        mesh->vertexFloats[idx + 0] = v.x;
+        mesh->vertexFloats[idx + 1] = v.y;
+        mesh->vertexFloats[idx + 2] = v.z;
     }
 
-    // The base opacity for all stl meshes
-    float baseOpacity = 1.0f;
+    // Update the parameters
+    mg->rotOnMesh = mg->rotOnMat;
+    mg->scaleOnMesh = mg->scaleOnMat;
+    mg->moveOnMesh = mg->moveOnMat + mg->meshCentre;
+    mg->meshMat = mg->gpuMat;
+    mg->meshMatDirty = false;
 }
+
+// The base opacity for all stl meshes
+static float baseOpacity = 1.0f;
 
 MeshGroupData::~MeshGroupData()
 {
@@ -111,7 +120,7 @@ void STLRendering::SceneMatDirty()
 }
 
 // Update the meshdatagroup matrix
-inline void UpdateTempMat(MeshGroupData &mg)
+static inline void UpdateTempMat(MeshGroupData &mg)
 {
     // TODO: optomize ?
     mg.gpuMat = glm::translate(glm::mat4(1.0f), mg.moveOnMat);
@@ -427,21 +436,6 @@ void STLRendering::RotateMesh(Mesh *mesh, float absX, float absY, float absZ)
 const MeshGroupData &STLRendering::getMeshData(Mesh *mesh)
 {
     return *meshGroups[mesh];
-}
-
-void STLRendering::LoadMesh(MeshGroupData &mg, Mesh *mesh)
-{
-    glGenBuffers(1, &mg.mVertexPositionBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexPositionBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatVerts(), GL_STATIC_DRAW);
-    mesh->dumpFlatVerts();
-
-    glGenBuffers(1, &mg.mVertexNormalBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, mg.mVertexNormalBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * mesh->trigCount * 9, mesh->getFlatNorms(), GL_STATIC_DRAW);
-    mesh->dumpFlatNorms();
-
-    mg.meshDirty = false;
 }
 
 bool STLRendering::TestMeshIntersection(Mesh *mesh, const glm::vec3 &near, const glm::vec3 &far, const glm::mat4 &MV, float &screenZ)

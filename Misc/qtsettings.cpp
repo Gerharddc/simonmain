@@ -3,56 +3,52 @@
 // The global instance
 QtSettings qtSettings;
 
-namespace QtSettingsInternal {
-    // Because we can't directly convert a function pointer to a void*,
-    // we need to create a structure that encapsulates the pointer,
-    // we can then pass pointers to these structures
-    struct SignalWrapper {
-        typedef void(QtSettings::*signal)();
-        signal sig;
+// Because we can't directly convert a function pointer to a void*,
+// we need to create a structure that encapsulates the pointer,
+// we can then pass pointers to these structures
+struct SignalWrapper {
+    typedef void(QtSettings::*signal)();
+    signal sig;
 
-        SignalWrapper(signal sig_)
-            : sig(sig_) {}
+    SignalWrapper(signal sig_)
+        : sig(sig_) {}
 
-        void operator ()()
-        {
-            // This signal will be emitted from the global/singleton object
-            emit (qtSettings.*sig)();
-        }
-    };
-
-    // We use a generic function to envoke the signal contained in the struct
-    template <typename T>
-    void HandleWithSignal(void *context, T)
+    void operator ()()
     {
-        ((SignalWrapper*)(context))->operator ()();
+        // This signal will be emitted from the global/singleton object
+        emit (qtSettings.*sig)();
     }
+};
 
-    // We need to create a wrapper for each signal
-#define AUTO_WRAPPER(NAME) \
-    SignalWrapper NAME##Signal(&QtSettings::NAME##Changed);
-
-    AUTO_WRAPPER(bedWidth)
-    AUTO_WRAPPER(bedHeight)
-    AUTO_WRAPPER(bedLength)
-    AUTO_WRAPPER(infillDensity)
-    AUTO_WRAPPER(layerHeight)
-    AUTO_WRAPPER(skirtLineCount)
-    AUTO_WRAPPER(skirtDistance)
-    AUTO_WRAPPER(printSpeed)
-    AUTO_WRAPPER(infillSpeed)
-    AUTO_WRAPPER(topBottomSpeed)
-    AUTO_WRAPPER(firstLineSpeed)
-    AUTO_WRAPPER(travelSpeed)
-    AUTO_WRAPPER(retractionSpeed)
-    AUTO_WRAPPER(retractionDistance)
-    AUTO_WRAPPER(shellThickness)
-    AUTO_WRAPPER(topBottomThickness)
-    AUTO_WRAPPER(printTemperature)
-#undef AUTO_WRAPPER
+// We use a generic function to envoke the signal contained in the struct
+template <typename T>
+static void HandleWithSignal(void *context, T)
+{
+    ((SignalWrapper*)(context))->operator ()();
 }
 
-using namespace QtSettingsInternal;
+// We need to create a wrapper for each signal
+#define AUTO_WRAPPER(NAME) \
+static SignalWrapper NAME##Signal(&QtSettings::NAME##Changed);
+
+AUTO_WRAPPER(bedWidth)
+AUTO_WRAPPER(bedHeight)
+AUTO_WRAPPER(bedLength)
+AUTO_WRAPPER(infillDensity)
+AUTO_WRAPPER(layerHeight)
+AUTO_WRAPPER(skirtLineCount)
+AUTO_WRAPPER(skirtDistance)
+AUTO_WRAPPER(printSpeed)
+AUTO_WRAPPER(infillSpeed)
+AUTO_WRAPPER(topBottomSpeed)
+AUTO_WRAPPER(firstLineSpeed)
+AUTO_WRAPPER(travelSpeed)
+AUTO_WRAPPER(retractionSpeed)
+AUTO_WRAPPER(retractionDistance)
+AUTO_WRAPPER(shellThickness)
+AUTO_WRAPPER(topBottomThickness)
+AUTO_WRAPPER(printTemperature)
+#undef AUTO_WRAPPER
 
 QtSettings::QtSettings(QObject *parent) : QObject(parent)
 {

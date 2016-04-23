@@ -34,72 +34,67 @@ struct SettingValue
     }
 };
 
-// Keep these things a private namespace to keep the global one clean
-namespace GlobalSettingsInternal {
-    // By keeping track of the position and size of settings loaded from the file
-    // we can avoid rewriting the file if the changed value is the same size as
-    // the old one
-    struct LoadedSetting {
-        std::size_t posInFile;
-        uint32_t valueSize;
+// By keeping track of the position and size of settings loaded from the file
+// we can avoid rewriting the file if the changed value is the same size as
+// the old one
+struct LoadedSetting {
+    std::size_t posInFile;
+    uint32_t valueSize;
 
-        LoadedSetting(std::size_t PosInFile, uint32_t ValueSize)
-        {
-            posInFile = PosInFile;
-            valueSize = ValueSize;
-        }
-
-        LoadedSetting() {}
-    };
-
-    struct QueuedSetting {
-        std::string name;
-        bool inFile = false;
-
-        QueuedSetting(std::string Name)
-        {
-            name = Name;
-        }
-
-        bool operator ==(const QueuedSetting &o)
-        {
-            return (o.name == name);
-        }
-    };
-
-    std::deque<QueuedSetting> queuedSettings;
-    // TODO: maybe a hashed map will deliver better performance
-    std::map<std::string, SettingValue> settingsMap;
-    std::map<std::string, LoadedSetting> lSettingsMap;
-
-    const std::string SettingsFilePath = "/home/Simon/.Settings/settings.bin";
-    std::size_t LoadedFileLength = 0;
-    bool readFile = false;
-
-    void WriteSetting(std::ofstream &os, std::string name)
+    LoadedSetting(std::size_t PosInFile, uint32_t ValueSize)
     {
-        // Write the name length
-        uint16_t nl = name.length();
-        os.write((char*)(&nl), 2);
-
-        // Write the name
-        os.write(name.c_str(), nl);
-
-        // Write the value length
-        uint32_t vl = settingsMap[name].byteCnt;
-        os.write((char*)(&vl), 4);
-
-        // Write the value
-        os.write(settingsMap[name].bytes.get(), vl);
-
-        // Store the metadata if needed & move the counter
-        LoadedFileLength += 6 + nl;
-        lSettingsMap[name] = LoadedSetting(LoadedFileLength, vl);
-        LoadedFileLength += vl;
+        posInFile = PosInFile;
+        valueSize = ValueSize;
     }
-}
 
-using namespace GlobalSettingsInternal;
+    LoadedSetting() {}
+};
+
+struct QueuedSetting {
+    std::string name;
+    bool inFile = false;
+
+    QueuedSetting(std::string Name)
+    {
+        name = Name;
+    }
+
+    bool operator ==(const QueuedSetting &o)
+    {
+        return (o.name == name);
+    }
+};
+
+static std::deque<QueuedSetting> queuedSettings;
+// TODO: maybe a hashed map will deliver better performance
+static std::map<std::string, SettingValue> settingsMap;
+static std::map<std::string, LoadedSetting> lSettingsMap;
+
+static const std::string SettingsFilePath = "/home/Simon/.Settings/settings.bin";
+static std::size_t LoadedFileLength = 0;
+static bool readFile = false;
+
+static void WriteSetting(std::ofstream &os, std::string name)
+{
+    // Write the name length
+    uint16_t nl = name.length();
+    os.write((char*)(&nl), 2);
+
+    // Write the name
+    os.write(name.c_str(), nl);
+
+    // Write the value length
+    uint32_t vl = settingsMap[name].byteCnt;
+    os.write((char*)(&vl), 4);
+
+    // Write the value
+    os.write(settingsMap[name].bytes.get(), vl);
+
+    // Store the metadata if needed & move the counter
+    LoadedFileLength += 6 + nl;
+    lSettingsMap[name] = LoadedSetting(LoadedFileLength, vl);
+    LoadedFileLength += vl;
+}
 
 // TODO: implement a bg thread to save the settings
 void GlobalSettings::SaveSettings()

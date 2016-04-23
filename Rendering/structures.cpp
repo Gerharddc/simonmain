@@ -118,7 +118,7 @@ const float *Mesh::getFlatNorms()
     return normFloats;
 }
 
-inline void AddPointsToArray(float *array, Point2 &p, short count, uint32_t &arrPos)
+static inline void AddPointsToArray(float *array, Point2 &p, short count, uint32_t &arrPos)
 {
     for (short i = 0; i < count; i++)
     {
@@ -128,7 +128,7 @@ inline void AddPointsToArray(float *array, Point2 &p, short count, uint32_t &arr
     }
 }
 
-inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, uint32_t &arrPos)
+static inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, uint32_t &arrPos)
 {
     for (short i = 0; i < count; i++)
     {
@@ -142,9 +142,9 @@ inline void AddPointZsToArray(float *array, Point2 &p, float z, short count, uin
 // An GLES chunk can have a maximum of 2^16(ushort) indices and we need to divide all the data between that
 // we will do this by creating a maximum size buffer for each set of data here and then shrinking it to only the
 // needed part
-const uint16_t maxIdx = 10000;//UINT16_MAX; // TODO: variable data type
+static const uint16_t maxIdx = 10000;//UINT16_MAX; // TODO: variable data type
 
-inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
+static inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
 {
     // We need to shrink the previous chunk to size
     if (dc != nullptr)

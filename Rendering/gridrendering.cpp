@@ -10,29 +10,21 @@
 #include "comborendering.h"
 #include "Misc/globalsettings.h"
 
-namespace GridRendering
-{
-    GLuint mProgram = 0;
-    GLsizei mWindowWidth = 0;
-    GLsizei mWindowHeight = 0;
+static GLuint mProgram = 0;
+static GLint mPositionAttribLocation = 0;
+static GLint mModelUniformLocation = 0;
+static GLint mProjUniformLocation = 0;
+static GLuint mVertexPositionBuffer = 0;
 
-    GLint mPositionAttribLocation;
+static GridGeneration::Grid *grid = nullptr;
+static unsigned int vertCount = 0;
 
-    GLint mModelUniformLocation;
-    GLint mProjUniformLocation;
-
-    GLuint mVertexPositionBuffer;
-
-    GridGeneration::Grid *grid = nullptr;
-    unsigned int vertCount = 0;
-
-    // We need flags to determine when matrices have changed as
-    // to be able to give new ones to opengl
-    bool dirtyProjMat = true;
-    bool dirtySceneMat = true;
-    bool dirtyGrid = false;
-    bool gridLoaded = false;
-}
+// We need flags to determine when matrices have changed as
+// to be able to give new ones to opengl
+bool dirtyProjMat = true;
+bool dirtySceneMat = true;
+bool dirtyGrid = false;
+bool gridLoaded = false;
 
 void GridRendering::FreeMemory()
 {
