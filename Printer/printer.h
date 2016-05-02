@@ -22,6 +22,7 @@ public:
     ~Printer();
 
     Q_INVOKABLE void startPrint(QString path);
+    Q_INVOKABLE void stopPrint();
     Q_INVOKABLE void pauseResume();
     Q_INVOKABLE void emergencyStop();
     Q_INVOKABLE void homeAll();
@@ -31,6 +32,8 @@ public:
     Q_INVOKABLE void moveX(float distance);
     Q_INVOKABLE void moveY(float distance);
     Q_INVOKABLE void moveZ(float distance);
+    Q_INVOKABLE void move(float x, float y, float z);
+    Q_INVOKABLE void extrude(float e);
     Q_INVOKABLE void startPrintProcess(QString path);
 
     Q_PROPERTY(float targetTemp READ targetTemp WRITE setTargetTemp NOTIFY targetTempChanged)

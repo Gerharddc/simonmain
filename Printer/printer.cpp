@@ -57,6 +57,11 @@ void Printer::pauseResume()
     emit pausedChanged();
 }
 
+void Printer::stopPrint()
+{
+    // TODO: implement
+}
+
 void Printer::emergencyStop()
 {
     // TODO: implement
@@ -82,12 +87,22 @@ void Printer::homeZ()
     // TODO: implement
 }
 
+void Printer::move(float x, float y, float z)
+{
+    // TODO: implement
+}
+
 void Printer::moveX(float distance)
 {
     // TODO: implement
 }
 
 void Printer::moveY(float distance)
+{
+    // TODO: implement
+}
+
+void Printer::extrude(float e)
 {
     // TODO: implement
 }
