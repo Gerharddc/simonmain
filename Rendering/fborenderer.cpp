@@ -10,6 +10,7 @@
 #include "toolpathrendering.h"
 #include "gridrendering.h"
 #include "Misc/globalsettings.h"
+#include "Printer/printer.h"
 #include <QObject>
 #include <iostream>
 #include <thread>
@@ -354,13 +355,7 @@ QString FBORenderer::printToolpath()
     if (!toolPathLoaded())
         return "";
 
-    QStringList arguments;
-    /*arguments << "slice" << "-v";
-    arguments << "-j" << "/home/Simon/.Cura/simon.json";
-    arguments << "-v" << "-p";
-    arguments << "-o" << fbo->gcodePath;*/
-
-    printProcess->start("pronsole.py", arguments);
+    GlobalPrinter.startPrint(gcodePath);
 }
 
 void FBORenderer::ReadSlicerOutput()

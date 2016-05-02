@@ -6,6 +6,7 @@
 
 #include "Keyboard/keyboard.h"
 #include "Rendering/fborenderer.h"
+#include "Printer/printer.h"
 #include "Misc/filebrowser.h"
 #include "Misc/globalsettings.h"
 #include "Misc/qtsettings.h"
@@ -55,6 +56,8 @@ int main(int argc, char *argv[])
     view.rootContext()->setContextProperty("fileBrowser", &fb);
 
     view.rootContext()->setContextProperty("settings", &qtSettings);
+
+    view.rootContext()->setContextProperty("printer", &GlobalPrinter);
 
 #ifdef ROTATE_SCREEN
 #define ROOTQML "qrc:/Rotated.qml"

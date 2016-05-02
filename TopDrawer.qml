@@ -1,12 +1,13 @@
 import QtQuick 2.3
 import "StyleSheet.js" as Style
+import "qrc:/Controls"
 
 Rectangle {
     id: theTopDrawer
     color: Style.bgRed
     clip: true
 
-    readonly property int iExpandedHeight: 400
+    readonly property int iExpandedHeight: 160
     readonly property int iClosedHeight: 70
 
     width: 480 // Default
@@ -53,14 +54,67 @@ Rectangle {
         }
     }
 
-    Item {
-        id: hideableContent
-        anchors.top: parent.top
+    Label {
+        text: printer.curTemp + "°C"
+        anchors.verticalCenter: img_Expander.verticalCenter
+        anchors.right: img_Expander.left
+        anchors.rightMargin: 15
+    }
+
+    Label {
+        text: "Status: " + printer.status
+        anchors.verticalCenter: img_Expander.verticalCenter
         anchors.left: parent.left
+        anchors.leftMargin: 15
+    }
+
+    Item {
+        // Hidden area
         anchors.right: parent.right
-        anchors.topMargin: iClosedHeight
+        anchors.left: parent.left
+        anchors.bottom: img_Expander.top
+        anchors.bottomMargin: 15
+        height: iExpandedHeight - iClosedHeight - 10 // -15+5
 
+        Button {
+            id: estpBtn
+            text: "Emergency Stop"
+            height: 50
+            width: 180
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 15
 
+            onClicked: {
+                printer.emergencyStop()
+            }
+        }
+
+        Button {
+            text: printer.paused ? "Resume" : "Pause"
+            height: 50
+            width: 120
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: estpBtn.right
+            anchors.leftMargin: 15
+
+            onClicked: {
+                printer.pauseResume()
+            }
+        }
+
+        Button {
+            text: "Home"
+            height: 50
+            width: 100
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            anchors.rightMargin: 15
+
+            onClicked: {
+                printer.homeAll()
+            }
+        }
     }
 }
 

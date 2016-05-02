@@ -17,11 +17,8 @@ class FBORenderer : public QQuickFramebufferObject
 private:
     QString m_saveName = "Untitled";
     bool m_slicerRunning = false;
-    bool m_printRunning = false;
     QString m_slicerStatus = "Not running";
-    QString m_printStatus = "Not running";
     QProcess *sliceProcess;
-    QProcess *printProcess;
     QString gcodePath = "";
     void EmitMeshProps();
 
@@ -85,9 +82,6 @@ public:
     Q_PROPERTY(QString slicerStatus READ slicerStatus NOTIFY slicerStatusChanged)
     QString slicerStatus() { return m_slicerStatus; }
 
-    Q_PROPERTY(QString printStatus READ printStatus NOTIFY printStatusChanged)
-    QString printStatus() { return m_printStatus; }
-
 public slots:
     void ReadSlicerOutput();
     void SlicerFinsihed(int);
@@ -105,7 +99,6 @@ signals:
    void saveNameChanged();
    void slicerRunningChanged();
    void slicerStatusChanged();
-   void printStatusChanged();
    void toolPathLoadedChanged();
 };
 
