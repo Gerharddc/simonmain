@@ -114,10 +114,22 @@ void Printer::moveZ(float distance)
 
 void Printer::setTargetTemp(float target)
 {
-    // TODO: implement
+    // Check for change and validity
+    if (target != m_targetTemp && target >= 0.0f)
+    {
+        // TODO: implement
+
+        m_targetTemp = target;
+        emit targetTempChanged();
+    }
 }
 
 void Printer::setHeating(bool val)
 {
     // TODO: implement
+    if (val != m_heating)
+    {
+        m_heating = val;
+        emit heatingChanged();
+    }
 }

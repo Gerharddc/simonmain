@@ -19,6 +19,7 @@ BottomPage {
             anchors.right: parent.right
             anchors.topMargin: 5
             isDimmable: true
+            enabled: renderer.toolPathLoaded && (!printer.printing) // TODO
 
             onClicked: {
                 if (printer.printing)
@@ -112,6 +113,7 @@ BottomPage {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     isDimmable: true
+                    enabled: !printer.printing
                     text: "0"
                 }
             }
@@ -135,6 +137,7 @@ BottomPage {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     isDimmable: true
+                    enabled: !printer.printing
                     text: "0"
                 }
             }
@@ -158,6 +161,7 @@ BottomPage {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     isDimmable: true
+                    enabled: !printer.printing
                     text: "0"
                 }
             }
@@ -179,11 +183,89 @@ BottomPage {
         }
 
         Label {
+            id: lblMove
             anchors.top: btnMove.bottom
             anchors.topMargin: 15
             isDimmable: true
             text: "Target temparture:"
             anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Item {
+            id: itmTemp
+            anchors.top: lblMove.bottom
+            anchors.topMargin: 15
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: childrenRect.height
+
+            TextBox {
+                id: tboxTemp
+                isDimmable: true
+                enabled: !printer.printing
+                width: (parent.width - 10) / 2
+                anchors.left: parent.left
+                height: tglTemp.height
+
+                Binding on text {
+                    when: !tboxTemp.isActive
+                    value: printer.targetTemp.toFixed(2).replace(/\.?0+$/, "")
+                }
+            }
+
+            Binding {
+                target: printer
+                property: "targetTemp"
+                value: tboxTemp.text
+            }
+
+            Toggle {
+                id: tglTemp
+                nameA: 'Heating'
+                nameB: 'Not heating'
+                isDimmable: true
+                enabled: !printer.printing
+                anchors.right: parent.right
+                anchors.left: tboxTemp.right
+                anchors.leftMargin: 10
+                toggled: printer.heating
+            }
+
+            Binding {
+                target: printer
+                property: "heating"
+                value: tglTemp.toggled
+            }
+        }
+
+        Item {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: itmTemp.bottom
+            anchors.topMargin: 25
+            height: childrenRect.height
+
+            TextBox {
+                id: tboxExt
+                anchors.left: parent.left
+                isDimmable: true
+                enabled: !printer.printing
+                width: (parent.width - 10) / 2
+                text: "0"
+                height: btnExt.height
+            }
+
+            Button {
+                id: btnExt
+                anchors.right: parent.right
+                anchors.left: tboxExt.right
+                anchors.leftMargin: 10
+                text: "Extrude"
+                enabled: !printer.printing
+                onClicked: {
+                    printer.extrude(tboxExt.text)
+                }
+            }
         }
     }
 }
