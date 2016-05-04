@@ -242,7 +242,7 @@ BottomPage {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: itmTemp.bottom
-            anchors.topMargin: 25
+            anchors.topMargin: 30
             height: childrenRect.height
 
             TextBox {

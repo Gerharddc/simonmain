@@ -157,18 +157,14 @@ void ComboRendering::LoadMesh(std::string path)
 
 void ComboRendering::LoadToolpath(std::string path)
 {
-    // Load the toolpath asynchronously because it can take some time
-    // TODO: tell the user that we are busy
-    std::thread([=]() {
-        if (gcodePath != nullptr)
-            delete gcodePath;
+    if (gcodePath != nullptr)
+        delete gcodePath;
 
-        gcodePath = GCodeImporting::ImportGCode(path.c_str());
-        ToolpathRendering::SetToolpath(gcodePath);
+    gcodePath = GCodeImporting::ImportGCode(path.c_str());
+    ToolpathRendering::SetToolpath(gcodePath);
 
-        // Call OpenGL upate
-        Update();
-    }).detach();
+    // Call OpenGL upate
+    Update();
 }
 
 std::string ComboRendering::SaveMeshes(std::string fileName)

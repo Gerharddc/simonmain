@@ -97,7 +97,7 @@ void ToolpathRendering::FreeMemory()
         delete complexifyThread;
 }
 
-static Toolpath *path;
+static Toolpath *path = nullptr;
 
 static void LoadPath()
 {
@@ -313,5 +313,5 @@ void ToolpathRendering::SetColor(glm::vec3 color)
 
 bool ToolpathRendering::ToolpathLoaded()
 {
-    return (groupCount > 0);
+    return (path != nullptr);
 }

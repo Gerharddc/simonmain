@@ -30,6 +30,7 @@ BottomPage {
             anchors.right: parent.right
             anchors.topMargin: 15
             isDimmable: true
+            enabled: renderer.meshCount > 0
 
             onClicked: {
                 renderer.sliceMeshes()

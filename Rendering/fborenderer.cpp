@@ -379,10 +379,12 @@ void FBORenderer::SlicerFinsihed(int)
     emit slicerRunningChanged();
     emit slicerStatusChanged();
 
-    // TODO: async fokop
-    ComboRendering::LoadToolpath(gcodePath.toStdString());
-
-    emit toolPathLoadedChanged();
+    // Load the toolpath asynchronously because it can take some time
+    // TODO: tell the user that we are busy
+    std::thread([=]() {
+        ComboRendering::LoadToolpath(gcodePath.toStdString());
+        emit toolPathLoadedChanged();
+    }).detach();
 }
 
 void FBORenderer::StartSliceThread(QStringList arguments)
