@@ -167,7 +167,49 @@ BottomPage {
             }
         }
 
-        Button {
+        Row {
+            id: btnMove
+            spacing: 10
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: rowMove.bottom
+            anchors.topMargin: 10
+
+            Button {
+                width: (parent.width - 20) / 3
+                text: "Move X"
+                isDimmable: true
+                enabled: !printer.printing
+
+                onClicked: {
+                    printer.moveX(tboxX.text)
+                }
+            }
+
+            Button {
+                width: (parent.width - 20) / 3
+                text: "Move Y"
+                isDimmable: true
+                enabled: !printer.printing
+
+                onClicked: {
+                    printer.moveX(tboxY.text)
+                }
+            }
+
+            Button {
+                width: (parent.width - 20) / 3
+                text: "Move Z"
+                isDimmable: true
+                enabled: !printer.printing
+
+                onClicked: {
+                    printer.moveX(tboxZ.text)
+                }
+            }
+        }
+
+        /*Button {
             id: btnMove
             text: "Move all"
             anchors.top: rowMove.bottom
@@ -180,7 +222,7 @@ BottomPage {
             onClicked: {
                 printer.move(tboxX.text, tboxY.text, tboxZ.text)
             }
-        }
+        }*/
 
         Label {
             id: lblMove

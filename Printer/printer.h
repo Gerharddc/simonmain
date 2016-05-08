@@ -13,8 +13,7 @@ private:
     bool m_printing = false;
     bool m_heating = false;
     bool m_paused = false;
-    QString m_status = "Not printing";
-    void sendCommand(QString cmd);
+    QString m_status = "Not printing";   
 
 public:
     explicit Printer(QObject *parent = 0);
@@ -22,6 +21,7 @@ public:
     void Connect();
     void SignalPrintStop();
     void SignalTargetTemp(float temp);
+    void sendCommand(QString cmd);
 
     Q_INVOKABLE void startPrint(QString path);
     Q_INVOKABLE void stopPrint();

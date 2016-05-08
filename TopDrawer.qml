@@ -55,7 +55,8 @@ Rectangle {
     }
 
     Label {
-        text: printer.curTemp + "°C"
+        text: printer.curTemp.toFixed(2).replace(/\.?0+$/, "") + "/"
+              + printer.targetTemp.toFixed(2).replace(/\.?0+$/, "") + "°C"
         anchors.verticalCenter: img_Expander.verticalCenter
         anchors.right: img_Expander.left
         anchors.rightMargin: 15

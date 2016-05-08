@@ -10,11 +10,32 @@
 Printer GlobalPrinter;
 static QSerialPort *serial = nullptr;
 static std::thread PrintThread;
+static std::thread TempThread;
 static volatile bool WaitingForOk = false;
 static volatile bool StopPrintThread = false;
+static volatile bool NeedTemp = false;
+static volatile bool CheckTemp = true;
+
+static void CheckTempLoop()
+{
+    while (CheckTemp)
+    {
+        // If the print thread is waiting for a respone then it means that
+        // that the buffer is full. We need to ask it to send the temp request for us then
+        // when it gets a chance.
+        if (WaitingForOk)
+            CheckTemp = true;
+        else
+            GlobalPrinter.sendCommand("M105");
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
 
 Printer::Printer(QObject *parent) : QObject(parent)
 {
+    TempThread = std::thread(CheckTempLoop);
+    TempThread.detach();
 }
 
 // This has to be called from the main thread
@@ -45,10 +66,9 @@ Printer::~Printer()
     }
 
     if (m_printing)
-    {
-        StopPrintThread = true;
-        PrintThread.join();
-    }
+        stopPrint();
+
+    CheckTemp = false;
 }
 
 void Printer::readPrinterOutput()
@@ -59,6 +79,18 @@ void Printer::readPrinterOutput()
 
         if (line.contains("ok"))
             WaitingForOk = false;
+
+        if (line.contains("T:"))
+        {
+            QString num = line.mid(line.indexOf("T:") + 2, line.indexOf(' ') - line.indexOf("T:") - 2);
+            qDebug() << "Num " << num;
+            float newTemp = num.toFloat();
+            if (newTemp != m_curTemp)
+            {
+                m_curTemp = newTemp;
+                emit curTempChanged();
+            }
+        }
 
         qDebug() << line;
     }
@@ -82,6 +114,13 @@ void Printer::sendCommand(QString cmd)
         std::cout << "Serial port not open" << std::endl;
 }
 
+static inline void WaitForOk()
+{
+    WaitingForOk = true;
+    while (WaitingForOk && !StopPrintThread)
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+}
+
 static void PrintFile(std::string path)
 {
     std::ifstream is(path);
@@ -98,7 +137,7 @@ static void PrintFile(std::string path)
                     continue;
 
                 // Check for any target temperature commands
-                if (line.find("M104 S") != std::string::npos)
+                if (line.find("M104 S") != std::string::npos || line.find("M109 S") != std::string::npos)
                     GlobalPrinter.SignalTargetTemp(std::stof(line.substr(line.find('S') + 1)));
 
                 // TODO: check when to enable fan
@@ -107,10 +146,16 @@ static void PrintFile(std::string path)
                 serial->flush();
                 std::cout << "Printed: " << line << std::endl;
 
-                // wait for an ok
-                WaitingForOk = true;
-                while (WaitingForOk && !StopPrintThread)
-                    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+                // wait for an ok before sending the next line
+                WaitForOk();
+
+                // Check if there is a temp request waiting
+                if (NeedTemp)
+                {
+                    GlobalPrinter.sendCommand("M105");
+                    // wait for an ok before sending the next line
+                    WaitForOk();
+                }
             }
             else
             {
@@ -265,9 +310,18 @@ void Printer::SignalTargetTemp(float temp)
         m_heating = false;
         emit heatingChanged();
     }
-    else if (temp != m_targetTemp)
+    else
     {
-        m_targetTemp = temp;
-        emit targetTempChanged();
+        if (!m_heating)
+        {
+            m_heating = true;
+            emit heatingChanged();
+        }
+
+        if (temp != m_targetTemp)
+        {
+            m_targetTemp = temp;
+            emit targetTempChanged();
+        }
     }
 }
