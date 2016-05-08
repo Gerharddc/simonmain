@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
 
     // Initialize
     GlobalSettings::LoadSettings();
+    GlobalPrinter.Connect();
 
     qmlRegisterType<FBORenderer>("FBORenderer", 1, 0, "Renderer");
 

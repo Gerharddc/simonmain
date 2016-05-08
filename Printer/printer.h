@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QProcess>
 
 class Printer : public QObject
 {
@@ -15,11 +14,14 @@ private:
     bool m_heating = false;
     bool m_paused = false;
     QString m_status = "Not printing";
-    QProcess *printProcess;
+    void sendCommand(QString cmd);
 
 public:
     explicit Printer(QObject *parent = 0);
     ~Printer();
+    void Connect();
+    void SignalPrintStop();
+    void SignalTargetTemp(float temp);
 
     Q_INVOKABLE void startPrint(QString path);
     Q_INVOKABLE void stopPrint();
@@ -34,7 +36,6 @@ public:
     Q_INVOKABLE void moveZ(float distance);
     Q_INVOKABLE void move(float x, float y, float z);
     Q_INVOKABLE void extrude(float e);
-    Q_INVOKABLE void startPrintProcess(QString path);
 
     Q_PROPERTY(float targetTemp READ targetTemp WRITE setTargetTemp NOTIFY targetTempChanged)
     void setTargetTemp(float target);

@@ -353,9 +353,10 @@ QString FBORenderer::sliceMeshes()
 QString FBORenderer::printToolpath()
 {
     if (!toolPathLoaded())
-        return "";
+        return "no tp loaded";
 
     GlobalPrinter.startPrint(gcodePath);
+    return "started";
 }
 
 void FBORenderer::ReadSlicerOutput()

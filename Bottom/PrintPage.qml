@@ -19,7 +19,7 @@ BottomPage {
             anchors.right: parent.right
             anchors.topMargin: 5
             isDimmable: true
-            enabled: renderer.toolPathLoaded && (!printer.printing) // TODO
+            enabled: renderer.toolPathLoaded
 
             onClicked: {
                 if (printer.printing)
