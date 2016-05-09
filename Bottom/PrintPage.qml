@@ -3,6 +3,7 @@ import "qrc:/Controls"
 
 BottomPage {
     id: printPage
+    contentHeightPlus: 100
 
     Item {
         anchors.left: parent.left
@@ -281,6 +282,7 @@ BottomPage {
         }
 
         Item {
+            id: itmExt
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: itmTemp.bottom
@@ -307,6 +309,48 @@ BottomPage {
                 onClicked: {
                     printer.extrude(tboxExt.text)
                 }
+            }
+        }
+
+        Item {
+            id: itmFan
+            anchors.top: itmExt.bottom
+            anchors.topMargin: 15
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: childrenRect.height
+
+            Toggle {
+                id: tglAutoFan
+                nameA: "Autofan on"
+                nameB: "Autofan off"
+                isDimmable: true
+                width: (parent.width - 10) / 2
+                anchors.left: parent.left
+                toggled: printer.autoFan
+            }
+
+            Binding {
+                target: printer
+                property: "autoFan"
+                value: tglAutoFan.toggled
+            }
+
+            Toggle {
+                id: tglFan
+                nameA: 'Fan on'
+                nameB: 'Fan off'
+                isDimmable: true
+                anchors.right: parent.right
+                anchors.left: tglAutoFan.right
+                anchors.leftMargin: 10
+                toggled: printer.fanning
+            }
+
+            Binding {
+                target: printer
+                property: "fanning"
+                value: tglFan.toggled
             }
         }
     }

@@ -13,6 +13,8 @@ private:
     bool m_printing = false;
     bool m_heating = false;
     bool m_paused = false;
+    bool m_fanning = false;
+    bool m_autoFan = false;
     QString m_status = "Not printing";   
 
 public:
@@ -57,6 +59,20 @@ public:
     Q_PROPERTY(float curTemp READ curTemp NOTIFY curTempChanged)
     float curTemp() { return m_curTemp; }
 
+    Q_PROPERTY(bool fanning READ fanning WRITE setFanning NOTIFY fanningChanged)
+    bool fanning() { return m_fanning; }
+    void setFanning(bool val);
+
+    Q_PROPERTY(bool autoFan READ autoFan WRITE setAutoFan NOTIFY autoFanChanged)
+    bool autoFan() { return m_autoFan; }
+    void setAutoFan(bool val) {
+        if (val != m_autoFan)
+        {
+            m_autoFan = val;
+            emit autoFanChanged();
+        }
+    }
+
 signals:
     void targetTempChanged();
     void heatingChanged();
@@ -64,6 +80,8 @@ signals:
     void statusChanged();
     void pausedChanged();
     void curTempChanged();
+    void fanningChanged();
+    void autoFanChanged();
 
 public slots:
     void readPrinterOutput();

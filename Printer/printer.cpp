@@ -15,6 +15,7 @@ static volatile bool WaitingForOk = false;
 static volatile bool StopPrintThread = false;
 static volatile bool NeedTemp = false;
 static volatile bool CheckTemp = true;
+static std::ofstream *fanGPIO = nullptr;
 
 static void CheckTempLoop()
 {
@@ -36,24 +37,26 @@ Printer::Printer(QObject *parent) : QObject(parent)
 {
     TempThread = std::thread(CheckTempLoop);
     TempThread.detach();
-}
 
-// This has to be called from the main thread
-void Printer::Connect()
-{
-    serial = new QSerialPort("rfcomm0");
-    serial->setBaudRate(9600);
-
-    if (serial->open(QSerialPort::ReadWrite))
-    {
-        QObject::connect(serial, SIGNAL(readyRead()), this, SLOT(readPrinterOutput()));
-        //QObject::connect(serial, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(readPrinterOutput()));
-        serial->waitForReadyRead(1000);
-        qDebug() << serial->readAll();
-        qDebug() << "Opened";
+    // Set the fan gpio to output
+    std::ofstream dir("/sys/class/gpio/gpio146/direction");
+    if (!dir) {
+        std::cout << "Couldn't open gpio direction" << std::endl;
     }
-    else
-        qDebug() << "Couldn't open serial";
+    else {
+        dir << "out";
+        dir.flush();
+        dir.close();
+
+        // Setup the value writer
+        fanGPIO = new std::ofstream("/sys/class/gpio/gpio146/value");
+        if (!*fanGPIO) {
+            std::cout << "Couldn't open gpio direction" << std::endl;
+            fanGPIO = nullptr;
+        }
+        else
+            *fanGPIO << "0";
+    }
 }
 
 Printer::~Printer()
@@ -69,6 +72,32 @@ Printer::~Printer()
         stopPrint();
 
     CheckTemp = false;
+
+    if (fanGPIO != nullptr)
+    {
+        fanGPIO->close();
+        delete fanGPIO;
+    }
+}
+
+// This has to be called from the main thread
+void Printer::Connect()
+{
+    //serial = new QSerialPort("rfcomm0");
+    serial = new QSerialPort("ttyHS2");
+    //serial->setBaudRate(9600);
+    serial->setBaudRate(57600);
+
+    if (serial->open(QSerialPort::ReadWrite))
+    {
+        QObject::connect(serial, SIGNAL(readyRead()), this, SLOT(readPrinterOutput()));
+        //QObject::connect(serial, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(readPrinterOutput()));
+        serial->waitForReadyRead(1000);
+        qDebug() << serial->readAll();
+        qDebug() << "Opened";
+    }
+    else
+        qDebug() << "Couldn't open serial";
 }
 
 void Printer::readPrinterOutput()
@@ -83,7 +112,6 @@ void Printer::readPrinterOutput()
         if (line.contains("T:"))
         {
             QString num = line.mid(line.indexOf("T:") + 2, line.indexOf(' ') - line.indexOf("T:") - 2);
-            qDebug() << "Num " << num;
             float newTemp = num.toFloat();
             if (newTemp != m_curTemp)
             {
@@ -92,7 +120,7 @@ void Printer::readPrinterOutput()
             }
         }
 
-        qDebug() << line;
+        //qDebug() << line;
     }
 }
 
@@ -108,10 +136,10 @@ void Printer::sendCommand(QString cmd)
     {
         serial->write((cmd + '\n').toUtf8());
         serial->flush();
-        qDebug() << "Wrote: " << cmd;
+        //qDebug() << "Wrote: " << cmd;
     }
     else
-        std::cout << "Serial port not open" << std::endl;
+        std::cout << "Serial port not open for sending" << std::endl;
 }
 
 static inline void WaitForOk()
@@ -140,7 +168,14 @@ static void PrintFile(std::string path)
                 if (line.find("M104 S") != std::string::npos || line.find("M109 S") != std::string::npos)
                     GlobalPrinter.SignalTargetTemp(std::stof(line.substr(line.find('S') + 1)));
 
-                // TODO: check when to enable fan
+                // Check for fan commands if autofanning
+                if (GlobalPrinter.autoFan())
+                {
+                    if (line.find("M106") != std::string::npos)
+                        GlobalPrinter.setFanning(true);
+                    else if (line.find("M107") != std::string::npos)
+                        GlobalPrinter.setFanning(false);
+                }
 
                 serial->write((QString::fromStdString(line) + '\n').toUtf8());
                 serial->flush();
@@ -188,6 +223,9 @@ void Printer::SignalPrintStop()
     {
         m_printing = false;
         emit printingChanged();
+
+        m_status = "Not printing";
+        emit statusChanged();
     }
 }
 
@@ -201,11 +239,20 @@ void Printer::startPrint(QString path)
     PrintThread.detach();
     m_printing = true;
     emit printingChanged();
+
+    m_status = "Printing";
+    emit statusChanged();
 }
 
 void Printer::pauseResume()
 {
     m_paused = !m_paused;
+
+    if (m_paused) {
+        m_status = "Paused";
+        emit statusChanged();
+    }
+
     emit pausedChanged();
 }
 
@@ -323,5 +370,27 @@ void Printer::SignalTargetTemp(float temp)
             m_targetTemp = temp;
             emit targetTempChanged();
         }
+    }
+}
+
+void Printer::setFanning(bool val)
+{
+    if (val != m_fanning)
+    {
+        if (fanGPIO != nullptr)
+        {
+            if (val)
+                *fanGPIO << "1";
+            else
+                *fanGPIO << "0";
+
+            fanGPIO->flush();
+        }
+        else
+            std::cout << "Fan gpio not open" << std::endl;
+
+        m_fanning = val;
+
+        emit fanningChanged();
     }
 }
