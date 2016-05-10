@@ -52,6 +52,7 @@ class GlobalSettings
 public:
     static void LoadSettings();
     static void SaveSettings();
+    static void StopSavingLoop();
 
     // The actual settings
     static GlobalSetting<float> BedWidth;

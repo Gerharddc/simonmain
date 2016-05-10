@@ -2,18 +2,14 @@
 
 #include <QKeyEvent>
 #include <QCoreApplication>
-#include <QGuiApplication>
 #include <QKeySequence>
 #include <QtGlobal>
-
-#ifdef QT_DEBUG
 #include <QDebug>
 //#define VERBOS_KEYBOARD
-#endif
 
-Keyboard::Keyboard(QObject *parent) : QObject(parent)
+Keyboard::Keyboard(QQuickView *view, QObject *parent) : QObject(parent)
 {
-
+    viewObj = view;
 }
 
 void Keyboard::setOpen(bool a)
@@ -41,9 +37,10 @@ bool Keyboard::open()
 
 void Keyboard::emitKey(int key, QString keyText)
 {
-    QQuickItem* receiver = qobject_cast<QQuickItem*>(QGuiApplication::focusObject());
+    QQuickItem* receiver = qobject_cast<QQuickItem*>(viewObj->focusObject());
 
     if(!receiver) {
+        qDebug() << "No receiver for keyboard";
         return;
     }
 
@@ -183,7 +180,7 @@ void Keyboard::forceClose()
     #endif
 
     // Working directly with the focusedItem does not work for some reason
-    QQuickItem* focusee = qobject_cast<QQuickItem*>(QGuiApplication::focusObject());
+    QQuickItem* focusee = qobject_cast<QQuickItem*>(viewObj->focusObject());
     if (focusee)
         focusee->setFocus(false);
 

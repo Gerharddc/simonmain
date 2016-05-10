@@ -50,14 +50,12 @@ int main(int argc, char *argv[])
 
     QQuickView view;
 
-    Keyboard keyboard;
+    Keyboard keyboard(&view);
     view.rootContext()->setContextProperty("keyboard", &keyboard);
 
     FileBrowser fb;
     view.rootContext()->setContextProperty("fileBrowser", &fb);
-
     view.rootContext()->setContextProperty("settings", &qtSettings);
-
     view.rootContext()->setContextProperty("printer", &GlobalPrinter);
 
 #ifdef ROTATE_SCREEN
@@ -81,6 +79,7 @@ int main(int argc, char *argv[])
     auto result = app.exec();
 
     // Finialize
+    GlobalSettings::StopSavingLoop();
     GlobalSettings::SaveSettings();
 
     return result;

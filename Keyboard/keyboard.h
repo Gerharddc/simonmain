@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QQuickItem>
+#include <QQuickView>
 
 class Keyboard : public QObject
 {
@@ -16,9 +17,10 @@ private:
     const int m_keyboardHeight = 350;
     QQuickItem *focusedItem = NULL;
     bool m_shifted = false;
+    QQuickView *viewObj;
 
 public:
-    explicit Keyboard(QObject *parent = 0);
+    explicit Keyboard(QQuickView *view, QObject *parent = 0);
 
     Q_INVOKABLE void pressKey(QString c);
     Q_INVOKABLE void pressRight();

@@ -9,6 +9,7 @@
 #include <exception>
 #include <iostream>
 #include <map>
+#include <thread>
 
 struct SettingValue
 {
@@ -96,7 +97,6 @@ static void WriteSetting(std::ofstream &os, std::string name)
     LoadedFileLength += vl;
 }
 
-// TODO: implement a bg thread to save the settings
 void GlobalSettings::SaveSettings()
 {
     // Flag for the rewriting of the whole file
@@ -176,6 +176,28 @@ void GlobalSettings::SaveSettings()
     }
 }
 
+static volatile bool shouldSaveLoop = true;
+
+static void SettingSaveLoop()
+{
+    while (shouldSaveLoop)
+    {
+        if (queuedSettings.size() > 0) {
+            GlobalSettings::SaveSettings();
+            std::cout << "Autosaved settings" << std::endl;
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+}
+
+static std::thread saveThread;
+
+void GlobalSettings::StopSavingLoop()
+{
+    shouldSaveLoop = false;
+}
+
 void GlobalSettings::LoadSettings()
 {
     std::ifstream is(SettingsFilePath, std::ios::binary);
@@ -239,6 +261,9 @@ void GlobalSettings::LoadSettings()
     }
     else
         std::cout << "Settings file does not exist." << std::endl;
+
+    saveThread = std::thread(SettingSaveLoop);
+    saveThread.detach();
 }
 
 // This function reads a setting by converting it from a byte array
