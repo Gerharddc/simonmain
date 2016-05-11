@@ -46,6 +46,7 @@ static long curPrintToLine = -1;
 static long targetPrintToLine = -1;
 static int printToChunk = -1;
 static int printToIdx = -1;
+static int printToLineIdx = -1;
 
 static GroupGLData *groupDatas = nullptr;
 static std::size_t groupCount = 0;
@@ -261,12 +262,13 @@ void ToolpathRendering::Draw()
         dirtyColor = false;
     }
 
-    ShowPrintedToLine(500);
+    ShowPrintedToLine(4000);
 
     if (path != nullptr && targetPrintToLine != curPrintToLine)
     {
         printToChunk = path->lineInfos[targetPrintToLine - 1].chunkIdx;
         printToIdx = path->lineInfos[targetPrintToLine - 1].idxInChunk;
+        printToLineIdx = path->lineInfos[targetPrintToLine - 1].lineIdxInChunk;
         curPrintToLine = targetPrintToLine;
     }
 
@@ -309,8 +311,7 @@ void ToolpathRendering::Draw()
         if (simpleDraw)
         {
             glUniform1i(mLineOnlyUnformLocation, true);
-            //glDrawElements(GL_LINES, (i == target - 1) ? printToIdx : ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
-            glDrawElements(GL_LINES, ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
+            glDrawElements(GL_LINES, (i == target - 1) ? printToLineIdx : ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
             complexify = true;
         }
         else

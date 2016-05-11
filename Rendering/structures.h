@@ -118,9 +118,10 @@ struct Point2
 {
     float x = 0;
     float y = 0;
+    std::size_t lineNum; // The gcode line
 
     Point2() {}
-    Point2(float _x, float _y) : x(_x), y(_y) {}
+    Point2(float _x, float _y, std::size_t _lineNum) : x(_x), y(_y), lineNum(_lineNum) {}
 
     bool operator== (Point2 &b)
     {
@@ -159,11 +160,6 @@ struct Island
 {
     std::vector<Point3> movePoints;
     std::vector<Point2> printPoints;
-
-    // The position of the first gcode line and
-    // the amount of lines
-    std::size_t startLineNum = 0;
-    short lineCount = 0;
 };
 
 struct Layer

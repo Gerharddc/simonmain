@@ -146,7 +146,7 @@ static inline void AddPointZsToArray(float *array, Point2 &p, float z, short cou
 static const uint16_t maxIdx = 10000;//UINT16_MAX; // TODO: variable data type
 
 static inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, std::vector<TPDataChunk> *chunks,
-                            TPDataChunk *&dc, ushort &lastStartIdx, ushort &lastEndIdx)
+                            TPDataChunk *&dc, ushort &lastEndIdx, ushort &lastLineIdx)
 {
     // We need to shrink the previous chunk to size
     if (dc != nullptr)
@@ -160,8 +160,8 @@ static inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, st
     idxPos = 0;
     saveIdx = 0;
     lineIdx = 0;
-    lastStartIdx = 0;
     lastEndIdx = 0;
+    lastLineIdx = 0;
     chunks->emplace_back();
     dc = &(chunks->back());
 }
@@ -175,12 +175,11 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     TPDataChunk *dc = nullptr;
 
     // Data for partial rendering
-    ushort lastStartIdx = 0;
     ushort lastEndIdx = 0;
-    LineInfo *isleLineInfo = nullptr;
+    ushort lastLineIdx = 0;
 
     // Use a MACRO to easily push a new chunk
-    #define NEWCHUNK() NewChunk(idxPos, saveIdx, lineIdx, chunks, dc, lastStartIdx, lastEndIdx)
+    #define NEWCHUNK() NewChunk(idxPos, saveIdx, lineIdx, chunks, dc, lastEndIdx, lastLineIdx)
     NEWCHUNK();
 
     for (Layer layer : layers)
@@ -191,20 +190,6 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
             // will have to cut it up into pieces
             bool cut = true;
             auto pCount = isle.printPoints.size();
-
-            // Get to the first move island
-            isleLineInfo = &(lineInfos[isle.startLineNum - 1]);
-            LineInfo *infoTooFar = &(lineInfos[isle.startLineNum + isle.lineCount]);
-
-            /*while (!isleLineInfo->isExtruded && isleLineInfo != infoTooFar)
-            {
-                // Add the info and move to the next one
-                // TODO: add move infos
-                isleLineInfo++;
-            }
-
-            if (isleLineInfo->isExtruded)
-                std::cout << "Het een" << std::endl;*/
 
             // Determine how many points we can still fit in this chunk
             uint fitCount = (maxIdx - saveIdx - 2) / 5;
@@ -233,14 +218,6 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
             uint fitPos = 0;
             for (uint j = 0; j < pCount; j++)
             {
-                // Check that we are on a print line
-                while (!isleLineInfo->isExtruded && isleLineInfo != infoTooFar)
-                {
-                    // Add the info and move to the next one
-                    // TODO: add move infos
-                    isleLineInfo++;
-                }
-
                 // Determine the connecting points
                 bool isLast = (j == pCount - 1);
                 bool isFirst = (j == 0);
@@ -249,6 +226,8 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                 Point2 prevPoint, nextPoint;
                 bool hasNoPrev = false;
                 bool hasNoNext = false;
+
+                LineInfo *isleLineInfo = &(lineInfos[curPoint.lineNum - 1]);
 
                 // Last or first points of open ended shapes need to be treated differently
                 // those of closed-ended shapes
@@ -347,16 +326,17 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     dc->indices[idxPos + 2] = saveIdx + 1;
                     dc->indices[idxPos + 3] = saveIdx + 2;
                     dc->indices[idxPos + 4] = saveIdx + 3;
-                    dc->indices[idxPos + 5] = saveIdx + 1;
-
-                    // Mark the rendering start & end point
-                    lastStartIdx = saveIdx;
-                    lastEndIdx = saveIdx + 4;
+                    dc->indices[idxPos + 5] = saveIdx + 1;                    
 
                     // Line
                     dc->lineIdxs[lineIdx] = saveIdx;
                     dc->lineIdxs[lineIdx + 1] = saveIdx + 3;
                     lineIdx += 2;
+
+                    // Mark the rendering start & end point
+                    // With the position/count of the index
+                    lastEndIdx = idxPos + 6;
+                    lastLineIdx = lineIdx + 2;
 
                     idxPos += 6;
                     saveIdx += 2;
@@ -408,14 +388,15 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     dc->indices[idxPos + 10] = saveIdx + 5;
                     dc->indices[idxPos + 11] = saveIdx + 6;
 
-                    // Mark the rendering start & end point
-                    lastStartIdx = saveIdx;
-                    lastEndIdx = saveIdx + 6;
-
                     // Line
                     dc->lineIdxs[lineIdx] = saveIdx;
                     dc->lineIdxs[lineIdx + 1] = saveIdx + 6;
                     lineIdx += 2;
+
+                    // Mark the rendering start & end point
+                    // With the position/count of the index
+                    lastEndIdx = idxPos + 6;
+                    lastLineIdx = lineIdx + 2;
 
                     idxPos += 12;
                     saveIdx += 5;
@@ -423,15 +404,8 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
 
                 // Add the info and move to the next one                
                 isleLineInfo->idxInChunk = lastEndIdx;
+                isleLineInfo->lineIdxInChunk = lastLineIdx;
                 isleLineInfo->chunkIdx = chunks->size() - 1;
-
-                // Move to the next line
-                isleLineInfo++;
-                if (isleLineInfo == infoTooFar + 1)
-                {
-                    std::cout << "Too few lines of gcode in island: not correlating with amount of points." << std::endl;
-                    break;
-                }
             }
         }
     }

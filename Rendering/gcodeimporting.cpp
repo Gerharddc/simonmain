@@ -104,7 +104,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             // Create a point at the last position
             lastPoint = { prevX, prevY, prevZ };
-            lastPoint2 = { prevX, prevY };
+            lastPoint2 = { prevX, prevY, 0 }; // The zero is the irrelevant line number
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces
@@ -192,8 +192,8 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                         {
                             // Create a new layer when moving to a new z
                             // and optimize the old one
-                            if (curLayer != nullptr && curLayer->islands.size() > 0)
-                                curLayer->islands.shrink_to_fit();
+                            //if (curLayer != nullptr && curLayer->islands.size() > 0)
+                              //  curLayer->islands.shrink_to_fit();
 
                             tp->layers.emplace_back();
                             curLayer = &(tp->layers.back());
@@ -201,17 +201,11 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
                             ShrinkIsle(curIsle);
 
-                            // Determine how many line the previous island covered
-                            if (curIsle != nullptr)
-                                curIsle->lineCount = lineNum - curIsle->startLineNum;
-
                             curLayer->islands.emplace_back();
                             lastWasMove = true;
                             curIsle = &(curLayer->islands.back());
                             // Move to the island
                             curIsle->movePoints.push_back(lastPoint);
-                            // Set the initial lineinfo
-                            curIsle->startLineNum = lineNum;
 
                             moved = true;
                         }
@@ -293,7 +287,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 if (lastWasMove)
                     curIsle->printPoints.push_back(lastPoint2);
 
-                curIsle->printPoints.push_back({prevX, prevY});
+                curIsle->printPoints.push_back({prevX, prevY, lineNum});
                 curLineInfo->isExtruded = true;
 
                 lastWasMove = false;
@@ -304,19 +298,12 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 {
                     ShrinkIsle(curIsle);
 
-                    // Determine how many line the previous island covered
-                    if (curIsle != nullptr)
-                        curIsle->lineCount = lineNum - curIsle->startLineNum;
-
                     // If the last action was not a move, then we are now starting a new island
                     curLayer->islands.emplace_back();
                     curIsle = &(curLayer->islands.back());
 
                     // Move to the island
                     curIsle->movePoints.push_back(lastPoint);
-
-                    // Set the initial lineinfo
-                    curIsle->startLineNum = lineNum;
                 }
 
                 curIsle->movePoints.push_back({prevX, prevY, prevZ});
