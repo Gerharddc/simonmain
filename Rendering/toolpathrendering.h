@@ -7,7 +7,6 @@
 #include "loadedgl.h"
 #endif
 
-#include <array>
 #include "structures.h"
 
 namespace ToolpathRendering {
@@ -21,6 +20,7 @@ namespace ToolpathRendering {
     float GetOpacity();
     void SetColor(glm::vec3 color);
     bool ToolpathLoaded();
+    void ShowPrintedToLine(std::size_t lineNum);
 }
 
 #endif // TOOLPATHRENDERER_H

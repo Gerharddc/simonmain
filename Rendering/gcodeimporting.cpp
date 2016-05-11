@@ -53,8 +53,11 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
         // Read through each line
         std::string line;
+        std::size_t lineNum = 0;
         while (std::getline(is, line))
         {
+            lineNum++; // Effectively now starts at 1
+
             bool extruded = false;
             bool setPos = false;
             int type = -1;
@@ -210,9 +213,9 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     case 'F' :
                     {
                         // G92 doesn't have an F parameter
-                        if (rel)
-                            prevF[g] += num;
-                        else
+                        //if (rel) // don't think this exists
+                          //  prevF[g] += num;
+                        //else
                             prevF[g] = num;
                         break;
                     }
@@ -271,6 +274,10 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             if (curLayer == nullptr)
                 continue;
 
+            // Roughly estimate the time for the line
+            double dist = std::sqrt(std::pow(prevX - lastPoint.x, 2) + std::pow(prevY - lastPoint.y, 2));
+            uint16_t millis = dist / prevF[g]; // TODO
+
             if (extruded)
             {
                 // Add the first point after moves
@@ -278,6 +285,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     curIsle->printPoints.push_back(lastPoint2);
 
                 curIsle->printPoints.push_back({prevX, prevY});
+                curIsle->lineInfos.emplace_back(lineNum, millis, true);
 
                 lastWasMove = false;
             }
@@ -296,7 +304,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 }
 
                 curIsle->movePoints.push_back({prevX, prevY, prevZ});
-
+                curIsle->lineInfos.emplace_back(lineNum, millis, true);
                 lastWasMove = true;
             }
         }
@@ -308,6 +316,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         {
             curIsle->movePoints.shrink_to_fit();
             curIsle->printPoints.shrink_to_fit();
+            curIsle->lineInfos.shrink_to_fit();
         }
     }
 

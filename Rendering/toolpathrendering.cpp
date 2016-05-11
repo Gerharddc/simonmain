@@ -7,6 +7,7 @@
 #include <thread>
 #include <iostream>
 #include <time.h>
+#include <vector>
 
 #include "glhelper.h"
 #include "mathhelper.h"
@@ -25,6 +26,7 @@ struct GroupGLData
 
     uint16_t *indices;
     uint16_t *lineIdxs;
+    std::vector<ChunkLineInfo> *lineInfos;
     short idxCount = 0;
     short lineIdxCount = 0;
 };
@@ -40,6 +42,11 @@ static GLint mRadiusUniformLocation = 0;
 static GLint mProjUniformLocation = 0;
 static GLint mColorUniformLocation = 0;
 static GLint mLineOnlyUnformLocation = 0;
+
+static std::size_t curPrintToLine = -1;
+static std::size_t targetPrintToLine = -1;
+static uint16_t printToChunk = -1;
+static uint16_t printToIdx = -1;
 
 static GroupGLData *groupDatas = nullptr;
 static std::size_t groupCount = 0;
@@ -133,6 +140,7 @@ static void LoadPath()
 
         gd->indices = dc->getIndices();
         gd->lineIdxs = dc->getLineIdxs();
+        gd->lineInfos = dc->getLineInfos();
         gd->idxCount = dc->idxCount;
         gd->lineIdxCount = dc->lineIdxCount;
     }
@@ -154,6 +162,19 @@ void ToolpathRendering::SetToolpath(Toolpath *tp)
 {
     path = tp;
     dirtyPath = true;
+}
+
+void ToolpathRendering::ShowPrintedToLine(std::size_t lineNum)
+{
+    if (lineNum < 0)
+    {
+        targetPrintToLine = -1;
+        curPrintToLine = -1;
+        printToChunk = -1;
+        printToIdx = -1;
+    }
+    else
+        targetPrintToLine = lineNum;
 }
 
 GroupGLData::~GroupGLData()
@@ -240,6 +261,28 @@ void ToolpathRendering::Draw()
     {
         glUniform4fv(mColorUniformLocation, 1, glm::value_ptr(glm::vec4(_color, opacity)));
         dirtyColor = false;
+    }
+
+    if (targetPrintToLine != curPrintToLine)
+    {
+        // Move to the neccessary line
+        // NOTE: is slow backwards...
+        if (curPrintToLine < targetPrintToLine)
+        {
+            printToChunk = 0;
+            printToIdx = 0;
+        }
+
+        while (groupDatas[printToChunk].lineInfos->at(printToIdx).lineNum >= targetPrintToLine)
+        {
+            printToIdx++;
+
+            if (printToIdx = groupDatas[printToChunk].lineInfos->size())
+            {
+                printToIdx = 0;
+                printToChunk++;
+            }
+        }
     }
 
     clock_t now = clock();

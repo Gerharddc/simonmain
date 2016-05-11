@@ -7,6 +7,7 @@
 #include <limits>
 #include <vector>
 #include <glm/glm.hpp>
+#include <list>
 
 // The unit that defines the component of vectors
 typedef float veccomp;
@@ -142,10 +143,21 @@ struct Point3
     Point3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
 };
 
+struct IsleLineInfo
+{
+    std::size_t lineNum;
+    uint16_t milliSecs;
+    bool isMove; // Else print
+
+    IsleLineInfo(std::size_t LineNum, uint16_t MilliSecs, bool IsMove)
+        : lineNum(LineNum), milliSecs(MilliSecs), isMove(IsMove) {}
+};
+
 struct Island
 {
     std::vector<Point3> movePoints;
     std::vector<Point2> printPoints;
+    std::vector<IsleLineInfo> lineInfos;
 };
 
 struct Layer
@@ -156,6 +168,20 @@ struct Layer
 
 class Toolpath;
 
+// This struct defines the position in the layer data chunks for
+// every line of gcode along with the estimated time required to
+// execute a line
+struct ChunkLineInfo
+{
+    std::size_t lineNum;
+    uint16_t endIdx;
+    uint16_t startIdx;
+    uint16_t milliSecs;
+
+    ChunkLineInfo(std::size_t LineNum, uint16_t StartIdx, uint16_t EndIdx, uint16_t MilliSecs)
+        : lineNum(LineNum), endIdx(endIdx), startIdx(startIdx), milliSecs(MilliSecs) {}
+};
+
 class TPDataChunk
 {
     friend class Toolpath;
@@ -163,8 +189,10 @@ class TPDataChunk
 private:
     bool indicesCopied = false;
     bool lineIdxsCopied = false;
+    bool lineInfosCopied = false;
     ushort *indices = nullptr;
     ushort *lineIdxs = nullptr;
+    std::vector<ChunkLineInfo> *lineInfos = nullptr;
 
 public:
     float *curFloats = nullptr;
@@ -182,6 +210,7 @@ public:
     ushort *getIndices();
     ushort *getLineIdxs();
     void ShrinkToSize();
+    std::vector<ChunkLineInfo> *getLineInfos();
 
     TPDataChunk();
     TPDataChunk(TPDataChunk &&copier);
@@ -191,7 +220,6 @@ public:
 struct Toolpath
 {
     std::vector<Layer> layers;
-
     std::vector<TPDataChunk> *CalculateDataChunks();
 };
 

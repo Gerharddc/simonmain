@@ -144,7 +144,8 @@ static inline void AddPointZsToArray(float *array, Point2 &p, float z, short cou
 // needed part
 static const uint16_t maxIdx = 10000;//UINT16_MAX; // TODO: variable data type
 
-static inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, std::vector<TPDataChunk> *chunks, TPDataChunk *&dc)
+static inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, std::vector<TPDataChunk> *chunks,
+                            TPDataChunk *&dc, ushort &lastStartIdx, ushort &lastEndIdx)
 {
     // We need to shrink the previous chunk to size
     if (dc != nullptr)
@@ -158,6 +159,8 @@ static inline void NewChunk(ushort &idxPos, ushort &saveIdx, ushort &lineIdx, st
     idxPos = 0;
     saveIdx = 0;
     lineIdx = 0;
+    lastStartIdx = 0;
+    lastEndIdx = 0;
     chunks->emplace_back();
     dc = &(chunks->back());
 }
@@ -170,8 +173,13 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     std::vector<TPDataChunk> *chunks = new std::vector<TPDataChunk>();
     TPDataChunk *dc = nullptr;
 
+    // Data for partial rendering
+    ushort lastStartIdx = 0;
+    ushort lastEndIdx = 0;
+    IsleLineInfo *isleLineInfo = nullptr;
+
     // Use a MACRO to easily push a new chunk
-    #define NEWCHUNK() NewChunk(idxPos, saveIdx, lineIdx, chunks, dc)
+    #define NEWCHUNK() NewChunk(idxPos, saveIdx, lineIdx, chunks, dc, lastStartIdx, lastEndIdx)
     NEWCHUNK();
 
     for (Layer layer : layers)
@@ -182,6 +190,15 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
             // will have to cut it up into pieces
             bool cut = true;
             auto pCount = isle.printPoints.size();
+
+            // Get to the first move island
+            isleLineInfo = &(isle.lineInfos.front());
+            while (isleLineInfo->isMove && isleLineInfo != &(dc->lineInfos->back()))
+            {
+                // Add the info and move to the next one
+                dc->lineInfos->emplace_back(isleLineInfo->lineNum, lastStartIdx, lastEndIdx, isleLineInfo->milliSecs);
+                isle.lineInfos++;
+            }
 
             // Determine how many points we can still fit in this chunk
             uint fitCount = (maxIdx - saveIdx - 2) / 5;
@@ -318,6 +335,10 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     dc->indices[idxPos + 4] = saveIdx + 3;
                     dc->indices[idxPos + 5] = saveIdx + 1;
 
+                    // Mark the rendering start & end point
+                    lastStartIdx = saveIdx;
+                    lastEndIdx = saveIdx + 4;
+
                     // Line
                     dc->lineIdxs[lineIdx] = saveIdx;
                     dc->lineIdxs[lineIdx + 1] = saveIdx + 3;
@@ -373,6 +394,10 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     dc->indices[idxPos + 10] = saveIdx + 5;
                     dc->indices[idxPos + 11] = saveIdx + 6;
 
+                    // Mark the rendering start & end point
+                    lastStartIdx = saveIdx;
+                    lastEndIdx = saveIdx + 6;
+
                     // Line
                     dc->lineIdxs[lineIdx] = saveIdx;
                     dc->lineIdxs[lineIdx + 1] = saveIdx + 6;
@@ -381,6 +406,19 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     idxPos += 12;
                     saveIdx += 5;
                 }
+
+                // Add the info and move to the next one
+                // TODO: unsafe
+                dc->lineInfos->emplace_back(isleLineInfo->lineNum, lastStartIdx, lastEndIdx, isleLineInfo->milliSecs);
+                isle.lineInfos++;
+            }
+
+            // Add the final move infos
+            while (isleLineInfo != &(dc->lineInfos->back()))
+            {
+                // Add the info and move to the next one
+                dc->lineInfos->emplace_back(isleLineInfo->lineNum, lastStartIdx, lastEndIdx, isleLineInfo->milliSecs);
+                isle.lineInfos++;
             }
         }
     }
@@ -405,6 +443,12 @@ ushort *TPDataChunk::getLineIdxs()
 {
     lineIdxsCopied = true;
     return lineIdxs;
+}
+
+std::vector<ChunkLineInfo> *TPDataChunk::getLineInfos()
+{
+    lineInfosCopied = true;
+    return lineInfos;
 }
 
 void TPDataChunk::ShrinkToSize()
@@ -470,4 +514,6 @@ TPDataChunk::~TPDataChunk()
         free (indices);
     if (!lineIdxsCopied && lineIdxs != nullptr)
         free (lineIdxs);
+    if (!lineInfosCopied && lineInfos != nullptr)
+        free (lineInfos);
 }
