@@ -1,6 +1,7 @@
 #include "structures.h"
 
 #include <QDebug>
+#include <iostream>
 
 Mesh::Mesh(std::size_t size)
 {
@@ -176,7 +177,7 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     // Data for partial rendering
     ushort lastStartIdx = 0;
     ushort lastEndIdx = 0;
-    IsleLineInfo *isleLineInfo = nullptr;
+    LineInfo *isleLineInfo = nullptr;
 
     // Use a MACRO to easily push a new chunk
     #define NEWCHUNK() NewChunk(idxPos, saveIdx, lineIdx, chunks, dc, lastStartIdx, lastEndIdx)
@@ -192,13 +193,18 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
             auto pCount = isle.printPoints.size();
 
             // Get to the first move island
-            isleLineInfo = &(isle.lineInfos.front());
-            while (isleLineInfo->isMove && isleLineInfo != &(dc->lineInfos->back()))
+            isleLineInfo = &(lineInfos[isle.startLineNum - 1]);
+            LineInfo *infoTooFar = &(lineInfos[isle.startLineNum + isle.lineCount]);
+
+            /*while (!isleLineInfo->isExtruded && isleLineInfo != infoTooFar)
             {
                 // Add the info and move to the next one
-                dc->lineInfos->emplace_back(isleLineInfo->lineNum, lastStartIdx, lastEndIdx, isleLineInfo->milliSecs);
-                isle.lineInfos++;
+                // TODO: add move infos
+                isleLineInfo++;
             }
+
+            if (isleLineInfo->isExtruded)
+                std::cout << "Het een" << std::endl;*/
 
             // Determine how many points we can still fit in this chunk
             uint fitCount = (maxIdx - saveIdx - 2) / 5;
@@ -227,6 +233,14 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
             uint fitPos = 0;
             for (uint j = 0; j < pCount; j++)
             {
+                // Check that we are on a print line
+                while (!isleLineInfo->isExtruded && isleLineInfo != infoTooFar)
+                {
+                    // Add the info and move to the next one
+                    // TODO: add move infos
+                    isleLineInfo++;
+                }
+
                 // Determine the connecting points
                 bool isLast = (j == pCount - 1);
                 bool isFirst = (j == 0);
@@ -407,18 +421,17 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     saveIdx += 5;
                 }
 
-                // Add the info and move to the next one
-                // TODO: unsafe
-                dc->lineInfos->emplace_back(isleLineInfo->lineNum, lastStartIdx, lastEndIdx, isleLineInfo->milliSecs);
-                isle.lineInfos++;
-            }
+                // Add the info and move to the next one                
+                isleLineInfo->idxInChunk = lastEndIdx;
+                isleLineInfo->chunkIdx = chunks->size() - 1;
 
-            // Add the final move infos
-            while (isleLineInfo != &(dc->lineInfos->back()))
-            {
-                // Add the info and move to the next one
-                dc->lineInfos->emplace_back(isleLineInfo->lineNum, lastStartIdx, lastEndIdx, isleLineInfo->milliSecs);
-                isle.lineInfos++;
+                // Move to the next line
+                isleLineInfo++;
+                if (isleLineInfo == infoTooFar + 1)
+                {
+                    std::cout << "Too few lines of gcode in island: not correlating with amount of points." << std::endl;
+                    break;
+                }
             }
         }
     }
@@ -428,6 +441,17 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     dc->lineIdxCount = lineIdx;
     dc->sideFloatCount = saveIdx;
     dc->ShrinkToSize();
+
+    // Fill in all the blank lineinfos
+    int chunkIdx = -1;
+    int idxInChunk = -1;
+    int lineIdxInChunk = -1;
+    for (LineInfo &li : lineInfos)
+    {
+        li.chunkIdx = chunkIdx = std::max(chunkIdx, li.chunkIdx);
+        li.idxInChunk = idxInChunk = std::max(idxInChunk, li.idxInChunk);
+        li.lineIdxInChunk = lineIdxInChunk = std::max(lineIdxInChunk, li.lineIdxInChunk);
+    }
 
     chunks->shrink_to_fit();
     return chunks;
@@ -443,12 +467,6 @@ ushort *TPDataChunk::getLineIdxs()
 {
     lineIdxsCopied = true;
     return lineIdxs;
-}
-
-std::vector<ChunkLineInfo> *TPDataChunk::getLineInfos()
-{
-    lineInfosCopied = true;
-    return lineInfos;
 }
 
 void TPDataChunk::ShrinkToSize()
@@ -514,6 +532,4 @@ TPDataChunk::~TPDataChunk()
         free (indices);
     if (!lineIdxsCopied && lineIdxs != nullptr)
         free (lineIdxs);
-    if (!lineInfosCopied && lineInfos != nullptr)
-        free (lineInfos);
 }

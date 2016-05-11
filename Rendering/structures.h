@@ -143,21 +143,27 @@ struct Point3
     Point3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
 };
 
-struct IsleLineInfo
+struct LineInfo
 {
-    std::size_t lineNum;
-    uint16_t milliSecs;
-    bool isMove; // Else print
+    uint16_t milliSecs = 0;
+    bool isMove = false;
+    bool isExtruded = false;
+    // Else nonsense
 
-    IsleLineInfo(std::size_t LineNum, uint16_t MilliSecs, bool IsMove)
-        : lineNum(LineNum), milliSecs(MilliSecs), isMove(IsMove) {}
+    int chunkIdx = 0;
+    int idxInChunk = 0;
+    int lineIdxInChunk = 0;
 };
 
 struct Island
 {
     std::vector<Point3> movePoints;
     std::vector<Point2> printPoints;
-    std::vector<IsleLineInfo> lineInfos;
+
+    // The position of the first gcode line and
+    // the amount of lines
+    std::size_t startLineNum = 0;
+    short lineCount = 0;
 };
 
 struct Layer
@@ -167,20 +173,6 @@ struct Layer
 };
 
 class Toolpath;
-
-// This struct defines the position in the layer data chunks for
-// every line of gcode along with the estimated time required to
-// execute a line
-struct ChunkLineInfo
-{
-    std::size_t lineNum;
-    uint16_t endIdx;
-    uint16_t startIdx;
-    uint16_t milliSecs;
-
-    ChunkLineInfo(std::size_t LineNum, uint16_t StartIdx, uint16_t EndIdx, uint16_t MilliSecs)
-        : lineNum(LineNum), endIdx(endIdx), startIdx(startIdx), milliSecs(MilliSecs) {}
-};
 
 class TPDataChunk
 {
@@ -192,7 +184,6 @@ private:
     bool lineInfosCopied = false;
     ushort *indices = nullptr;
     ushort *lineIdxs = nullptr;
-    std::vector<ChunkLineInfo> *lineInfos = nullptr;
 
 public:
     float *curFloats = nullptr;
@@ -210,7 +201,6 @@ public:
     ushort *getIndices();
     ushort *getLineIdxs();
     void ShrinkToSize();
-    std::vector<ChunkLineInfo> *getLineInfos();
 
     TPDataChunk();
     TPDataChunk(TPDataChunk &&copier);
@@ -221,6 +211,7 @@ struct Toolpath
 {
     std::vector<Layer> layers;
     std::vector<TPDataChunk> *CalculateDataChunks();
+    std::vector<LineInfo> lineInfos;
 };
 
 #endif // STRUCTURES

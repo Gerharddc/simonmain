@@ -53,10 +53,13 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
         // Read through each line
         std::string line;
+        LineInfo *curLineInfo = nullptr;
         std::size_t lineNum = 0;
         while (std::getline(is, line))
         {
             lineNum++; // Effectively now starts at 1
+            tp->lineInfos.emplace_back();
+            curLineInfo = &(tp->lineInfos.back());
 
             bool extruded = false;
             bool setPos = false;
@@ -198,11 +201,17 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
                             ShrinkIsle(curIsle);
 
+                            // Determine how many line the previous island covered
+                            if (curIsle != nullptr)
+                                curIsle->lineCount = lineNum - curIsle->startLineNum;
+
                             curLayer->islands.emplace_back();
                             lastWasMove = true;
                             curIsle = &(curLayer->islands.back());
                             // Move to the island
                             curIsle->movePoints.push_back(lastPoint);
+                            // Set the initial lineinfo
+                            curIsle->startLineNum = lineNum;
 
                             moved = true;
                         }
@@ -276,7 +285,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             // Roughly estimate the time for the line
             double dist = std::sqrt(std::pow(prevX - lastPoint.x, 2) + std::pow(prevY - lastPoint.y, 2));
-            uint16_t millis = dist / prevF[g]; // TODO
+            curLineInfo->milliSecs = dist * 60000 / prevF[g]; // Feedrate per minute...
 
             if (extruded)
             {
@@ -285,7 +294,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                     curIsle->printPoints.push_back(lastPoint2);
 
                 curIsle->printPoints.push_back({prevX, prevY});
-                curIsle->lineInfos.emplace_back(lineNum, millis, true);
+                curLineInfo->isExtruded = true;
 
                 lastWasMove = false;
             }
@@ -295,16 +304,23 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
                 {
                     ShrinkIsle(curIsle);
 
+                    // Determine how many line the previous island covered
+                    if (curIsle != nullptr)
+                        curIsle->lineCount = lineNum - curIsle->startLineNum;
+
                     // If the last action was not a move, then we are now starting a new island
                     curLayer->islands.emplace_back();
                     curIsle = &(curLayer->islands.back());
 
                     // Move to the island
                     curIsle->movePoints.push_back(lastPoint);
+
+                    // Set the initial lineinfo
+                    curIsle->startLineNum = lineNum;
                 }
 
                 curIsle->movePoints.push_back({prevX, prevY, prevZ});
-                curIsle->lineInfos.emplace_back(lineNum, millis, true);
+                curLineInfo->isMove = true;
                 lastWasMove = true;
             }
         }
@@ -316,7 +332,6 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         {
             curIsle->movePoints.shrink_to_fit();
             curIsle->printPoints.shrink_to_fit();
-            curIsle->lineInfos.shrink_to_fit();
         }
     }
 

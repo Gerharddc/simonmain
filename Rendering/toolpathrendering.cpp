@@ -26,7 +26,6 @@ struct GroupGLData
 
     uint16_t *indices;
     uint16_t *lineIdxs;
-    std::vector<ChunkLineInfo> *lineInfos;
     short idxCount = 0;
     short lineIdxCount = 0;
 };
@@ -43,10 +42,10 @@ static GLint mProjUniformLocation = 0;
 static GLint mColorUniformLocation = 0;
 static GLint mLineOnlyUnformLocation = 0;
 
-static std::size_t curPrintToLine = -1;
-static std::size_t targetPrintToLine = -1;
-static uint16_t printToChunk = -1;
-static uint16_t printToIdx = -1;
+static long curPrintToLine = -1;
+static long targetPrintToLine = -1;
+static int printToChunk = -1;
+static int printToIdx = -1;
 
 static GroupGLData *groupDatas = nullptr;
 static std::size_t groupCount = 0;
@@ -140,7 +139,6 @@ static void LoadPath()
 
         gd->indices = dc->getIndices();
         gd->lineIdxs = dc->getLineIdxs();
-        gd->lineInfos = dc->getLineInfos();
         gd->idxCount = dc->idxCount;
         gd->lineIdxCount = dc->lineIdxCount;
     }
@@ -263,26 +261,13 @@ void ToolpathRendering::Draw()
         dirtyColor = false;
     }
 
-    if (targetPrintToLine != curPrintToLine)
+    ShowPrintedToLine(500);
+
+    if (path != nullptr && targetPrintToLine != curPrintToLine)
     {
-        // Move to the neccessary line
-        // NOTE: is slow backwards...
-        if (curPrintToLine < targetPrintToLine)
-        {
-            printToChunk = 0;
-            printToIdx = 0;
-        }
-
-        while (groupDatas[printToChunk].lineInfos->at(printToIdx).lineNum >= targetPrintToLine)
-        {
-            printToIdx++;
-
-            if (printToIdx = groupDatas[printToChunk].lineInfos->size())
-            {
-                printToIdx = 0;
-                printToChunk++;
-            }
-        }
+        printToChunk = path->lineInfos[targetPrintToLine - 1].chunkIdx;
+        printToIdx = path->lineInfos[targetPrintToLine - 1].idxInChunk;
+        curPrintToLine = targetPrintToLine;
     }
 
     clock_t now = clock();
@@ -294,7 +279,8 @@ void ToolpathRendering::Draw()
     lastDrawTime = now;
     bool simpleDraw = (fps < 30.0);
 
-    for (std::size_t i = 0; i < groupCount; i++)
+    std::size_t target = (printToChunk != -1) ? printToChunk + 1 : groupCount;
+    for (std::size_t i = 0; i < target; i++)
     {
         GroupGLData *ld = groupDatas + i;
 
@@ -323,13 +309,14 @@ void ToolpathRendering::Draw()
         if (simpleDraw)
         {
             glUniform1i(mLineOnlyUnformLocation, true);
+            //glDrawElements(GL_LINES, (i == target - 1) ? printToIdx : ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
             glDrawElements(GL_LINES, ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
             complexify = true;
         }
         else
         {
             glUniform1i(mLineOnlyUnformLocation, false);
-            glDrawElements(GL_TRIANGLES, ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
+            glDrawElements(GL_TRIANGLES, (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
         }
     }
 }
