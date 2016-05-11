@@ -208,6 +208,7 @@ struct Toolpath
     std::vector<Layer> layers;
     std::vector<TPDataChunk> *CalculateDataChunks();
     std::vector<LineInfo> lineInfos;
+    std::size_t totalMillis = 0; // ETA
 };
 
 #endif // STRUCTURES

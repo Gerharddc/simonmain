@@ -37,6 +37,7 @@ namespace ComboRendering
     void TestMouseIntersection(float x, float y);
 
     const std::set<Mesh*> &getSelectedMeshes();
+    const Toolpath* getToolpath();
 
     const glm::mat4 &getSceneTrans();
     const glm::mat4 &getSceneProj();

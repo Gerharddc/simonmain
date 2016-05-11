@@ -20,7 +20,7 @@ namespace ToolpathRendering {
     float GetOpacity();
     void SetColor(glm::vec3 color);
     bool ToolpathLoaded();
-    void ShowPrintedToLine(std::size_t lineNum);
+    void ShowPrintedToLine(int64_t lineNum);
 }
 
 #endif // TOOLPATHRENDERER_H

@@ -5,6 +5,8 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDebug>
+#include "Rendering/comborendering.h"
+#include "Rendering/toolpathrendering.h"
 
 // Global singleton printer
 Printer GlobalPrinter;
@@ -120,7 +122,7 @@ void Printer::readPrinterOutput()
             }
         }
 
-        //qDebug() << line;
+        qDebug() << line;
     }
 }
 
@@ -149,15 +151,37 @@ static inline void WaitForOk()
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
 }
 
+// Millis
+static double m_totalTime = 0;
+static double m_timeLeft = 0;
+
+float Printer::eta()
+{
+    return (float)(m_timeLeft / 60000.0);
+}
+
+float Printer::percentDone()
+{
+    return (float)((m_totalTime - m_timeLeft) / m_totalTime * 100.0);
+}
+
 static void PrintFile(std::string path)
 {
     std::ifstream is(path);
 
     if (is)
     {
+        m_totalTime = ComboRendering::getToolpath()->totalMillis;
+        m_timeLeft = m_totalTime;
+        emit GlobalPrinter.etaChanged();
+        emit GlobalPrinter.percentDoneChanged();
+
         std::string line;
+        int64_t lineNum = 0;
         while (std::getline(is, line) && !StopPrintThread)
         {
+            lineNum++;
+
             if (serial != nullptr && serial->isOpen())
             {
                 // TODO: check for legal numbers two
@@ -191,6 +215,12 @@ static void PrintFile(std::string path)
                     // wait for an ok before sending the next line
                     WaitForOk();
                 }
+
+                // Update the progress indicators
+                ToolpathRendering::ShowPrintedToLine(lineNum);
+                m_timeLeft -= ComboRendering::getToolpath()->lineInfos[lineNum - 1].milliSecs;
+                emit GlobalPrinter.etaChanged();
+                emit GlobalPrinter.percentDoneChanged();
             }
             else
             {

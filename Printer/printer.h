@@ -15,7 +15,7 @@ private:
     bool m_paused = false;
     bool m_fanning = false;
     bool m_autoFan = false;
-    QString m_status = "Not printing";   
+    QString m_status = "Not printing";
 
 public:
     explicit Printer(QObject *parent = 0);
@@ -73,6 +73,13 @@ public:
         }
     }
 
+    // Minutes
+    Q_PROPERTY(float eta READ eta NOTIFY etaChanged)
+    float eta();
+
+    Q_PROPERTY(float percentDone READ percentDone NOTIFY percentDoneChanged)
+    float percentDone();
+
 signals:
     void targetTempChanged();
     void heatingChanged();
@@ -82,6 +89,8 @@ signals:
     void curTempChanged();
     void fanningChanged();
     void autoFanChanged();
+    void etaChanged();
+    void percentDoneChanged();
 
 public slots:
     void readPrinterOutput();

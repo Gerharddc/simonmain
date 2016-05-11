@@ -42,8 +42,8 @@ static GLint mProjUniformLocation = 0;
 static GLint mColorUniformLocation = 0;
 static GLint mLineOnlyUnformLocation = 0;
 
-static long curPrintToLine = -1;
-static long targetPrintToLine = -1;
+static int64_t curPrintToLine = -1;
+static int64_t targetPrintToLine = -1;
 static int printToChunk = -1;
 static int printToIdx = -1;
 static int printToLineIdx = -1;
@@ -163,7 +163,7 @@ void ToolpathRendering::SetToolpath(Toolpath *tp)
     dirtyPath = true;
 }
 
-void ToolpathRendering::ShowPrintedToLine(std::size_t lineNum)
+void ToolpathRendering::ShowPrintedToLine(int64_t lineNum)
 {
     if (lineNum < 0)
     {
@@ -174,6 +174,8 @@ void ToolpathRendering::ShowPrintedToLine(std::size_t lineNum)
     }
     else
         targetPrintToLine = lineNum;
+
+    ComboRendering::Update();
 }
 
 GroupGLData::~GroupGLData()
@@ -261,8 +263,6 @@ void ToolpathRendering::Draw()
         glUniform4fv(mColorUniformLocation, 1, glm::value_ptr(glm::vec4(_color, opacity)));
         dirtyColor = false;
     }
-
-    ShowPrintedToLine(4000);
 
     if (path != nullptr && targetPrintToLine != curPrintToLine)
     {

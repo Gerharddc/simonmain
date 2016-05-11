@@ -449,3 +449,8 @@ const glm::mat4 &ComboRendering::getSceneProj()
 {
     return sceneProj;
 }
+
+const Toolpath *ComboRendering::getToolpath()
+{
+    return gcodePath;
+}

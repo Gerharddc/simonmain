@@ -280,6 +280,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
             // Roughly estimate the time for the line
             double dist = std::sqrt(std::pow(prevX - lastPoint.x, 2) + std::pow(prevY - lastPoint.y, 2));
             curLineInfo->milliSecs = dist * 60000 / prevF[g]; // Feedrate per minute...
+            tp->totalMillis += curLineInfo->milliSecs;
 
             if (extruded)
             {
