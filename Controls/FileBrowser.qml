@@ -12,6 +12,7 @@ Rectangle {
     }
 
     function open() {
+        fileBrowser.getRootDirectory()
         fbRect.opacity = 1
     }
 

@@ -122,7 +122,7 @@ void Printer::readPrinterOutput()
             }
         }
 
-        qDebug() << line;
+        //qDebug() << line;
     }
 }
 

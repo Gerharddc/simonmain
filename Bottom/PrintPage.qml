@@ -194,7 +194,7 @@ BottomPage {
                 enabled: !printer.printing
 
                 onClicked: {
-                    printer.moveX(tboxY.text)
+                    printer.moveY(tboxY.text)
                 }
             }
 
@@ -205,7 +205,7 @@ BottomPage {
                 enabled: !printer.printing
 
                 onClicked: {
-                    printer.moveX(tboxZ.text)
+                    printer.moveZ(tboxZ.text)
                 }
             }
         }
@@ -344,7 +344,10 @@ BottomPage {
                 anchors.right: parent.right
                 anchors.left: tglAutoFan.right
                 anchors.leftMargin: 10
-                toggled: printer.fanning
+
+                Binding on toggled {
+                    value: printer.fanning
+                }
             }
 
             Binding {

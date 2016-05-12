@@ -42,21 +42,16 @@ void FileBrowser::getRootDirectory()
 
     GetFilesForDir();
 
-    // Add the external drives
-    // TODO: do this properly
-    QVariantMap sd;
-    sd.insert("displayName", "SD Card");
-    sd.insert("glyph", "SD.png");
-    sd.insert("cd", ".mnt/SD");
-    sd.insert("open", "");
-    m_fileModel.append(sd);
-
-    QVariantMap usb;
-    usb.insert("displayName", "USD Drive");
-    usb.insert("glyph", "USB.png");
-    usb.insert("cd", ".mnt/USB");
-    usb.insert("open", "");
-    m_fileModel.append(usb);
+    // Add the directories
+    for (QString str : QDir("/media").entryList(QStringList(""), QDir::AllDirs | QDir::NoDot | QDir::NoDotDot, QDir::Name))
+    {
+        QVariantMap mp;
+        mp.insert("displayName", str);
+        mp.insert("glyph", str.contains("mmc") ? "SD.png" : "USB.png");
+        mp.insert("cd", "/media/" + str);
+        mp.insert("open", "");
+        m_fileModel.append(mp);
+    }
 
     emit fileModelChanged();
 }
@@ -71,7 +66,7 @@ void FileBrowser::selectItem(QString cd)
 {
     // Open dir
     curDir.cd(cd);
-    if (curDir.absolutePath() == rootDir || curDir.dirName() == ".mnt")
+    if (curDir.absolutePath() == rootDir || curDir.absolutePath() == "/media")
         getRootDirectory();
     else
     {

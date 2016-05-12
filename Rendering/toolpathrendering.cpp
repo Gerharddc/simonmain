@@ -276,7 +276,7 @@ void ToolpathRendering::Draw()
     clock_t deltaTicks = now - lastDrawTime;
     clock_t fps = 0;
     if (deltaTicks > 0)
-        fps = CLOCKS_PER_SEC / deltaTicks / 6.0; // Not sure why 6
+        fps = CLOCKS_PER_SEC / deltaTicks / 4.0; // Not sure why 4
     //std::cout << "FPS: " << fps << std::endl;
     lastDrawTime = now;
     bool simpleDraw = (fps < 30.0);
@@ -317,12 +317,7 @@ void ToolpathRendering::Draw()
         else
         {
             glUniform1i(mLineOnlyUnformLocation, false);
-            //glDrawElements(GL_TRIANGLES, (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
-            auto idx = (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount;
-            glDrawElements(GL_TRIANGLES, idx, GL_UNSIGNED_SHORT, ld->indices);
-
-            if (idx > ld->idxCount)
-                std::cout << "Idx: " << idx << " Cnt: " << ld->idxCount << std::endl;
+            glDrawElements(GL_TRIANGLES, (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
         }
     }
 }
