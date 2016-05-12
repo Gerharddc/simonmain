@@ -182,7 +182,7 @@ static void PrintFile(std::string path)
         {
             lineNum++;
 
-            if (serial != nullptr && serial->isOpen())
+            if (serial != nullptr )//&& serial->isOpen())
             {
                 // TODO: check for legal numbers two
                 if (line[0] != 'G' && line[0] != 'M')
@@ -201,26 +201,35 @@ static void PrintFile(std::string path)
                         GlobalPrinter.setFanning(false);
                 }
 
-                serial->write((QString::fromStdString(line) + '\n').toUtf8());
-                serial->flush();
-                std::cout << "Printed: " << line << std::endl;
-
-                // wait for an ok before sending the next line
-                WaitForOk();
-
-                // Check if there is a temp request waiting
-                if (NeedTemp)
+                if (serial->isOpen())
                 {
-                    GlobalPrinter.sendCommand("M105");
+                    serial->write((QString::fromStdString(line) + '\n').toUtf8());
+                    serial->flush();
+
                     // wait for an ok before sending the next line
                     WaitForOk();
+
+                    // Check if there is a temp request waiting
+                    if (NeedTemp)
+                    {
+                        GlobalPrinter.sendCommand("M105");
+                        // wait for an ok before sending the next line
+                        WaitForOk();
+                    }
                 }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                    //std::cout << "Serial not open for printing." << std::endl;
+                }
+                //std::cout << "Printed: " << line << std::endl;
 
                 // Update the progress indicators
                 ToolpathRendering::ShowPrintedToLine(lineNum);
                 m_timeLeft -= ComboRendering::getToolpath()->lineInfos[lineNum - 1].milliSecs;
                 emit GlobalPrinter.etaChanged();
                 emit GlobalPrinter.percentDoneChanged();
+                GlobalPrinter.UpdateProgressStatus();
             }
             else
             {
@@ -247,6 +256,15 @@ static void PrintFile(std::string path)
     GlobalPrinter.setHeating(false);
 }
 
+void Printer::UpdateProgressStatus()
+{
+    float mins;
+    float secs = std::modf(eta(), &mins) * 60.0f;
+    m_status = QString::number(percentDone(), 'f', 2) + "% ETA: "
+            + QString::number((int)mins) + ":" + QString::number((int)secs);
+    emit statusChanged();
+}
+
 void Printer::SignalPrintStop()
 {
     if (m_printing)
@@ -256,6 +274,9 @@ void Printer::SignalPrintStop()
 
         m_status = "Not printing";
         emit statusChanged();
+
+        // Reset the view
+        ToolpathRendering::ShowPrintedToLine(-1);
     }
 }
 

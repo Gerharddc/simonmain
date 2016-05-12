@@ -24,6 +24,7 @@ public:
     void SignalPrintStop();
     void SignalTargetTemp(float temp);
     void sendCommand(QString cmd);
+    void UpdateProgressStatus();
 
     Q_INVOKABLE void startPrint(QString path);
     Q_INVOKABLE void stopPrint();

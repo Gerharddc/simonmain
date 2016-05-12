@@ -63,7 +63,7 @@ Rectangle {
     }
 
     Label {
-        text: "Status: " + printer.status
+        text: printer.status
         anchors.verticalCenter: img_Expander.verticalCenter
         anchors.left: parent.left
         anchors.leftMargin: 15
