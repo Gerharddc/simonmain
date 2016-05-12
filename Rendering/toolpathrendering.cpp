@@ -311,13 +311,18 @@ void ToolpathRendering::Draw()
         if (simpleDraw)
         {
             glUniform1i(mLineOnlyUnformLocation, true);
-            glDrawElements(GL_LINES, (i == target - 1) ? printToLineIdx : ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
+            glDrawElements(GL_LINES, (i == target - 1 && printToChunk != -1) ? printToLineIdx : ld->lineIdxCount, GL_UNSIGNED_SHORT, ld->lineIdxs);
             complexify = true;
         }
         else
         {
             glUniform1i(mLineOnlyUnformLocation, false);
-            glDrawElements(GL_TRIANGLES, (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
+            //glDrawElements(GL_TRIANGLES, (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount, GL_UNSIGNED_SHORT, ld->indices);
+            auto idx = (i == target - 1 && printToChunk != -1) ? printToIdx : ld->idxCount;
+            glDrawElements(GL_TRIANGLES, idx, GL_UNSIGNED_SHORT, ld->indices);
+
+            if (idx > ld->idxCount)
+                std::cout << "Idx: " << idx << " Cnt: " << ld->idxCount << std::endl;
         }
     }
 }

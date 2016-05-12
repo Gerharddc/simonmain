@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.0.0, 2016-05-11T21:28:35. -->
+<!-- Written by QtCreator 4.0.0, 2016-05-12T06:48:44. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -8,7 +8,7 @@
  </data>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
-  <value type="int">1</value>
+  <value type="int">0</value>
  </data>
  <data>
   <variable>ProjectExplorer.Project.EditorSettings</variable>
@@ -560,20 +560,20 @@
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">RemoteLinux.DirectUploadStep</value>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedFiles">
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/line.vsh</value>
+       <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug/SimonMain</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/test.gcode</value>
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/filament.fsh</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/mesh.vsh</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/mesh.vsh</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/filament.fsh</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/minimal.fsh</value>
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/filament.vsh</value>
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug/SimonMain</value>
-       <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug/SimonMain</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/test.gcode</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/minimal.fsh</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/filament.fsh</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/test.gcode</value>
-       <value type="QString">/home/gerhard/Simon-Dir/simonmain/bin.stl</value>
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/filament.vsh</value>
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/line.vsh</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/mesh.vsh</value>
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/minimal.fsh</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/bin.stl</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/test.gcode</value>
+       <value type="QString">/home/gerhard/Simon-Dir/simonmain/GL/mesh.vsh</value>
        <value type="QString">/home/gerhard/Simon-Dir/simonmain/bin.stl</value>
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedHosts">
@@ -596,20 +596,20 @@
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedRemotePaths">
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
-       <value type="QString">/opt/SimonMain/bin</value>
-       <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
-       <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
+       <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
        <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/opt/SimonMain/bin</value>
-       <value type="QString">/opt/SimonMain/bin</value>
-       <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
        <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
+       <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
+       <value type="QString">/opt/SimonMain/bin</value>
+       <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
+       <value type="QString">/opt/SimonMain/bin</value>
        <value type="QString">/home/gerhard/Simon-Dir/build-SimonMain-Simon-Debug</value>
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedSysroots">
@@ -632,20 +632,20 @@
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedTimes">
        <value type="QDateTime">2016-04-17T14:11:10</value>
-       <value type="QDateTime">2016-04-17T13:57:44</value>
-       <value type="QDateTime">2016-04-17T13:57:43</value>
-       <value type="QDateTime">2016-04-17T14:11:10</value>
-       <value type="QDateTime">2016-04-18T16:27:26</value>
        <value type="QDateTime">2016-05-11T21:22:01</value>
-       <value type="QDateTime">2016-04-17T14:08:04</value>
        <value type="QDateTime">2016-04-17T13:57:45</value>
+       <value type="QDateTime">2016-04-17T14:11:10</value>
+       <value type="QDateTime">2016-04-17T13:57:44</value>
+       <value type="QDateTime">2016-04-17T13:57:44</value>
+       <value type="QDateTime">2016-04-18T16:27:26</value>
+       <value type="QDateTime">2016-04-17T14:08:04</value>
+       <value type="QDateTime">2016-04-17T13:57:44</value>
        <value type="QDateTime">2016-04-17T13:57:44</value>
        <value type="QDateTime">2016-04-17T14:11:10</value>
+       <value type="QDateTime">2016-04-17T14:11:10</value>
+       <value type="QDateTime">2016-04-17T13:57:43</value>
        <value type="QDateTime">2016-04-17T14:11:12</value>
        <value type="QDateTime">2016-04-17T13:57:43</value>
-       <value type="QDateTime">2016-04-17T13:57:44</value>
-       <value type="QDateTime">2016-04-17T13:57:44</value>
-       <value type="QDateTime">2016-04-17T14:11:10</value>
        <value type="QDateTime">2016-04-17T14:11:09</value>
       </valuelist>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.IgnoreMissingFiles">false</value>

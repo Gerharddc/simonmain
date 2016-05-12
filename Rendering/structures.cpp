@@ -395,7 +395,7 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
 
                     // Mark the rendering start & end point
                     // With the position/count of the index
-                    lastEndIdx = idxPos + 6;
+                    lastEndIdx = idxPos + 12;
                     lastLineIdx = lineIdx + 2;
 
                     idxPos += 12;
@@ -417,11 +417,18 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
     dc->ShrinkToSize();
 
     // Fill in all the blank lineinfos
-    int chunkIdx = -1;
-    int idxInChunk = -1;
-    int lineIdxInChunk = -1;
+    int chunkIdx = 0;
+    int idxInChunk = 0;
+    int lineIdxInChunk = 0;
     for (LineInfo &li : lineInfos)
     {
+        // Reset the inChunkIdxs after each new block
+        if (li.chunkIdx > chunkIdx)
+        {
+            idxInChunk = 0;
+            lineIdxInChunk = 0;
+        }
+
         li.chunkIdx = chunkIdx = std::max(chunkIdx, li.chunkIdx);
         li.idxInChunk = idxInChunk = std::max(idxInChunk, li.idxInChunk);
         li.lineIdxInChunk = lineIdxInChunk = std::max(lineIdxInChunk, li.lineIdxInChunk);

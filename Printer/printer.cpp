@@ -260,8 +260,9 @@ void Printer::UpdateProgressStatus()
 {
     float mins;
     float secs = std::modf(eta(), &mins) * 60.0f;
-    m_status = QString::number(percentDone(), 'f', 2) + "% ETA: "
-            + QString::number((int)mins) + ":" + QString::number((int)secs);
+    m_status = "ETA: "
+            + QString::number((int)mins) + ":" + QString::number((int)secs)
+            + " " + QString::number(percentDone(), 'f', 2) + "%";
     emit statusChanged();
 }
 
