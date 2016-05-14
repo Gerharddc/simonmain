@@ -280,10 +280,11 @@ void Printer::SignalPrintStop()
         ToolpathRendering::ShowPrintedToLine(-1);
 
         // Retract, home x & y, then z
-        extrude(-30.0f);
+        extrude(-15.0f);
         homeX();
         homeY();
         homeZ();
+        extrude(-14.0f);
     }
 }
 
