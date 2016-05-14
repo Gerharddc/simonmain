@@ -322,8 +322,10 @@ QString FBORenderer::sliceMeshes()
         fbo->gcodePath.replace(".stl", ".gcode");
 
         QStringList arguments;
-        arguments << "slice" << "-v";
-        arguments << "-j" << "/home/Simon/.Cura/simon.json";
+        //arguments << "slice" << "-v";
+        //arguments << "-j" << "/home/Simon/.Cura/simon.json";
+        //arguments << "-j" << "fdmprinter.json";
+        arguments << "-j" << "/home/Simon/.Cura/fdmp.json";
         arguments << "-v" << "-p";
         arguments << "-o" << fbo->gcodePath;
         arguments << "-s" << "infill_sparse_density=" + QString::number(GlobalSettings::InfillDensity.Get());
@@ -341,7 +343,8 @@ QString FBORenderer::sliceMeshes()
         arguments << "-s" << "top_bottom_thickness=" + QString::number(GlobalSettings::TopBottomThickness.Get());
         arguments << "-s" << "material_print_temperature=" + QString::number(GlobalSettings::PrintTemperature.Get());
         arguments << "-s" << "support_enable=false";
-        arguments << "-l" << stlName;
+        //arguments << "-l" << stlName;
+        arguments << stlName;
 
         // Start the slicer through the message queue (thread safe)
         QMetaObject::invokeMethod(fbo, "StartSliceThread", Q_ARG(QStringList, arguments));
@@ -364,7 +367,7 @@ void FBORenderer::ReadSlicerOutput()
     QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
 
     //for (QString str : sl)
-      //  std::cout << str.toStdString();
+      //  std::cout << str.toStdString() << std::endl;
 
     if (sl.last() == "")
         sl.removeLast(); // The last one is usually empty

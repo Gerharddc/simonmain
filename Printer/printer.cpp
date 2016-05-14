@@ -278,6 +278,12 @@ void Printer::SignalPrintStop()
 
         // Reset the view
         ToolpathRendering::ShowPrintedToLine(-1);
+
+        // Retract, home x & y, then z
+        extrude(-30.0f);
+        homeX();
+        homeY();
+        homeZ();
     }
 }
 
@@ -366,7 +372,7 @@ void Printer::moveY(float distance)
 void Printer::extrude(float e)
 {
     sendCommand("G91"); // relative
-    sendCommand("G1 E" + QString::number(e));
+    sendCommand("G1 E" + QString::number(e) + "F900");
 }
 
 void Printer::moveZ(float distance)

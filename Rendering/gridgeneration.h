@@ -7,8 +7,8 @@ namespace GridGeneration {
 
     struct Grid
     {
-        float* floats;
-        std::size_t floatCount;
+        float* floats = nullptr;
+        std::size_t floatCount = 0;
 
         Grid(std::size_t cnt)
         {

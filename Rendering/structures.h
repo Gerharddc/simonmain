@@ -118,10 +118,10 @@ struct Point2
 {
     float x = 0;
     float y = 0;
-    std::size_t lineNum; // The gcode line
+    int64_t lineNum = -1; // The gcode line
 
     Point2() {}
-    Point2(float _x, float _y, std::size_t _lineNum) : x(_x), y(_y), lineNum(_lineNum) {}
+    Point2(float _x, float _y, int64_t _lineNum) : x(_x), y(_y), lineNum(_lineNum) {}
 
     bool operator== (Point2 &b)
     {

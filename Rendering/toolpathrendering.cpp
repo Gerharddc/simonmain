@@ -206,8 +206,14 @@ GroupGLData::~GroupGLData()
 
     if (indices != nullptr)
     {
-        delete[] indices;
+        free(indices);
         indices = nullptr;
+    }
+
+    if (lineIdxs != nullptr)
+    {
+        free(lineIdxs);
+        lineIdxs = nullptr;
     }
 }
 

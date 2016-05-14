@@ -14,7 +14,7 @@ private:
     bool m_heating = false;
     bool m_paused = false;
     bool m_fanning = false;
-    bool m_autoFan = false;
+    bool m_autoFan = true;
     QString m_status = "Not printing";
 
 public:

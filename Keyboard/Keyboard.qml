@@ -120,6 +120,7 @@ Rectangle {
 
     ListModel {
         id: secondRowModel
+        ListElement { key: "-"; functionId: 0; widthMulti: 1; image: "null" }
         ListElement { key: "a"; functionId: 0; widthMulti: 1; image: "null" }
         ListElement { key: "s"; image: "null"  }
         ListElement { key: "d"; image: "null"  }

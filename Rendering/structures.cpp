@@ -227,8 +227,6 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                 bool hasNoPrev = false;
                 bool hasNoNext = false;
 
-                LineInfo *isleLineInfo = &(lineInfos[curPoint.lineNum - 1]);
-
                 // Last or first points of open ended shapes need to be treated differently
                 // those of closed-ended shapes
                 // It is not possible to place the last point alone on the next chunk so we need to ensure it is never needed
@@ -402,10 +400,16 @@ std::vector<TPDataChunk>* Toolpath::CalculateDataChunks()
                     saveIdx += 5;
                 }
 
-                // Add the info and move to the next one                
-                isleLineInfo->idxInChunk = lastEndIdx;
-                isleLineInfo->lineIdxInChunk = lastLineIdx;
-                isleLineInfo->chunkIdx = chunks->size() - 1;
+                // Add the info and move to the next one
+                // -1 means the points signifies the start of a move
+                // and isn't relevant
+                if (curPoint.lineNum != -1)
+                {
+                    LineInfo &isleLineInfo = lineInfos[curPoint.lineNum];
+                    isleLineInfo.idxInChunk = lastEndIdx;
+                    isleLineInfo.lineIdxInChunk = lastLineIdx;
+                    isleLineInfo.chunkIdx = chunks->size() - 1;
+                }
             }
         }
     }

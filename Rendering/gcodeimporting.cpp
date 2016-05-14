@@ -54,10 +54,10 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
         // Read through each line
         std::string line;
         LineInfo *curLineInfo = nullptr;
-        std::size_t lineNum = 0;
+        int64_t lineNum = -1;
         while (std::getline(is, line))
         {
-            lineNum++; // Effectively now starts at 1
+            lineNum++;
             tp->lineInfos.emplace_back();
             curLineInfo = &(tp->lineInfos.back());
 
@@ -104,7 +104,7 @@ Toolpath* GCodeImporting::ImportGCode(const char *path)
 
             // Create a point at the last position
             lastPoint = { prevX, prevY, prevZ };
-            lastPoint2 = { prevX, prevY, 0 }; // The zero is the irrelevant line number
+            lastPoint2 = { prevX, prevY, -1 }; // The zero is the irrelevant line number
 
             // Read the parts as spilt by spaces
             // TODO: add support or at least warnings for irregularly long whitespaces

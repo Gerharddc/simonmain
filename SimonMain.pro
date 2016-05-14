@@ -26,9 +26,6 @@ RESOURCES += qml.qrc
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
 
-# Default rules for deployment.
-include(deployment.pri)
-
 HEADERS += \
     Keyboard/keyboard.h \
     Rendering/glhelper.h \
@@ -60,6 +57,13 @@ CONFIG(SIMON):DEFINES += ROTATE_SCREEN
 CONFIG(SIMON):DEFINES += GLES
 DEFINES += QT_APPLICATION
 
+SAMPLE_FILES = \
+    GL/mesh.vsh \
+    GL/minimal.fsh \
+    GL/line.vsh \
+    GL/filament.vsh \
+    GL/filament.fsh \
+
 # - setup the correct location to install to and load from
 android {
     # android platform
@@ -75,18 +79,8 @@ android {
     SAMPLES_INSTALL_PATH = $$OUT_PWD
 }
 
-SAMPLE_FILES = \
-    bin.stl \
-    GL/mesh.vsh \
-    GL/minimal.fsh \
-    GL/line.vsh \
-    GL/filament.vsh \
-    GL/filament.fsh \
-    test.gcode
-
 # - setup the 'make install' step
 samples.path = $$SAMPLES_INSTALL_PATH
 samples.files += $$SAMPLE_FILES
-samples.depends += FORCE
 
 INSTALLS += samples
