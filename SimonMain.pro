@@ -19,7 +19,9 @@ SOURCES += main.cpp \
     Rendering/gridrendering.cpp \
     Rendering/stlexporting.cpp \
     Misc/qtsettings.cpp \
-    Printer/printer.cpp
+    Printer/printer.cpp \
+    ChopperEngine/clipper.cpp \
+    ChopperEngine/chopperengine.cpp
 
 RESOURCES += qml.qrc
 
@@ -46,7 +48,9 @@ HEADERS += \
     Rendering/stlexporting.h \
     Misc/delegate.h \
     Misc/qtsettings.h \
-    Printer/printer.h
+    Printer/printer.h \
+    ChopperEngine/clipper.hpp \
+    ChopperEngine/chopperengine.h
 
 INCLUDEPATH += $$PWD/glm
 
