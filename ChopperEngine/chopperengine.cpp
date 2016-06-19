@@ -16,6 +16,7 @@ static LogDelegate slicerLogger = nullptr;
 
 // Scale double to ints with this factor
 static double scaleFactor = 1000000.0;
+const double PI = 3.14159265358979323846;
 
 void ChopperEngine::SlicerLog(std::string message)
 {
@@ -72,6 +73,14 @@ struct LayerComponent
     std::vector<LayerIsland> islandList;
     int layerSpeed = 100; //TODO
 };
+
+struct InfillGrid
+{
+    Paths leftList, rightList;
+};
+
+// TODO: store multiple grids
+static InfillGrid mainGrid;
 
 static inline void getTrigPointFloats(Triangle &trig, double *arr, uint8_t pnt)
 {
@@ -502,9 +511,7 @@ static inline void OptimizeOutlinePaths()
                         double magB = std::sqrt(B.X * B.X + B.Y * B.Y);
 
                         double cos = dotP / (magA * magB);
-
-                        const double pi = 3.14159265358979323846;
-                        const double thresh = std::cos(177.5 / 180.0 * pi);
+                        const double thresh = std::cos(177.5 / 180.0 * PI);
 
                         // More negative cos is closer to 180 degrees
                         if (cos < thresh)
@@ -529,6 +536,8 @@ static inline void OptimizeOutlinePaths()
     }
 }
 
+const float NozzleWidth = 0.5f;
+
 static inline void GenerateOutlineSegments()
 {
     SlicerLog("Generating outline segments");
@@ -549,7 +558,6 @@ static inline void GenerateOutlineSegments()
             if (isle.outlinePaths.size() < 1)
                 continue;
 
-            const float NozzleWidth = 0.5f;
             cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0f);
 
             // The first outline will be one that is half an extrusion thinner
@@ -584,6 +592,74 @@ static inline void GenerateOutlineSegments()
     }
 }
 
+static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
+{
+    // TODO: support multiple densities
+    Paths &rightList = mainGrid.rightList;
+    Paths &leftList = mainGrid.leftList;
+
+    // Calculate the needed spacing
+
+    // d% = 1 / (x% + 1)
+    // d% * x + d% = 1
+    // a + d% = 1
+    // a = 1 - d%
+    // x = a / d%
+
+    float a = 1 - density;
+    float x = a / desnity;
+    uint spacing = (uint)(NozzleWidth * scaleFactor * x);
+    uint divider = spacing + (NozzleWidth * scaleFactor);
+
+    // 2 points of linesegment
+    IntPoint p1, p2;
+
+    // We need to start creating diagonal lines before
+    // the min x sothat there are lines over every part of the model
+    cInt xOffset = (cInt)((sliceMesh->MaxVec.y - sliceMesh->MinVec.y) * scaleFactor / std::tan(angle));
+    cInt modMinX = sliceMesh->MinVec.x - xOffset;
+
+    std::size_t amountOfLines = (std::size_t)((sliceMesh->MaxVec.x * scaleFactor - modMinX) / divider);
+
+    // Calculate the right and left line simultaneously
+    for (std::size_t i = 0; i < amountOfLines; i++)
+    {
+        // First line angled to the right
+        p1.X = modMinX + i * divider + NozzleWidth * scaleFactor / 2;
+        p1.Y = sliceMesh->MinVec.y;
+        p2.X = p1.X + xOffset;
+        p2.Y = sliceMesh->MaxVec.y;
+
+        // We make use of duplicated points so that the below changes do not affect this line
+        Path line;
+        line.push_back(p1);
+        line.push_back(p2);
+        line.shrink_to_fit();
+        rightList.push_back(line);
+
+        p2.Y = sliceMesh->MinVec.y;
+        p1.Y = sliceMesh->MaxVec.y;
+
+        line.clear();
+        line.push_back(p1);
+        line.push_back(p2);
+        line.shrink_to_fit();
+        leftList.push_back(line);
+    }
+
+    // Optimize the grids
+    leftList.shrink_to_fit();
+    rightList.shrink_to_fit();
+}
+
+static inline void GenerateInfillGrids()
+{
+    // Figure out what densities we need
+    // TODO:
+
+    GenerateInfillGrid(15);
+}
+
 void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 {
     sliceMesh = inputMesh;
@@ -610,6 +686,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     GenerateOutlineSegments();
 
     // Generate the infill grids
+    GenerateInfillGrids();
 
     // The top and bottom segments need to calculated before
     // the infill outlines otherwise the infill will be seen as top or bottom
