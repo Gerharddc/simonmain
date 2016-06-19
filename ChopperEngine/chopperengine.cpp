@@ -234,24 +234,24 @@ static void ProcessPolyNode(PolyNode &pNode, bool isHole, std::vector<LayerIslan
         LayerIsland &isle = isleList.back();
         isle.outlinePaths.push_back(pNode.Contour);
 
-        for (PolyNode &cNode : pNode.Childs)
+        for (PolyNode *cNode : pNode.Childs)
         {
-            if (cNode.IsHole())
+            if (cNode->IsHole())
             {
-                isle.outlinePaths.push_back(cNode.Contour);
-                ProcessPolyNode(cNode, true, isleList);
+                isle.outlinePaths.push_back(cNode->Contour);
+                ProcessPolyNode(*cNode, true, isleList);
             }
 
             else
-                ProcessPolyNode(cNode, false, isleList);
+                ProcessPolyNode(*cNode, false, isleList);
         }
     }
     else
     {
         // A non-hole node should not be able to contain holes
-        for (PolyNode &cNode : pNode.Childs)
+        for (PolyNode *cNode : pNode.Childs)
         {
-            ProcessPolyNode(cNode, false, isleList);
+            ProcessPolyNode(*cNode, false, isleList);
         }
     }
 }
@@ -452,22 +452,29 @@ static inline void CalculateIslandsFromInitialLines()
 
         PolyTree resultTree;
         Clipper clipper;
-        clipper.AddPaths(paths, PolyType::ptClip, true);
+        clipper.AddPaths(closedPaths, PolyType::ptClip, true);
         clipper.Execute(ClipType::ctUnion, resultTree, PolyFillType::pftEvenOdd, PolyFillType::pftEvenOdd);
 
         // We need to itterate through the tree recursively because of its child structure
-        for (PolyNode &pNode : resultTree.Childs)
-            ProcessPolyNode(pNode, false, layerComp.islandList);
+        for (PolyNode *pNode : resultTree.Childs)
+            ProcessPolyNode(*pNode, false, layerComp.islandList);
 
         // Optimize memory usage
         layerComp.islandList.shrink_to_fit();
     }
 }
 
+static IntPoint operator-(const IntPoint &p1, const IntPoint &p2)
+{
+    return IntPoint(p1.X - p2.X, p1.Y - p2.Y);
+}
+
 static inline void OptimizeOutlinePaths()
 {
-    for (LayerComponent layerComp : layerComponents)
+    for (std::size_t a = 0; a < layerCount; a++)
     {
+        LayerComponent &layerComp = layerComponents[a];
+
         for (LayerIsland isle : layerComp.islandList)
         {
             for (std::size_t i; i < isle.outlinePaths.size(); i++)
@@ -543,7 +550,7 @@ static inline void GenerateOutlineSegments()
     SlicerLog("Generating outline segments");
 
     // Check if there should be at least one shell
-    if (GlobalSettings::ShellThickness < 1)
+    if (GlobalSettings::ShellThickness.Get() < 1)
         return;
 
     for (std::size_t i = 0; i < layerCount; i++)
@@ -568,7 +575,7 @@ static inline void GenerateOutlineSegments()
             offset.AddPaths(isle.outlinePaths, JoinType::jtMiter, EndType::etClosedPolygon);
             offset.Execute(outline, halfNozzle);
 
-            for (std::size_t j = 0; j < GlobalSettings::ShellThickness; j++)
+            for (std::size_t j = 0; j < GlobalSettings::ShellThickness.Get(); j++)
             {
                 // Place the newly created outline in its own segment
                 LayerSegment outlineSegment(SegmentType::OutlineSegment);
@@ -580,7 +587,7 @@ static inline void GenerateOutlineSegments()
                 //We now shrink the outline with one extrusion width for the next shell if any
                 offset.Clear();
                 offset.AddPaths(isle.outlinePaths, JoinType::jtMiter, EndType::etClosedPolygon);
-                offset.Execute(outline, distance);
+                offset.Execute(outline, dist);
             }
 
             // We now need to store the smallest outline as the new layer outline for infill trimming purposes
@@ -607,7 +614,7 @@ static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0
     // x = a / d%
 
     float a = 1 - density;
-    float x = a / desnity;
+    float x = a / density;
     uint spacing = (uint)(NozzleWidth * scaleFactor * x);
     uint divider = spacing + (NozzleWidth * scaleFactor);
 
