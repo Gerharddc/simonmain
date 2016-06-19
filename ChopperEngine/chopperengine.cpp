@@ -42,16 +42,35 @@ struct LineSegment
     }
 };
 
+enum SegmentType
+{
+    OutlineSegment,
+    InfillSegment
+};
+
+struct LayerSegment
+{
+    Paths outlinePaths;
+    SegmentType type;
+    int segmentSpeed;
+
+    LayerSegment(SegmentType _type) :
+        type(_type) {}
+};
+
 struct LayerIsland
 {
     Paths outlinePaths;
+    std::vector<LayerSegment> segments;
 };
+
 
 struct LayerComponent
 {
     std::vector<LineSegment> initialLineList;
     std::map<std::size_t, std::size_t> faceToLineIdxs;
     std::vector<LayerIsland> islandList;
+    int layerSpeed = 100; //TODO
 };
 
 static inline void getTrigPointFloats(Triangle &trig, double *arr, uint8_t pnt)
@@ -430,6 +449,9 @@ static inline void CalculateIslandsFromInitialLines()
         // We need to itterate through the tree recursively because of its child structure
         for (PolyNode &pNode : resultTree.Childs)
             ProcessPolyNode(pNode, false, layerComp.islandList);
+
+        // Optimize memory usage
+        layerComp.islandList.shrink_to_fit();
     }
 }
 
@@ -507,6 +529,61 @@ static inline void OptimizeOutlinePaths()
     }
 }
 
+static inline void GenerateOutlineSegments()
+{
+    SlicerLog("Generating outline segments");
+
+    // Check if there should be at least one shell
+    if (GlobalSettings::ShellThickness < 1)
+        return;
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        LayerComponent &layerComp = layerComponents[i];
+
+        SlicerLog("Outline: " + i);
+
+        for (LayerIsland isle : layerComp.islandList)
+        {
+            // TODO: remove the invalid islands
+            if (isle.outlinePaths.size() < 1)
+                continue;
+
+            const float NozzleWidth = 0.5f;
+            cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0f);
+
+            // The first outline will be one that is half an extrusion thinner
+            // than the sliced outline, ths is sothat the dimensions
+            // do not change once extruded
+            Paths outline;
+            ClipperOffset offset;
+            offset.AddPaths(isle.outlinePaths, JoinType::jtMiter, EndType::etClosedPolygon);
+            offset.Execute(outline, halfNozzle);
+
+            for (std::size_t j = 0; j < GlobalSettings::ShellThickness; j++)
+            {
+                // Place the newly created outline in its own segment
+                LayerSegment outlineSegment(SegmentType::OutlineSegment);
+                outlineSegment.segmentSpeed = layerComp.layerSpeed;
+                outlineSegment.outlinePaths = outline;
+                isle.segments.push_back(outlineSegment);
+                cInt dist = halfNozzle - (NozzleWidth * scaleFactor * (j + 1));
+
+                //We now shrink the outline with one extrusion width for the next shell if any
+                offset.Clear();
+                offset.AddPaths(isle.outlinePaths, JoinType::jtMiter, EndType::etClosedPolygon);
+                offset.Execute(outline, distance);
+            }
+
+            // We now need to store the smallest outline as the new layer outline for infill trimming purposes
+            // the current outline though is just half an extrusion width to small
+            offset.Clear();
+            offset.AddPaths(outline, JoinType::jtMiter, EndType::etClosedPolygon);
+            offset.Execute(outline, NozzleWidth * scaleFactor);
+        }
+    }
+}
+
 void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 {
     sliceMesh = inputMesh;
@@ -530,6 +607,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     OptimizeOutlinePaths();
 
     // Generate the outline segments
+    GenerateOutlineSegments();
 
     // Generate the infill grids
 
