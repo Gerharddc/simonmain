@@ -72,6 +72,7 @@ public:
     static GlobalSetting<float> ShellThickness;
     static GlobalSetting<float> TopBottomThickness;
     static GlobalSetting<int> PrintTemperature;
+    static GlobalSetting<int> InfillCombinationCount;
 };
 
 #endif // GLOBALSETTINGS_H

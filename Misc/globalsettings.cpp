@@ -350,6 +350,7 @@ AUTO_SET(RetractionDistance, float, 3.5f)
 AUTO_SET(ShellThickness, float, 1.5f)
 AUTO_SET(TopBottomThickness, float, 1.2f)
 AUTO_SET(PrintTemperature, int, 200)
+AUTO_SET(InfillCombinationCount, int, 1)
 #undef AUTO_SET
 
 // Explicitly specialize the GS classes
