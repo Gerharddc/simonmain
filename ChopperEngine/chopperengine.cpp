@@ -2,6 +2,10 @@
 #include "Misc/globalsettings.h"
 #include "clipper.hpp"
 #include <iostream>
+#include <vector>
+#include <map>
+#include <limits>
+#include <algorithm>
 
 using namespace ChopperEngine;
 using namespace ClipperLib;
@@ -21,6 +25,35 @@ void ChopperEngine::SlicerLog(std::string message)
     std::cout << message << std::endl;
 }
 
+struct LineSegment
+{
+    IntPoint p1, p2;
+    bool usedInPolygon = false;
+    std::size_t trigIdx;
+
+    LineSegment(IntPoint _p1, IntPoint _p2, std::size_t _trigIdx) :
+        p1(_p1), p2(_p2), trigIdx(_trigIdx) {}
+
+    void SwapPoints()
+    {
+        IntPoint temp = p1;
+        p1 = p2;
+        p2 = temp;
+    }
+};
+
+struct LayerIsland
+{
+    Paths outlinePaths;
+};
+
+struct LayerComponent
+{
+    std::vector<LineSegment> initialLineList;
+    std::map<std::size_t, std::size_t> faceToLineIdxs;
+    std::vector<LayerIsland> islandList;
+};
+
 static inline void getTrigPointFloats(Triangle &trig, double *arr, uint8_t pnt)
 {
     arr[0] = (double)sliceMesh->vertexFloats[trig.vertIdxs[0] * 3 + pnt];
@@ -28,13 +61,27 @@ static inline void getTrigPointFloats(Triangle &trig, double *arr, uint8_t pnt)
     arr[2] = (double)sliceMesh->vertexFloats[trig.vertIdxs[2] * 3 + pnt];
 }
 
-static void SliceTrigsToLayers()
+static LayerComponent* layerComponents = nullptr;
+
+static inline Vertex &VertAtIdx(std::size_t idx)
 {
-    ChopperEngine::SlicerLog("Slicing triangles into layers");
+    return sliceMesh->vertices[idx];
+}
+
+static inline Triangle &TrigAtIdx(std::size_t idx)
+{
+    return sliceMesh->trigs[idx];
+}
+
+static inline void SliceTrigsToLayers()
+{
+    SlicerLog("Slicing triangles into layers");
 
     for (std::size_t i = 0; i < layerCount; i++)
     {
         double zPoint = (double)i * GlobalSettings::LayerHeight.Get();
+        std::vector<LineSegment> &lineList = layerComponents[i].initialLineList;
+        lineList.reserve(50); // Maybe a nice amount?
 
         for (std::size_t j = 0; j < sliceMesh->trigCount; j++)
         {
@@ -135,8 +182,254 @@ static void SliceTrigsToLayers()
                                        (cInt)(y[b] + zToY1 * zRise1 * scaleFactor));
                 IntPoint p2 = IntPoint((cInt)(x[c] + zToX2 * zRise2 * scaleFactor),
                                        (cInt)(y[c] + zToY2 * zRise2 * scaleFactor));
+
+                // Add the line and keep of track of which face it relates to
+                layerComponents[i].faceToLineIdxs.insert(std::make_pair(j, lineList.size()));
+                lineList.push_back(LineSegment(p1, p2, j));
             }
         }
+    }
+}
+
+static inline cInt SquaredDist(IntPoint& p1, IntPoint& p2)
+{
+    return std::pow(p2.X - p1.X, 2) + std::pow(p2.Y - p1.Y, 2);
+}
+
+static void ProcessPolyNode(PolyNode &pNode, bool isHole, std::vector<LayerIsland> &isleList)
+{
+    // Non-hole nodes together with their child holes form the outlines of islands
+    // but non-hole children form new islands
+    if (!isHole)
+    {
+        isleList.emplace_back();
+        LayerIsland &isle = isleList.back();
+        isle.outlinePaths.push_back(pNode.Contour);
+
+        for (PolyNode &cNode : pNode.Childs)
+        {
+            if (cNode.IsHole())
+            {
+                isle.outlinePaths.push_back(cNode.Contour);
+                ProcessPolyNode(cNode, true, isleList);
+            }
+
+            else
+                ProcessPolyNode(cNode, false, isleList);
+        }
+    }
+    else
+    {
+        // A non-hole node should not be able to contain holes
+        for (PolyNode &cNode : pNode.Childs)
+        {
+            ProcessPolyNode(cNode, false, isleList);
+        }
+    }
+}
+
+static inline void CalculateIslandsFromInitialLines()
+{
+    SlicerLog("Calculating initial islands");
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        SlicerLog("Calculating islands for layer: " + i);
+        LayerComponent &layerComp = layerComponents[i];
+        std::vector<LineSegment> &lineList = layerComp.initialLineList;
+
+        if (lineList.size() < 2)
+            continue;
+
+        // We need a list of polygons which have already been closed and those that still need closing
+        Paths closedPaths, openPaths;
+
+        // i = startLine idx
+        for (std::size_t i = 0; i < lineList.size(); i++)
+        {
+            //Check if the line has lready been used
+            LineSegment &curLine = lineList[i];
+            if (curLine.usedInPolygon)
+                continue;
+
+            Path path;
+            path.push_back(curLine.p1);
+
+            std::size_t lineIdx = i;
+            bool closed = false;
+
+            while (!closed)
+            {
+                lineList[lineIdx].usedInPolygon = true;
+                IntPoint p1 = lineList[lineIdx].p2;
+                path.push_back(p1);
+
+                bool connected = false;
+
+                for (uint8_t j = 0; j < 3; j++)
+                {
+                    Vertex &v = VertAtIdx(TrigAtIdx(curLine.trigIdx).vertIdxs[j]);
+
+                    for (std::size_t touchIdx : v.trigIdxs)
+                    {
+                        // Check if this triangle has a linesegment on this layer
+                        auto touchLineItr = layerComp.faceToLineIdxs.find(touchIdx);
+                        if (touchLineItr == layerComp.faceToLineIdxs.end())
+                            continue;
+                        std::size_t touchLineIdx = touchLineItr->second;
+
+                        LineSegment &touchLine = lineList[touchLineIdx];
+
+                        const cInt minDiff = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
+
+                        if (SquaredDist(p1, touchLine.p1) < minDiff)
+                            connected = true;
+                        else if (SquaredDist(p1, touchLine.p2) < minDiff)
+                        {
+                            connected = true;
+                            touchLine.SwapPoints();
+                        }
+
+                        if (connected)
+                        {
+                            if (touchLineIdx == i)
+                            {
+                                closed = true;
+                                break;
+                            }
+
+                            if (touchLine.usedInPolygon)
+                                continue;
+
+                            lineIdx = touchLineIdx;
+                            break;
+                        }
+                    }
+
+                    if (connected)
+                        break;
+                }
+
+                if (!connected)
+                    break;
+            }
+
+            if (closed)
+                closedPaths.push_back(path);
+            else
+                openPaths.push_back(path);
+        }
+
+        // The list is no longer needed and can be removed to save memory
+        lineList.clear();
+
+        for (std::size_t j = 0; j < openPaths.size(); j++)
+        {
+            if (openPaths[j].size() < 1)
+                continue;
+
+            for (std::size_t k = 0; k < openPaths.size(); k++)
+            {
+                if (openPaths[k].size() < 1)
+                    continue;
+
+                IntPoint p1 = openPaths[j].back();
+                IntPoint p2 = openPaths[k].front();
+
+                const cInt minDiff = (cInt)(0.02 * 0.02 * scaleFactor * scaleFactor);
+                if (SquaredDist(p1, p2) < minDiff)
+                {
+                    if (j == k)
+                    {
+                        closedPaths.push_back(openPaths[j]);
+                        openPaths[j].clear();
+                        break;
+                    }
+                    else
+                    {
+                        openPaths[j].insert(openPaths[j].begin(), openPaths[k].begin(), openPaths[k].end());
+                        openPaths[k].clear();
+                    }
+                }
+            }
+        }
+
+        // TODO: combine the below and the above, also possibly add hashing
+
+        while (true)
+        {
+            long bestDist = std::numeric_limits<long>::max();
+            long bestA = -1;
+            long bestB = -1;
+            bool wrongWay = false;
+
+            for (std::size_t j = 0; j < openPaths.size(); j++)
+            {
+                if (openPaths[j].size() < 1)
+                    continue;
+
+                for (std::size_t k = 0; k < openPaths.size(); k++)
+                {
+                    if (openPaths[k].size() < 1)
+                        continue;
+
+                    IntPoint p1 = openPaths[j].back();
+                    IntPoint p2 = openPaths[k].front();
+
+                    long diff = SquaredDist(p1, p2);
+                    if (diff < bestDist)
+                    {
+                        bestDist = diff;
+                        bestA = j;
+                        bestB = k;
+                        wrongWay = false;
+                    }
+
+                    if (j != k)
+                    {
+                        p2 = openPaths[k].back();
+                        diff = SquaredDist(p1, p2);
+
+                        if (diff < bestDist)
+                        {
+                            bestDist = diff;
+                            bestA = i;
+                            bestB = j;
+                            wrongWay = true;
+                        }
+                    }
+                }
+            }
+
+            if (bestDist == std::numeric_limits<long>::max())
+                break;
+
+            if (bestA == bestB)
+            {
+                closedPaths.push_back(openPaths[bestA]);
+                openPaths[bestA].clear();
+            }
+            else
+            {
+                if (wrongWay)
+                    std::reverse(openPaths[bestA].begin(), openPaths[bestA].end());
+
+                openPaths[bestA].insert(openPaths[bestA].begin(), openPaths[bestB].begin(), openPaths[bestB].end());
+                openPaths[bestB].clear();
+            }
+        }
+
+        // We now need to put the newly created polygons through clipper sothat it can detect holes for us
+        // and then make proper islands with the returned data
+
+        PolyTree resultTree;
+        Clipper clipper;
+        clipper.AddPaths(paths, PolyType::ptClip, true);
+        clipper.Execute(ClipType::ctUnion, resultTree, PolyFillType::pftEvenOdd, PolyFillType::pftEvenOdd);
+
+        // We need to itterate through the tree recursively because of its child structure
+        for (PolyNode &pNode : resultTree.Childs)
+            ProcessPolyNode(pNode, false, layerComp.islandList);
     }
 }
 
@@ -146,6 +439,14 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 
     // Calculate the amount layers that will be sliced
     layerCount = (std::size_t)(sliceMesh->MaxVec.z / GlobalSettings::LayerHeight.Get());
+
+    if (layerComponents != nullptr)
+        layerComponents = (LayerComponent*)realloc(layerComponents, sizeof(LayerComponent) * layerCount);
+    else
+        layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);
+
+    for (std::size_t i = 0; i < layerCount; i++)
+        layerComponents[i] = LayerComponent();
 
     // Slice the triangles into layers
     SliceTrigsToLayers();
@@ -172,4 +473,8 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // Generate a skirt
 
     // Calculate the toolpath
+
+    // Free the memory
+    if (layerComponents != nullptr)
+        free(layerComponents);
 }
