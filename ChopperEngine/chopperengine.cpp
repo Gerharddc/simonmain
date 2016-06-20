@@ -26,13 +26,15 @@ void ChopperEngine::SlicerLog(std::string message)
     std::cout << message << std::endl;
 }
 
-struct LineSegment
+struct TrigLineSegment
 {
+    // This is a linesegment that is linked to a triangle face
+
     IntPoint p1, p2;
     bool usedInPolygon = false;
     std::size_t trigIdx;
 
-    LineSegment(IntPoint _p1, IntPoint _p2, std::size_t _trigIdx) :
+    TrigLineSegment(IntPoint _p1, IntPoint _p2, std::size_t _trigIdx) :
         p1(_p1), p2(_p2), trigIdx(_trigIdx) {}
 
     void SwapPoints()
@@ -43,20 +45,32 @@ struct LineSegment
     }
 };
 
+struct LineSegment
+{
+    IntPoint p1, p2;
+
+    LineSegment(IntPoint _p1, IntPoint _p2) :
+        p1(_p1), p2(_p2) {}
+};
+
 enum SegmentType
 {
     OutlineSegment,
     InfillSegment,
     TopSegment,
-    BottomSegment
+    BottomSegment,
+    SupportSegment
 };
 
+// TODO: create specialized segment types to save memory
 struct LayerSegment
 {
     Paths outlinePaths;
     SegmentType type;
     int segmentSpeed;
     float infillMultiplier = 1.0f;
+    std::vector<LineSegment> fillLines;
+    float fillDensity = 1.0;
 
     LayerSegment(SegmentType _type) :
         type(_type) {}
@@ -71,7 +85,7 @@ struct LayerIsland
 
 struct LayerComponent
 {
-    std::vector<LineSegment> initialLineList;
+    std::vector<TrigLineSegment> initialLineList;
     std::map<std::size_t, std::size_t> faceToLineIdxs;
     std::vector<LayerIsland> islandList;
     int layerSpeed = 100; //TODO
@@ -84,6 +98,8 @@ struct InfillGrid
 
 // TODO: store multiple grids
 static InfillGrid mainGrid;
+
+static std::map<float, InfillGrid> InfillGridMap;
 
 static inline void getTrigPointFloats(Triangle &trig, double *arr, uint8_t pnt)
 {
@@ -115,7 +131,7 @@ static inline void SliceTrigsToLayers()
     for (std::size_t i = 0; i < layerCount; i++)
     {
         double zPoint = (double)i * GlobalSettings::LayerHeight.Get();
-        std::vector<LineSegment> &lineList = layerComponents[i].initialLineList;
+        std::vector<TrigLineSegment> &lineList = layerComponents[i].initialLineList;
         lineList.reserve(50); // Maybe a nice amount?
 
         for (std::size_t j = 0; j < sliceMesh->trigCount; j++)
@@ -220,7 +236,7 @@ static inline void SliceTrigsToLayers()
 
                 // Add the line and keep of track of which face it relates to
                 layerComponents[i].faceToLineIdxs.insert(std::make_pair(j, lineList.size()));
-                lineList.push_back(LineSegment(p1, p2, j));
+                lineList.push_back(TrigLineSegment(p1, p2, j));
             }
         }
     }
@@ -271,7 +287,7 @@ static inline void CalculateIslandsFromInitialLines()
     {
         SlicerLog("Calculating islands for layer: " + i);
         LayerComponent &layerComp = layerComponents[i];
-        std::vector<LineSegment> &lineList = layerComp.initialLineList;
+        std::vector<TrigLineSegment> &lineList = layerComp.initialLineList;
 
         if (lineList.size() < 2)
             continue;
@@ -283,7 +299,7 @@ static inline void CalculateIslandsFromInitialLines()
         for (std::size_t i = 0; i < lineList.size(); i++)
         {
             //Check if the line has lready been used
-            LineSegment &curLine = lineList[i];
+            TrigLineSegment &curLine = lineList[i];
             if (curLine.usedInPolygon)
                 continue;
 
@@ -313,7 +329,7 @@ static inline void CalculateIslandsFromInitialLines()
                             continue;
                         std::size_t touchLineIdx = touchLineItr->second;
 
-                        LineSegment &touchLine = lineList[touchLineIdx];
+                        TrigLineSegment &touchLine = lineList[touchLineIdx];
 
                         const cInt minDiff = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
 
@@ -608,9 +624,11 @@ static inline void GenerateOutlineSegments()
 
 static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
 {
-    // TODO: support multiple densities
-    Paths &rightList = mainGrid.rightList;
-    Paths &leftList = mainGrid.leftList;
+    // TODO: get blank constructor working
+    InfillGridMap.emplace(std::make_pair(density, InfillGrid()));
+    InfillGrid &grid = InfillGridMap[density];
+    Paths &rightList = grid.rightList;
+    Paths &leftList = grid.leftList;
 
     // Calculate the needed spacing
 
@@ -671,7 +689,10 @@ static inline void GenerateInfillGrids()
     // Figure out what densities we need
     // TODO:
 
-    GenerateInfillGrid(15);
+    InfillGridMap.clear();
+
+    GenerateInfillGrid(15.0f);
+    GenerateInfillGrid(100.0f);
 }
 
 static inline void CalculateTopBottomSegments()
@@ -1014,10 +1035,81 @@ static inline void GenerateSkirt()
     SlicerLog("Generating skirt");
 }
 
-static inline void StoreToolpath(std::string outFilePath)
+static void ClipLinesToPaths(std::vector<LineSegment> &lines, Paths &gridLines, Paths &paths)
+{
+    Clipper clipper;
+    PolyTree result;
+    clipper.AddPaths(gridLines, PolyType::ptSubject, false);
+    clipper.AddPaths(paths, PolyType::ptClip, true);
+    clipper.Execute(ClipType::ctIntersection, result);
+
+    for (PolyNode *node : result.Childs)
+    {
+        if (node->Contour.size() == 2)
+        {
+            // Make sure the infill line is longer than at least double the nozzlewidth
+            if (SquaredDist(node->Contour[0], node->Contour[1]) > NozzleWidth * scaleFactor * scaleFactor * 2)
+                lines.emplace_back(node->Contour[0], node->Contour[1]);
+        }
+    }
+}
+
+static inline void TimInfill()
+{
+    SlicerLog("Trimming infill");
+
+    bool right = false;
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        for (LayerIsland &isle : layerComponents[i].islandList)
+        {
+            for (LayerSegment &seg : isle.segments)
+            {
+                if (seg.type == SegmentType::InfillSegment)
+                {
+                    // If the segment is an infill segment then we need to trim the correlating infill grid to fill it
+                    const float density = 15.0f; // TODO
+
+                    ClipLinesToPaths(seg.fillLines, (right) ? InfillGridMap[density].rightList :
+                                                              InfillGridMap[density].leftList, seg.outlinePaths);
+                    seg.fillDensity = density;
+                }
+                else if (seg.type == SegmentType::BottomSegment || seg.type == SegmentType::TopSegment)
+                {
+                    // If this is a top or bottom segment then we need to trim the solid infill grid to fill it
+                    ClipLinesToPaths(seg.fillLines, (right) ? InfillGridMap[1.0f].rightList :
+                                                              InfillGridMap[1.0f].leftList, seg.outlinePaths);
+                    seg.fillDensity = 1.0f;
+                }
+                else if (seg.type == SegmentType::SupportSegment)
+                {
+                    // If this is a support segment then we need to trim the support infill grid to fill it
+                    const float density = 10.0f; // TODO
+                    ClipLinesToPaths(seg.fillLines, InfillGridMap[density].leftList, seg.outlinePaths);
+                    seg.fillDensity = density;
+                }
+                else
+                    continue;
+            }
+        }
+
+        right = !right;
+    }
+}
+
+
+static inline void CalculateToolpath()
+{
+    SlicerLog("Storing GCode");
+
+    //  TODO: implement this
+}
+
+static inline void StoreGCode(std::string outFilePath)
 {
     //  TODO: implement this
-    SlicerLog("Storing toolpath");
+    SlicerLog("Storing GCode");
 }
 
 void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
@@ -1068,8 +1160,13 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // Generate a skirt
     GenerateSkirt();
 
+    // Tim the infill grids to fit the segments
+
+
     // Calculate the toolpath
-    StoreToolpath(outputFile);
+
+    // Write the toolpath as gcode
+    StoreGCode(outputFile);
 
     // Free the memory
     if (layerComponents != nullptr)
