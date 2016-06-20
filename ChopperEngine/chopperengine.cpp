@@ -53,13 +53,46 @@ struct LineSegment
         p1(_p1), p2(_p2) {}
 };
 
+/*struct FloatLineSegment
+{
+    Point2 p1, p2;
+
+    FloatLineSegment(Point2 _p1, Point2 _p2) :
+        p1(_p1), p2(_p2) {}
+
+    FloatLineSegment(IntPoint _p1, IntPoint _p2)
+    {
+        p1 = Point2((float)((double)_p1.X / scaleFactor), (float)((double)_p1.Y / scaleFactor));
+        p1 = Point2((float)((double)_p2.X / scaleFactor), (float)((double)_p2.Y / scaleFactor));
+    }
+};*/
+
 enum SegmentType
 {
     OutlineSegment,
     InfillSegment,
     TopSegment,
     BottomSegment,
-    SupportSegment
+    SupportSegment,
+    SkirtSegment,
+    RaftSegment
+};
+
+enum ToolSegType
+{
+    Retraction,
+    Moved,
+    Extruded
+};
+
+struct ToolSegment
+{
+    ToolSegType type;
+};
+
+struct RetractSegment : public ToolSegment
+{
+    cInt distance;
 };
 
 // TODO: create specialized segment types to save memory
@@ -71,6 +104,7 @@ struct LayerSegment
     float infillMultiplier = 1.0f;
     std::vector<LineSegment> fillLines;
     float fillDensity = 1.0;
+    std::vector<ToolSegment> toolSegments;
 
     LayerSegment(SegmentType _type) :
         type(_type) {}
@@ -82,6 +116,22 @@ struct LayerIsland
     std::vector<LayerSegment> segments;
 };
 
+struct IntPoint3
+{
+    cInt X, Y, Z;
+
+    IntPoint3(cInt x, cInt y, cInt z) :
+        X(x), Y(y), Z(z) {}
+};
+
+struct MoveSegment
+{
+    IntPoint3 p1, p2;
+    int speed;
+
+    MoveSegment(IntPoint3 _p1, IntPoint3 _p2, int _speed) :
+        p1(_p1), p2(_p2), speed(_speed) {}
+};
 
 struct LayerComponent
 {
@@ -89,6 +139,7 @@ struct LayerComponent
     std::map<std::size_t, std::size_t> faceToLineIdxs;
     std::vector<LayerIsland> islandList;
     int layerSpeed = 100; //TODO
+    std::vector<MoveSegment> initialLayerMoves;
 };
 
 struct InfillGrid
@@ -398,6 +449,7 @@ static inline void CalculateIslandsFromInitialLines()
                     }
                     else
                     {
+                        openPaths[j].reserve(openPaths[j].size() + openPaths[k].size());
                         openPaths[j].insert(openPaths[j].begin(), openPaths[k].begin(), openPaths[k].end());
                         openPaths[k].clear();
                     }
@@ -465,6 +517,7 @@ static inline void CalculateIslandsFromInitialLines()
                 if (wrongWay)
                     std::reverse(openPaths[bestA].begin(), openPaths[bestA].end());
 
+                openPaths[bestA].reserve(openPaths[bestA].size() + openPaths[bestB].size());
                 openPaths[bestA].insert(openPaths[bestA].begin(), openPaths[bestB].begin(), openPaths[bestB].end());
                 openPaths[bestB].clear();
             }
@@ -1101,9 +1154,87 @@ static inline void TimInfill()
 
 static inline void CalculateToolpath()
 {
-    SlicerLog("Storing GCode");
+    SlicerLog("Calculating toolpath");
 
-    //  TODO: implement this
+    IntPoint lastPoint(0, 0);
+    cInt lastZ = 0;
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        bool firstInLayer = true;
+        LayerComponent &curLayer = layerComponents[i];
+
+        // Move to the new z position
+        cInt newZ = lastZ + GlobalSettings::LayerHeight.Get();
+        IntPoint3 p1(lastPoint.X, lastPoint.Y, lastZ);
+        IntPoint3 p2(lastPoint.X, lastPoint.Y, lastZ);
+        curLayer.initialLayerMoves.emplace_back(p1, p2, curLayer.layerSpeed);
+        lastZ = newZ;
+
+        for (LayerIsland &isle : curLayer.islandList)
+        {
+            bool firstInIsle = true;
+
+            // The outline segments of an island should also come before all infill type segments,
+            // we can therefore store the oultine
+            // linesegments for use of the infill move calculations
+
+            typedef std::vector<LineSegment> LineList;
+            std::vector<LineList> outlineSegments;
+
+            for (LayerSegment &seg : isle.segments)
+            {
+                // We need to convert all the polygons in the segment into lines so that we can do our calculations
+                LineList lineList;
+                if (seg.type == SegmentType::OutlineSegment || seg.type == SegmentType::SkirtSegment)
+                {
+                    // This segment contains its linesegments in its outline polygons
+
+                    for (Path &path : seg.outlinePaths)
+                    {
+                        if (path.size() < 3)
+                            continue;
+
+                        for (std::size_t i = 0; i < path.size() - 1; i++)
+                            lineList.emplace_back(path[i], path[i + 1]);
+
+                        lineList.emplace_back(path.back(), path.front());
+                    }
+                }
+                else
+                {
+                    // This segment contains its linesegments in its fill polygons
+                    lineList.reserve(lineList.size() + seg.fillLines.size());
+                    lineList.insert(lineList.end(), seg.fillLines.begin(), seg.fillLines.end());
+                }
+
+                // Store the outline linesegments for later use
+                if (seg.type == SegmentType::OutlineSegment)
+                    outlineSegments.push_back(lineList);
+
+                // Move to the next segment if this one does not have any lines
+                if (lineList.size() < 1)
+                    continue;
+
+                // We now have to determine if we still need to move to the island
+                if (firstInIsle && !firstInLayer)
+                {
+                    // If we still have to move to this island then we should retract filament if needed and then create a
+                    // direct move to the first point of the segment
+
+                    if (GlobalSettings::RetractionSpeed.Get() > 0 && GlobalSettings::RetractionDistance.Get() > 0)
+                    {
+                        // Create a retraction because we are now moving to a new island only if we have moved more than the miniumum distance (5mm)
+                        const cInt minDist = 10 * scaleFactor;
+                        const cInt minDist2 = minDist * minDist;
+
+                        //if (SquaredDist(lastPoint, lineList[0].p1) > minDist2)
+
+                    }
+                }
+            }
+        }
+    }
 }
 
 static inline void StoreGCode(std::string outFilePath)
