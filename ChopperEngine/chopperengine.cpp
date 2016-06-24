@@ -53,20 +53,6 @@ struct LineSegment
         p1(_p1), p2(_p2) {}
 };
 
-/*struct FloatLineSegment
-{
-    Point2 p1, p2;
-
-    FloatLineSegment(Point2 _p1, Point2 _p2) :
-        p1(_p1), p2(_p2) {}
-
-    FloatLineSegment(IntPoint _p1, IntPoint _p2)
-    {
-        p1 = Point2((float)((double)_p1.X / scaleFactor), (float)((double)_p1.Y / scaleFactor));
-        p1 = Point2((float)((double)_p2.X / scaleFactor), (float)((double)_p2.Y / scaleFactor));
-    }
-};*/
-
 enum SegmentType
 {
     OutlineSegment,
@@ -95,19 +81,27 @@ struct RetractSegment : public ToolSegment
     cInt distance;
 };
 
-// TODO: create specialized segment types to save memory
 struct LayerSegment
 {
     Paths outlinePaths;
     SegmentType type;
     int segmentSpeed;
-    float infillMultiplier = 1.0f;
-    std::vector<LineSegment> fillLines;
-    float fillDensity = 1.0;
     std::vector<ToolSegment> toolSegments;
 
     LayerSegment(SegmentType _type) :
         type(_type) {}
+
+    virtual ~LayerSegment() {}
+};
+
+struct SegmentWithInfill : public LayerSegment
+{
+    float infillMultiplier = 1.0f;
+    float fillDensity = 1.0;
+    std::vector<LineSegment> fillLines;
+
+    SegmentWithInfill(SegmentType _type) :
+        LayerSegment(_type) {}
 };
 
 struct LayerIsland
@@ -654,7 +648,7 @@ static inline void GenerateOutlineSegments()
             for (std::size_t j = 0; j < GlobalSettings::ShellThickness.Get(); j++)
             {
                 // Place the newly created outline in its own segment
-                LayerSegment outlineSegment(SegmentType::OutlineSegment);
+                SegmentWithInfill outlineSegment(SegmentType::OutlineSegment);
                 outlineSegment.segmentSpeed = layerComp.layerSpeed;
                 outlineSegment.outlinePaths = outline;
                 isle.segments.push_back(outlineSegment);
@@ -799,7 +793,7 @@ static inline void CalculateTopBottomSegments()
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                LayerSegment topSegment(SegmentType::TopSegment);
+                SegmentWithInfill topSegment(SegmentType::TopSegment);
                 clipper.Clear();
                 clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
                 clipper.AddPaths(aboveIntersection, PolyType::ptClip, true);
@@ -824,7 +818,7 @@ static inline void CalculateTopBottomSegments()
         {
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                LayerSegment topSegment(SegmentType::TopSegment);
+                SegmentWithInfill topSegment(SegmentType::TopSegment);
                 topSegment.outlinePaths = isle.outlinePaths;
                 // All top segments are probably bridges
                 // TODO: implement bridge speed
@@ -882,7 +876,7 @@ static inline void CalculateTopBottomSegments()
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                LayerSegment bottomSegment(SegmentType::BottomSegment);
+                SegmentWithInfill bottomSegment(SegmentType::BottomSegment);
                 clipper.Clear();
                 clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
                 clipper.AddPaths(belowIntersection, PolyType::ptClip, true);
@@ -906,7 +900,7 @@ static inline void CalculateTopBottomSegments()
         {
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                LayerSegment bottomSegment(SegmentType::BottomSegment);
+                SegmentWithInfill bottomSegment(SegmentType::BottomSegment);
                 bottomSegment.outlinePaths = isle.outlinePaths;
                 // Initial bottom segments should not be bridges
                 bottomSegment.segmentSpeed = GlobalSettings::InfillSpeed.Get();
@@ -945,7 +939,7 @@ static inline void CalculateInfillSegments()
                 clipper.AddPaths(seg.outlinePaths, PolyType::ptClip, true);
             }
 
-            LayerSegment infillSeg(SegmentType::InfillSegment);
+            SegmentWithInfill infillSeg(SegmentType::InfillSegment);
             infillSeg.segmentSpeed = GlobalSettings::InfillSpeed.Get();
 
             // We then need to perform a difference operation to determine the infill segments
@@ -1067,11 +1061,11 @@ static inline void CombineInfillSegmetns()
             if (commonInfill.size() < 1)
                 continue;
 
-            mainIsle.segments.emplace_back(SegmentType::InfillSegment);
-            LayerSegment &infillSegment = mainIsle.segments.back();
-            infillSegment.infillMultiplier = combCount; // TODO: maybe different variable
-            infillSegment.segmentSpeed = GlobalSettings::InfillSpeed.Get();
-            infillSegment.outlinePaths = commonInfill;
+            mainIsle.segments.emplace_back(SegmentWithInfill(SegmentType::InfillSegment));
+            SegmentWithInfill *infillSegment = (SegmentWithInfill*)(&mainIsle.segments.back());
+            infillSegment->infillMultiplier = combCount; // TODO: maybe different variable
+            infillSegment->segmentSpeed = GlobalSettings::InfillSpeed.Get();
+            infillSegment->outlinePaths = commonInfill;
         }
     }
 }
@@ -1117,33 +1111,37 @@ static inline void TimInfill()
     {
         for (LayerIsland &isle : layerComponents[i].islandList)
         {
-            for (LayerSegment &seg : isle.segments)
-            {
-                if (seg.type == SegmentType::InfillSegment)
+            for (LayerSegment &segment : isle.segments)
+            {             
+                if (SegmentWithInfill* seg = dynamic_cast<SegmentWithInfill*>(&segment))
                 {
-                    // If the segment is an infill segment then we need to trim the correlating infill grid to fill it
-                    const float density = 15.0f; // TODO
+                    bool goRight = right;
+                    float density;
 
-                    ClipLinesToPaths(seg.fillLines, (right) ? InfillGridMap[density].rightList :
-                                                              InfillGridMap[density].leftList, seg.outlinePaths);
-                    seg.fillDensity = density;
+                    switch (seg->type)
+                    {
+                    case SegmentType::InfillSegment:
+                        // If the segment is an infill segment then we need to trim the correlating infill grid to fill it
+                        density = 0.15f; // TODO
+                        break;
+                    case SegmentType::BottomSegment: case SegmentType::TopSegment:
+                        // If this is a top or bottom segment then we need to trim the solid infill grid to fill it
+                        density = 1.0f;
+                        break;
+                    case SegmentType::SupportSegment:
+                        // If this is a support segment then we need to trim the support infill grid to fill it
+                        density = 0.1f; // TODO
+                        goRight = false;
+                        break;
+                    default:
+                        std::cout << "Unhandled infill segment of type: " << seg->type << std::endl;
+                        break;
+                    }
+
+                    ClipLinesToPaths(seg->fillLines, (goRight) ? InfillGridMap[density].rightList :
+                                                              InfillGridMap[density].leftList, seg->outlinePaths);
+                    seg->fillDensity = density;
                 }
-                else if (seg.type == SegmentType::BottomSegment || seg.type == SegmentType::TopSegment)
-                {
-                    // If this is a top or bottom segment then we need to trim the solid infill grid to fill it
-                    ClipLinesToPaths(seg.fillLines, (right) ? InfillGridMap[1.0f].rightList :
-                                                              InfillGridMap[1.0f].leftList, seg.outlinePaths);
-                    seg.fillDensity = 1.0f;
-                }
-                else if (seg.type == SegmentType::SupportSegment)
-                {
-                    // If this is a support segment then we need to trim the support infill grid to fill it
-                    const float density = 10.0f; // TODO
-                    ClipLinesToPaths(seg.fillLines, InfillGridMap[density].leftList, seg.outlinePaths);
-                    seg.fillDensity = density;
-                }
-                else
-                    continue;
             }
         }
 
@@ -1186,10 +1184,15 @@ static inline void CalculateToolpath()
             {
                 // We need to convert all the polygons in the segment into lines so that we can do our calculations
                 LineList lineList;
-                if (seg.type == SegmentType::OutlineSegment || seg.type == SegmentType::SkirtSegment)
+                if (SegmentWithInfill* segment = dynamic_cast<SegmentWithInfill*>(&seg))
+                {
+                    // This segment contains its linesegments in its fill polygons
+                    lineList.reserve(lineList.size() + segment->fillLines.size());
+                    lineList.insert(lineList.end(), segment->fillLines.begin(), segment->fillLines.end());
+                }
+                else
                 {
                     // This segment contains its linesegments in its outline polygons
-
                     for (Path &path : seg.outlinePaths)
                     {
                         if (path.size() < 3)
@@ -1200,12 +1203,6 @@ static inline void CalculateToolpath()
 
                         lineList.emplace_back(path.back(), path.front());
                     }
-                }
-                else
-                {
-                    // This segment contains its linesegments in its fill polygons
-                    lineList.reserve(lineList.size() + seg.fillLines.size());
-                    lineList.insert(lineList.end(), seg.fillLines.begin(), seg.fillLines.end());
                 }
 
                 // Store the outline linesegments for later use
