@@ -53,7 +53,7 @@ struct LineSegment
         p1(_p1), p2(_p2) {}
 };
 
-enum SegmentType
+enum class SegmentType
 {
     OutlineSegment,
     InfillSegment,
@@ -64,21 +64,46 @@ enum SegmentType
     RaftSegment
 };
 
-enum ToolSegType
+enum class ToolSegType
 {
     Retraction,
-    Moved,
+    Move,
     Extruded
 };
 
 struct ToolSegment
 {
     ToolSegType type;
+
+    ToolSegment(ToolSegType _type)
+        : type(_type) {}
+
+    virtual ~ToolSegment() {}
 };
 
 struct RetractSegment : public ToolSegment
 {
     cInt distance;
+
+    RetractSegment(cInt dist)
+        : ToolSegment(ToolSegType::Retraction), distance(dist) {}
+};
+
+struct IntPoint3
+{
+    cInt X, Y, Z;
+
+    IntPoint3(cInt x, cInt y, cInt z) :
+        X(x), Y(y), Z(z) {}
+};
+
+struct MoveSegment : public ToolSegment
+{
+    IntPoint3 p1, p2;
+    int speed;
+
+    MoveSegment(const IntPoint3& _p1, const IntPoint3& _p2, const int _speed)
+        : ToolSegment(ToolSegType::Retraction), p1(_p1), p2(_p2), speed(_speed) {}
 };
 
 struct LayerSegment
@@ -108,23 +133,6 @@ struct LayerIsland
 {
     Paths outlinePaths;
     std::vector<LayerSegment> segments;
-};
-
-struct IntPoint3
-{
-    cInt X, Y, Z;
-
-    IntPoint3(cInt x, cInt y, cInt z) :
-        X(x), Y(y), Z(z) {}
-};
-
-struct MoveSegment
-{
-    IntPoint3 p1, p2;
-    int speed;
-
-    MoveSegment(IntPoint3 _p1, IntPoint3 _p2, int _speed) :
-        p1(_p1), p2(_p2), speed(_speed) {}
 };
 
 struct LayerComponent
@@ -1122,19 +1130,19 @@ static inline void TimInfill()
                     {
                     case SegmentType::InfillSegment:
                         // If the segment is an infill segment then we need to trim the correlating infill grid to fill it
-                        density = 0.15f; // TODO
+                        density = 15.0f; // TODO
                         break;
                     case SegmentType::BottomSegment: case SegmentType::TopSegment:
                         // If this is a top or bottom segment then we need to trim the solid infill grid to fill it
-                        density = 1.0f;
+                        density = 100.0f;
                         break;
                     case SegmentType::SupportSegment:
                         // If this is a support segment then we need to trim the support infill grid to fill it
-                        density = 0.1f; // TODO
+                        density = 10.0f; // TODO
                         goRight = false;
                         break;
                     default:
-                        std::cout << "Unhandled infill segment of type: " << seg->type << std::endl;
+                        std::cout << "Unhandled infill segment of type number: " << (int)seg->type << std::endl;
                         break;
                     }
 
@@ -1218,16 +1226,24 @@ static inline void CalculateToolpath()
                 {
                     // If we still have to move to this island then we should retract filament if needed and then create a
                     // direct move to the first point of the segment
-
                     if (GlobalSettings::RetractionSpeed.Get() > 0 && GlobalSettings::RetractionDistance.Get() > 0)
                     {
                         // Create a retraction because we are now moving to a new island only if we have moved more than the miniumum distance (5mm)
                         const cInt minDist = 10 * scaleFactor;
                         const cInt minDist2 = minDist * minDist;
 
-                        //if (SquaredDist(lastPoint, lineList[0].p1) > minDist2)
-
+                        if (SquaredDist(lastPoint, lineList[0].p1) > minDist2)
+                            seg.toolSegments.emplace_back(RetractSegment(GlobalSettings::RetractionDistance.Get()));
                     }
+
+                    lastPoint = lineList[0].p1;
+                    firstInIsle = false;
+                }
+                else
+                {
+                    // If we were already in this island then we need to move inside the island from the last point to the first
+                    // point in the segment
+
                 }
             }
         }
