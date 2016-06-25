@@ -6,6 +6,7 @@
 #include <map>
 #include <limits>
 #include <algorithm>
+#include <fstream>
 
 using namespace ChopperEngine;
 using namespace ClipperLib;
@@ -17,6 +18,8 @@ static LogDelegate slicerLogger = nullptr;
 // Scale double to ints with this factor
 static double scaleFactor = 1000000.0;
 const double PI = 3.14159265358979323846;
+const float NozzleWidth = 0.5f;
+const float FilamentWidth = 2.8f;
 
 void ChopperEngine::SlicerLog(std::string message)
 {
@@ -76,7 +79,7 @@ enum class SegmentType
 enum class ToolSegType
 {
     Retraction,
-    Move,
+    Travel,
     Extruded
 };
 
@@ -107,36 +110,70 @@ struct IntPoint3
 
     IntPoint3(const IntPoint &ip, cInt z) :
         X(ip.X), Y(ip.Y), Z(z) {}
+
+    bool operator ==(const IntPoint3 &b)
+    {
+        return (X == b.X) && (Y == b.Y) && (Z == b.Z);
+    }
 };
 
-struct MoveSegment : public ToolSegment
+struct MovingSegment : public ToolSegment
 {
     IntPoint3 p1, p2;
     int speed;
 
-    MoveSegment(const IntPoint3& _p1, const IntPoint3& _p2, const int _speed)
-        : ToolSegment(ToolSegType::Move), p1(_p1), p2(_p2), speed(_speed) {}
+    MovingSegment(ToolSegType _type, const IntPoint3& _p1, const IntPoint3& _p2, const int _speed)
+        : ToolSegment(_type), p1(_p1), p2(_p2), speed(_speed) {}
 
-    MoveSegment(const IntPoint& _p1, const IntPoint& _p2, cInt Z, const int _speed)
-        : ToolSegment(ToolSegType::Move), p1(_p1, Z), p2(_p2, Z), speed(_speed) {}
+    MovingSegment(ToolSegType _type, const IntPoint& _p1, const IntPoint& _p2, cInt Z, const int _speed)
+        : ToolSegment(_type), p1(_p1, Z), p2(_p2, Z), speed(_speed) {}
 
-    MoveSegment(const IntPoint& P, cInt Z1, cInt Z2, const int _speed)
-        : ToolSegment(ToolSegType::Move), p1(P, Z1), p2(P, Z2), speed(_speed) {}
+    cInt MoveDistance()
+    {
+        return (cInt)(std::sqrt(std::pow((long)p2.X - (long)p1.X, 2) +
+                         std::pow((long)p2.Y - (long)p1.Y, 2) + std::pow((long)p2.Z - (long)p1.Z, 2)));
+    }
 };
 
-struct ExtrudeSegment : public ToolSegment
+struct TravelSegment : public MovingSegment
 {
-    IntPoint3 p1, p2;
-    int speed;
+    TravelSegment(const IntPoint3& _p1, const IntPoint3& _p2, const int _speed)
+        : MovingSegment(ToolSegType::Travel, _p1, _p2, _speed) {}
 
+    TravelSegment(const IntPoint& _p1, const IntPoint& _p2, cInt Z, const int _speed)
+        : MovingSegment(ToolSegType::Travel, _p1, _p2, Z, _speed) {}
+
+    TravelSegment(const IntPoint& P, cInt Z1, cInt Z2, const int _speed)
+        : MovingSegment(ToolSegType::Travel, IntPoint3(P, Z1), IntPoint3(P, Z2), _speed) {}
+};
+
+struct ExtrudeSegment : public MovingSegment
+{
     ExtrudeSegment(const IntPoint3& _p1, const IntPoint3& _p2, const int _speed)
-        : ToolSegment(ToolSegType::Extruded), p1(_p1), p2(_p2), speed(_speed) {}
+        : MovingSegment(ToolSegType::Extruded, _p1, _p2, _speed) {}
 
     ExtrudeSegment(const IntPoint& _p1, const IntPoint& _p2, cInt Z, const int _speed)
-        : ToolSegment(ToolSegType::Extruded), p1(_p1, Z), p2(_p2, Z), speed(_speed) {}
+        : MovingSegment(ToolSegType::Extruded, _p1, _p2, Z, _speed) {}
 
     ExtrudeSegment(const LineSegment& line, cInt Z, const int _speed)
-        : ToolSegment(ToolSegType::Extruded), p1(line.p1, Z), p2(line.p2, Z), speed(_speed) {}
+        : MovingSegment(ToolSegType::Extruded, IntPoint3(line.p1, Z), IntPoint3(line.p2, Z), _speed) {}
+
+    double ExtrusionDistance()
+    {
+        if (GlobalSettings::LayerHeight.Get() == 0)
+            return 0;
+
+        // First we need to calculate the volume of the segment
+        double volume = (MoveDistance() / scaleFactor) * GlobalSettings::LayerHeight.Get() / NozzleWidth;
+
+        // We then need to calculate how much smaller the extrusion is from the filament so that
+        // we know how much filament to use to get the desired amount of extrusion
+        double filamentToTip =  FilamentWidth / NozzleWidth;
+
+        // We can then return the amount of filament needed for the extrusion of the move
+        return volume / filamentToTip / 5; //Not sure why the 5 is needed
+        // TODO: the above is not 100% correct
+    }
 };
 
 struct LayerSegment
@@ -175,7 +212,7 @@ struct LayerComponent
     std::vector<LayerIsland> islandList;
     int layerSpeed = 100; // TODO
     int moveSpeed = 100; // TODO
-    std::vector<MoveSegment> initialLayerMoves;
+    std::vector<TravelSegment> initialLayerMoves;
 };
 
 struct InfillGrid
@@ -654,8 +691,6 @@ static inline void OptimizeOutlinePaths()
         }
     }
 }
-
-const float NozzleWidth = 0.5f;
 
 static inline void GenerateOutlineSegments()
 {
@@ -1269,7 +1304,7 @@ static inline void CalculateToolpath()
                 }
 
                 // Create the actual move segment
-                seg.toolSegments.emplace_back(MoveSegment(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed));
+                seg.toolSegments.emplace_back(TravelSegment(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed));
 
                 // Remember if the last line in the segment had swapped points
                 bool lastSwapped = false;
@@ -1324,7 +1359,7 @@ static inline void CalculateToolpath()
 
                         // TODO: it should not be possible for this to happen
                         std::cout << "Infill point did not intersect outline" << std::endl;
-                        seg.toolSegments.emplace_back(MoveSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                        seg.toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
                         seg.toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg.segmentSpeed));
                         p1 = p2;
                         continue; // Next line
@@ -1333,7 +1368,7 @@ static inline void CalculateToolpath()
 
                         // Determine if the other point is on the same line
                         if (Colinear(pA, p2, pB))
-                            seg.toolSegments.emplace_back(MoveSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                            seg.toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
                         else
                         {
                             // Otherwise check if they are on the same polygon
@@ -1374,29 +1409,29 @@ static inline void CalculateToolpath()
                             }
 
                             if (noInter)
-                                seg.toolSegments.emplace_back(MoveSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                                seg.toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
                             else
                             {
                                 // Move along the outline
                                 if (forwards)
                                 {
-                                    seg.toolSegments.emplace_back(MoveSegment(p1, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed));
+                                    seg.toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed));
 
                                     for (std::size_t k = interIdx + 1; k < i; k++)
-                                        seg.toolSegments.emplace_back(MoveSegment(interPath->at(k), interPath->at(k + 1),
+                                        seg.toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k + 1),
                                                                                   lastZ, curLayer.moveSpeed));
 
-                                    seg.toolSegments.emplace_back(MoveSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
+                                    seg.toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
                                 }
                                 else
                                 {
-                                    seg.toolSegments.emplace_back(MoveSegment(p1, interPath->at(interIdx), lastZ, curLayer.moveSpeed));
+                                    seg.toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx), lastZ, curLayer.moveSpeed));
 
                                     for (std::size_t k = interIdx; k > i; k++)
-                                        seg.toolSegments.emplace_back(MoveSegment(interPath->at(k), interPath->at(k - 1),
+                                        seg.toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k - 1),
                                                                                   lastZ, curLayer.moveSpeed));
 
-                                    seg.toolSegments.emplace_back(MoveSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
+                                    seg.toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
                                 }
                             }
                         }
@@ -1421,6 +1456,182 @@ static inline void StoreGCode(std::string outFilePath)
 {
     //  TODO: implement this
     SlicerLog("Storing GCode");
+
+    std::ofstream os(outFilePath);
+
+    if (!os)
+    {
+        std::cout << "Could not write gcode file." << std::endl;
+        return;
+    }
+
+    float currentE = 0.0f;
+    float prevX = 0.0f;
+    float prevY = 0.0f;
+    float prevZ = 0.0f;
+    int prev0F = 0;
+    int prev1F = 0;
+    bool retracted = false;
+
+    os << ";Total amount of layer: " << layerCount << std::endl;
+    os << ";Estimated time: " << 0 << std::endl; // TODO
+    os << ";Estimated filament: " << 0 << std::endl; // TODO
+    os << "G21" << std::endl;
+    os << "G90" << std::endl;
+    os << "G28 X0 Y0 Z0" << std::endl;
+    if (GlobalSettings::PrintTemperature.Get() != -1)
+        os << "M109 T0 S" << GlobalSettings::PrintTemperature.Get() << std::endl;
+    os << "G92 E0" << std::endl;
+    os << "G1 F600" << std::endl;
+
+    for (std::size_t layerNum = 0; layerNum < layerCount; layerCount++)
+    {
+        const LayerComponent &layer = layerComponents[layerNum];
+        os << ";Layer: " << layerNum << std::endl;
+
+        for (const TravelSegment &move : layer.initialLayerMoves)
+        {
+            os << "G0";
+
+            float newX = (float)(move.p2.X / scaleFactor);
+            float newY = (float)(move.p2.Y / scaleFactor);
+            float newZ = (float)(move.p2.Z / scaleFactor);
+
+            if (newX != prevX)
+            {
+                prevX = newX;
+                os << " X" << prevX;
+            }
+
+            if (newY != prevY)
+            {
+                prevY = newY;
+                os << " Y" << prevY;
+            }
+
+            if (newZ != prevZ)
+            {
+                prevZ = newZ;
+                os << " Z" << prevZ;
+            }
+
+            if (move.speed != prev0F)
+            {
+                prev0F = move.speed;
+                os << " F" << prev0F;
+            }
+
+            os << std::endl;
+        }
+
+        for (const LayerIsland &isle : layer.islandList)
+        {
+            os << ";Island" << std::endl;
+
+            for (const LayerSegment &seg : isle.segments)
+            {
+                os << ";Segment: " << (int)seg.type << std::endl; // TODO
+
+                for (ToolSegment ts : seg.toolSegments)
+                {
+                    if (ts.type == ToolSegType::Retraction)
+                    {
+                        os << "G1";
+                        os << " E" << (currentE - (float)(((RetractSegment*)(&ts))->distance / scaleFactor));
+
+                        if (GlobalSettings::RetractionSpeed.Get() != prev1F)
+                        {
+                            prev1F = GlobalSettings::RetractionSpeed.Get();
+                            os << " F" << prev1F;
+                        }
+
+                        os << std::endl;
+                        retracted = true;
+                    }
+                    else if (MovingSegment* ms = dynamic_cast<MovingSegment*>(&ts))
+                    {
+                        if (ms->p1 == ms->p2)
+                            continue;
+
+                        if (ms->type == ToolSegType::Extruded)
+                        {   
+                            // If the printhead has retracted then we first need to get it back at the correct e before continuing
+                            if (retracted)
+                            {
+                                os << "G1 E" << currentE;
+                                retracted = false;
+                            }
+
+                            os << "G1";
+                        }
+                        else
+                            os << "G0";
+
+                        float newX = (float)(ms->p2.X / scaleFactor);
+                        float newY = (float)(ms->p2.Y / scaleFactor);
+                        float newZ = (float)(ms->p2.Z / scaleFactor);
+
+                        if (newX != prevX)
+                        {
+                            prevX = newX;
+                            os << " X" << prevX;
+                        }
+
+                        if (newY != prevY)
+                        {
+                            prevY = newY;
+                            os << " Y" << prevY;
+                        }
+
+                        if (newZ != prevZ)
+                        {
+                            prevZ = newZ;
+                            os << " Z" << prevZ;
+                        }
+
+                        if (ms->type == ToolSegType::Extruded)
+                        {
+                            ExtrudeSegment *es = (ExtrudeSegment*)(ms);
+
+                            // The e position should always change so there is no need to check if it changed
+                            currentE += es->ExtrusionDistance(); // *layer.InfillMulti
+
+                            os << " E" << currentE;
+
+                            if (ms->speed != prev1F)
+                            {
+                                prev1F = ms->speed;
+                                os << " F" << prev1F;
+                            }
+                        }
+                        else
+                        {
+                            if (ms->speed != prev0F)
+                            {
+                                prev0F = ms->speed;
+                                os << " F" << prev0F;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        std::cout << "Trying to write unsopported segment to gcode." << std::endl;
+                        os << ";";
+                    }
+
+                    os << std::endl;
+                }
+            }
+        }
+    }
+
+    os << "M104 S0" << std::endl;
+    os << "G91" << std::endl;
+    os << "G1 Z+0.5 E-5 X-15 Y-15 F4800" << std::endl;
+    os << "G28 X0 Y0" << std::endl;
+
+    os.flush();
+    os.close();
 }
 
 void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
