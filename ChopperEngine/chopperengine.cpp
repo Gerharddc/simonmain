@@ -252,6 +252,20 @@ static inline void SliceTrigsToLayers()
 {
     SlicerLog("Slicing triangles into layers");
 
+    /*for (std::size_t j = 0; j < sliceMesh->trigCount; j++)
+    {
+        Triangle &trig = sliceMesh->trigs[j];
+        double x[3], y[3], z[3];
+        getTrigPointFloats(trig, x, 0);
+        getTrigPointFloats(trig, y, 1);
+        getTrigPointFloats(trig, z, 2);
+
+        std::cout << "Trig: " << j << std::endl;
+        std::cout << "V1 X:" << x[0] << " Y:" << y[0] << " Z:" << z[0] << std::endl;
+        std::cout << "V2 X:" << x[1] << " Y:" << y[1] << " Z:" << z[1] << std::endl;
+        std::cout << "V3 X:" << x[2] << " Y:" << y[2] << " Z:" << z[2] << std::endl;
+    }*/
+
     for (std::size_t i = 0; i < layerCount; i++)
     {
         double zPoint = (double)i * GlobalSettings::LayerHeight.Get();
@@ -267,7 +281,7 @@ static inline void SliceTrigsToLayers()
             getTrigPointFloats(trig, z, 2);
             double minZ = std::min(z[0], std::min(z[1], z[2]));
             double maxZ = std::max(z[0], std::max(z[1], z[2]));
-            if (zPoint <= maxZ && zPoint >= minZ)
+            if (minZ != maxZ && zPoint <= maxZ && zPoint >= minZ)
             {
                 // Determine at which points the z is on the triangle
 
@@ -285,7 +299,7 @@ static inline void SliceTrigsToLayers()
                         c = 1;
                         set = true;
                     }
-                    else if (zPoint == z[3])
+                    else if (zPoint == z[2])
                     {
                         a = 1;
                         b = 2;
@@ -310,9 +324,9 @@ static inline void SliceTrigsToLayers()
                     if ((zPoint <= z[0] && zPoint >= z[1]) || (zPoint >= z[0] && zPoint <= z[1]))
                         oneTwo = true;
                     if ((zPoint <= z[0] && zPoint >= z[2]) || (zPoint >= z[0] && zPoint <= z[2]))
-                        oneTwo = true;
-                    if ((zPoint <= z[1] && zPoint >= z[2]) || (zPoint >= z[1] && zPoint <= z[3]))
-                        oneTwo = true;
+                        oneThree = true;
+                    if ((zPoint <= z[1] && zPoint >= z[2]) || (zPoint >= z[1] && zPoint <= z[2]))
+                        twoThree = true;
 
                     if (oneTwo && oneThree)
                     {
@@ -336,16 +350,16 @@ static inline void SliceTrigsToLayers()
 
                 double x[3], y[3];
                 getTrigPointFloats(trig, x, 0);
-                getTrigPointFloats(trig, y, 0);
+                getTrigPointFloats(trig, y, 1);
 
                 // First calculate the relationship of z to x on the one side of the triangle
-                double zToX1 = (z[a] != z[b]) ? (x[a] - x[b] / z[a] - z[b]) : 0;
+                double zToX1 = (z[a] != z[b]) ? ((x[a] - x[b]) / (z[a] - z[b])) : 0;
                 // Then calculate the relationship of z to y on the one side of the triangle
-                double zToY1 = (z[a]  != z[b]) ? (y[a] - y[b] / z[a] - z[b]) : 0;
+                double zToY1 = (z[a]  != z[b]) ? ((y[a] - y[b]) / (z[a] - z[b])) : 0;
                 // Then calculate the relationship of z to x on the other side of the triangle
-                double zToX2 = (z[a]  != z[c]) ? (x[a] - x[c] / z[a] - z[c]) : 0;
+                double zToX2 = (z[a]  != z[c]) ? ((x[a] - x[c]) / (z[a] - z[c])) : 0;
                 // Then calculate the relationship of z to y on the other side of the triangle
-                double zToY2 = (z[a]  != z[c]) ? (y[a] - y[c] / z[a] - z[c]) : 0;
+                double zToY2 = (z[a]  != z[c]) ? ((y[a] - y[c]) / (z[a] - z[c])) : 0;
 
                 // Now calculate the z rise above pointB
                 double zRise1 = zPoint - z[b];
@@ -353,14 +367,17 @@ static inline void SliceTrigsToLayers()
                 double zRise2 = zPoint - z[c];
 
                 // We can now calculatet the x and y points on both sides of the triangle using the z rises that were calculated above
-                IntPoint p1 = IntPoint((cInt)(x[b] + zToX1 * zRise1 * scaleFactor),
-                                       (cInt)(y[b] + zToY1 * zRise1 * scaleFactor));
-                IntPoint p2 = IntPoint((cInt)(x[c] + zToX2 * zRise2 * scaleFactor),
-                                       (cInt)(y[c] + zToY2 * zRise2 * scaleFactor));
+                IntPoint p1 = IntPoint((cInt)((x[b] + zToX1 * zRise1) * scaleFactor),
+                                       (cInt)((y[b] + zToY1 * zRise1) * scaleFactor));
+                IntPoint p2 = IntPoint((cInt)((x[c] + zToX2 * zRise2) * scaleFactor),
+                                       (cInt)((y[c] + zToY2 * zRise2) * scaleFactor));
 
-                // Add the line and keep of track of which face it relates to
-                layerComponents[i].faceToLineIdxs.insert(std::make_pair(j, lineList.size()));
-                lineList.push_back(TrigLineSegment(p1, p2, j));
+                if (p1 != p2)
+                {
+                    // Add the line and keep of track of which face it relates to
+                    layerComponents[i].faceToLineIdxs.insert(std::make_pair(j, lineList.size()));
+                    lineList.push_back(TrigLineSegment(p1, p2, j));
+                }
             }
         }
     }
@@ -409,7 +426,7 @@ static inline void CalculateIslandsFromInitialLines()
 
     for (std::size_t i = 0; i < layerCount; i++)
     {
-        SlicerLog("Calculating islands for layer: " + i);
+        SlicerLog("Calculating islands for layer: " + std::to_string(i));
         LayerComponent &layerComp = layerComponents[i];
         std::vector<TrigLineSegment> &lineList = layerComp.initialLineList;
 
@@ -1639,25 +1656,28 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     sliceMesh = inputMesh;
 
     // Calculate the amount layers that will be sliced
-    layerCount = (std::size_t)(sliceMesh->MaxVec.z / GlobalSettings::LayerHeight.Get());
+    layerCount = (std::size_t)(sliceMesh->MaxVec.z / GlobalSettings::LayerHeight.Get()) + 1;
 
-    if (layerComponents != nullptr)
+    /*if (layerComponents != nullptr)
         layerComponents = (LayerComponent*)realloc(layerComponents, sizeof(LayerComponent) * layerCount);
     else
-        layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);
+        layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);*/
+    layerComponents = new LayerComponent[layerCount];
 
-    for (std::size_t i = 0; i < layerCount; i++)
-        layerComponents[i] = LayerComponent();
+    //for (std::size_t i = 0; i < layerCount; i++)
+      //  layerComponents[i] = LayerComponent();
 
     // Slice the triangles into layers
     SliceTrigsToLayers();
 
     // Calculate islands from the original lines
+    CalculateIslandsFromInitialLines();
+
     // Optimize the outline polygons
-    OptimizeOutlinePaths();
+    //OptimizeOutlinePaths();
 
     // Generate the outline segments
-    GenerateOutlineSegments();
+    /*GenerateOutlineSegments();
 
     // Generate the infill grids
     GenerateInfillGrids();
@@ -1689,9 +1709,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateToolpath();
 
     // Write the toolpath as gcode
-    StoreGCode(outputFile);
+    StoreGCode(outputFile);*/
 
     // Free the memory
-    if (layerComponents != nullptr)
-        free(layerComponents);
+    //if (layerComponents != nullptr)
+      //  free(layerComponents);
+    //delete layerComponents;
 }
