@@ -460,7 +460,7 @@ static inline void CalculateIslandsFromInitialLines()
 
                 for (uint8_t j = 0; j < 3; j++)
                 {
-                    Vertex &v = VertAtIdx(TrigAtIdx(curLine.trigIdx).vertIdxs[j]);
+                    Vertex &v = VertAtIdx(TrigAtIdx(lineList[lineIdx].trigIdx).vertIdxs[j]);
 
                     for (std::size_t touchIdx : v.trigIdxs)
                     {
@@ -469,6 +469,10 @@ static inline void CalculateIslandsFromInitialLines()
                         if (touchLineItr == layerComp.faceToLineIdxs.end())
                             continue;
                         std::size_t touchLineIdx = touchLineItr->second;
+
+                        // Do not check a line against itself
+                        if (touchLineIdx == lineIdx)
+                            continue;
 
                         TrigLineSegment &touchLine = lineList[touchLineIdx];
 
@@ -486,6 +490,10 @@ static inline void CalculateIslandsFromInitialLines()
                         {
                             if (touchLineIdx == i)
                             {
+                                // If closed then the last point will be the same as the first and should
+                                // be removed
+                                path.pop_back();
+
                                 closed = true;
                                 break;
                             }
@@ -514,6 +522,7 @@ static inline void CalculateIslandsFromInitialLines()
 
         // The list is no longer needed and can be removed to save memory
         lineList.clear();
+        lineList.shrink_to_fit();
 
         for (std::size_t j = 0; j < openPaths.size(); j++)
         {
