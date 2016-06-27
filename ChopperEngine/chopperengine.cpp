@@ -644,6 +644,24 @@ static IntPoint operator-(const IntPoint &p1, const IntPoint &p2)
     return IntPoint(p1.X - p2.X, p1.Y - p2.Y);
 }
 
+static bool InALine(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
+{
+    // We calculate the cosine between p2p1 and p2p3 to see if they
+    // are almost in a straight line
+
+    IntPoint A = p1 - p2;
+    IntPoint B = p3 - p2;
+    double dotP = A.X * A.X + B.Y * B.Y;
+    double magA = std::sqrt(A.X * A.X + A.Y * A.Y);
+    double magB = std::sqrt(B.X * B.X + B.Y * B.Y);
+
+    double cos = dotP / (magA * magB);
+    const double thresh = std::cos(177.5 / 180.0 * PI);
+
+    // More negative cos is closer to 180 degrees
+    return (cos < thresh);
+}
+
 static inline void OptimizeOutlinePaths()
 {
     for (std::size_t a = 0; a < layerCount; a++)
@@ -652,7 +670,7 @@ static inline void OptimizeOutlinePaths()
 
         for (LayerIsland &isle : layerComp.islandList)
         {
-            for (std::size_t i; i < isle.outlinePaths.size(); i++)
+            for (std::size_t i = 0; i < isle.outlinePaths.size(); i++)
             {
                 Path &path = isle.outlinePaths[i];
                 Path optiPath;
@@ -661,53 +679,56 @@ static inline void OptimizeOutlinePaths()
                 // Go through each point and check if the next one is either
                 // too close or part of an almost straight line
                 std::size_t j = 0;
-                while (j < (path.size() - 1))
+                while (true)
                 {
                     IntPoint p1 = path[j];
 
-                    std::size_t k = j + 1;
-                    IntPoint p2 = path[k];
-
-                    // Skip past all the very close points
                     const cInt minDiff = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
-                    while ((k < path.size()) && (SquaredDist(p1, p2) < minDiff))
+                    if (j == path.size()-1)
                     {
-                        k++;
-                        p2 = path[k];
+                        // The last point should be checked differently to avoid checking the first point again
+                        IntPoint p2 = path[0];
+                        if ((SquaredDist(p1, p2) >= minDiff) && (!InALine(p1, p2, path[1])))
+                            optiPath.push_back(p2);
+
+                        break;
                     }
-
-                    // Skip past points almost in line with their following
-                    // and previous points
-                    bool notLine = false;
-                    while ((k < path.size()) && notLine)
+                    else
                     {
-                        IntPoint p3 = path[(k == path.size()) ? 0 : k + 1];
+                        std::size_t k = j + 1;
+                        IntPoint p2 = path[k];
 
-                        // We calculate the cosine between p2p1 and p2p3 to see if they
-                        // are almost in a straight line
-
-                        IntPoint A = p1 - p2;
-                        IntPoint B = p3 - p2;
-                        double dotP = A.X * A.X + B.Y * B.Y;
-                        double magA = std::sqrt(A.X * A.X + A.Y * A.Y);
-                        double magB = std::sqrt(B.X * B.X + B.Y * B.Y);
-
-                        double cos = dotP / (magA * magB);
-                        const double thresh = std::cos(177.5 / 180.0 * PI);
-
-                        // More negative cos is closer to 180 degrees
-                        if (cos < thresh)
+                        // Skip past all the very close points
+                        while ((k < path.size()) && (SquaredDist(p1, p2) < minDiff))
                         {
                             k++;
                             p2 = path[k];
                         }
-                        else
-                            notLine = true;
-                    }
 
-                    // We can now add the valid point and search for the next one
-                    optiPath.push_back(p2);
-                    j = k;
+                        // Skip past points almost in line with their following
+                        // and previous points
+                        bool inLine = true;
+                        while ((k < path.size()) && inLine)
+                        {
+                            IntPoint p3 = path[(k == path.size()) ? 0 : k + 1];
+
+                            if (InALine(p1, p2, p3))
+                            {
+                                k++;
+                                p2 = path[k];
+                            }
+                            else
+                                inLine = false;
+                        }
+
+                        if (k == path.size())
+                            j = path.size()-1;
+                        else
+                            j = k;
+
+                        // We can now add the valid point and search for the next one
+                        optiPath.push_back(p2);
+                    }
                 }
 
                 // Finally we can move to the optimized path
@@ -1683,7 +1704,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateIslandsFromInitialLines();
 
     // Optimize the outline polygons
-    //OptimizeOutlinePaths();
+    OptimizeOutlinePaths();
 
     // Generate the outline segments
     /*GenerateOutlineSegments();
