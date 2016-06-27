@@ -1,6 +1,7 @@
 #include "chopperengine.h"
 #include "Misc/globalsettings.h"
 #include "clipper.hpp"
+#include "pmvector.h"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -202,7 +203,8 @@ struct SegmentWithInfill : public LayerSegment
 struct LayerIsland
 {
     Paths outlinePaths;
-    std::vector<LayerSegment> segments;
+    //std::vector<LayerSegment> segments;
+    PMCollection<LayerSegment> segments;
 };
 
 struct LayerComponent
@@ -758,10 +760,9 @@ static inline void GenerateOutlineSegments()
             for (std::size_t j = 0; j < GlobalSettings::ShellThickness.Get(); j++)
             {
                 // Place the newly created outline in its own segment
-                SegmentWithInfill outlineSegment(SegmentType::OutlineSegment);
+                SegmentWithInfill &outlineSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::OutlineSegment);
                 outlineSegment.segmentSpeed = layerComp.layerSpeed;
                 outlineSegment.outlinePaths = outline;
-                isle.segments.push_back(outlineSegment);
                 cInt dist = halfNozzle - (cInt)(NozzleWidth * scaleFactor * (j + 1));
 
                 //We now shrink the outline with one extrusion width for the next shell if any
@@ -911,7 +912,7 @@ static inline void CalculateTopBottomSegments()
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                SegmentWithInfill topSegment(SegmentType::TopSegment);
+                SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
                 clipper.Clear();
                 clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
                 clipper.AddPaths(aboveIntersection, PolyType::ptClip, true);
@@ -924,8 +925,9 @@ static inline void CalculateTopBottomSegments()
                     topSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
                     // Extrude more for a bridge
                     topSegment.infillMultiplier = 2.0f;
-                    isle.segments.push_back(topSegment);
                 }
+                else
+                    isle.segments.pop_back<SegmentWithInfill>();
             }
         }
 
@@ -933,14 +935,13 @@ static inline void CalculateTopBottomSegments()
         {
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                SegmentWithInfill topSegment(SegmentType::TopSegment);
+                SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
                 topSegment.outlinePaths = isle.outlinePaths;
                 // All top segments are probably bridges
                 // TODO: implement bridge speed
                 topSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
                 // Extrude more for a bridge
                 topSegment.infillMultiplier = 2.0f;
-                isle.segments.push_back(topSegment);
             }
         }
     }
@@ -990,7 +991,7 @@ static inline void CalculateTopBottomSegments()
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                SegmentWithInfill bottomSegment(SegmentType::BottomSegment);
+                SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
                 clipper.Clear();
                 clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
                 clipper.AddPaths(belowIntersection, PolyType::ptClip, true);
@@ -1003,8 +1004,9 @@ static inline void CalculateTopBottomSegments()
                     bottomSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
                     // Extrude more for a bridge
                     bottomSegment.infillMultiplier = 2.0f;
-                    isle.segments.push_back(bottomSegment);
                 }
+                else
+                    isle.segments.pop_back<SegmentWithInfill>();
             }
         }
 
@@ -1013,11 +1015,10 @@ static inline void CalculateTopBottomSegments()
         {
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                SegmentWithInfill bottomSegment(SegmentType::BottomSegment);
+                SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
                 bottomSegment.outlinePaths = isle.outlinePaths;
                 // Initial bottom segments should not be bridges
                 bottomSegment.segmentSpeed = GlobalSettings::InfillSpeed.Get();
-                isle.segments.push_back(bottomSegment);
             }
         }
     }
@@ -1173,11 +1174,10 @@ static inline void CombineInfillSegmetns()
             if (commonInfill.size() < 1)
                 continue;
 
-            mainIsle.segments.emplace_back(SegmentWithInfill(SegmentType::InfillSegment));
-            SegmentWithInfill *infillSegment = (SegmentWithInfill*)(&mainIsle.segments.back());
-            infillSegment->infillMultiplier = combCount; // TODO: maybe different variable
-            infillSegment->segmentSpeed = GlobalSettings::InfillSpeed.Get();
-            infillSegment->outlinePaths = commonInfill;
+            SegmentWithInfill &infillSegment = mainIsle.segments.emplace<SegmentWithInfill>(SegmentType::InfillSegment);
+            infillSegment.infillMultiplier = combCount; // TODO: maybe different variable
+            infillSegment.segmentSpeed = GlobalSettings::InfillSpeed.Get();
+            infillSegment.outlinePaths = commonInfill;
         }
     }
 }
@@ -1709,7 +1709,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateInfillSegments();
 
     // Calculate the support segments
-    /*CalculateSupportSegments();
+    CalculateSupportSegments();
 
     // Combine the infill segments
     CombineInfillSegmetns();
@@ -1724,10 +1724,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     TrimInfill();
 
     // Calculate the toolpath
-    CalculateToolpath();
+    //CalculateToolpath();
 
     // Write the toolpath as gcode
-    StoreGCode(outputFile);*/
+    //StoreGCode(outputFile);
 
     // Free the memory
     //if (layerComponents != nullptr)
