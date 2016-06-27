@@ -1032,7 +1032,7 @@ static inline void CalculateInfillSegments()
 
     Clipper clipper;
 
-    for (std::size_t i = layerCount; i > 0; i--)
+    for (std::size_t i = layerCount-1; i > 0; i--)
     {
         for (LayerIsland &isle : layerComponents[i].islandList)
         {
@@ -1706,10 +1706,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateTopBottomSegments();
 
     // Calculate the infill segments
-    /*CalculateInfillSegments();
+    CalculateInfillSegments();
 
     // Calculate the support segments
-    CalculateSupportSegments();
+    /*CalculateSupportSegments();
 
     // Combine the infill segments
     CombineInfillSegmetns();
