@@ -252,20 +252,6 @@ static inline void SliceTrigsToLayers()
 {
     SlicerLog("Slicing triangles into layers");
 
-    /*for (std::size_t j = 0; j < sliceMesh->trigCount; j++)
-    {
-        Triangle &trig = sliceMesh->trigs[j];
-        double x[3], y[3], z[3];
-        getTrigPointFloats(trig, x, 0);
-        getTrigPointFloats(trig, y, 1);
-        getTrigPointFloats(trig, z, 2);
-
-        std::cout << "Trig: " << j << std::endl;
-        std::cout << "V1 X:" << x[0] << " Y:" << y[0] << " Z:" << z[0] << std::endl;
-        std::cout << "V2 X:" << x[1] << " Y:" << y[1] << " Z:" << z[1] << std::endl;
-        std::cout << "V3 X:" << x[2] << " Y:" << y[2] << " Z:" << z[2] << std::endl;
-    }*/
-
     for (std::size_t i = 0; i < layerCount; i++)
     {
         double zPoint = (double)i * GlobalSettings::LayerHeight.Get();
@@ -788,7 +774,7 @@ static inline void GenerateOutlineSegments()
             // the current outline though is just half an extrusion width to small
             offset.Clear();
             offset.AddPaths(outline, JoinType::jtMiter, EndType::etClosedPolygon);
-            offset.Execute(outline, NozzleWidth * scaleFactor);
+            offset.Execute(isle.outlinePaths, NozzleWidth * scaleFactor);
         }
     }
 }
@@ -1707,7 +1693,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     OptimizeOutlinePaths();
 
     // Generate the outline segments
-    /*GenerateOutlineSegments();
+    GenerateOutlineSegments();
 
     // Generate the infill grids
     GenerateInfillGrids();
@@ -1715,7 +1701,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // The top and bottom segments need to calculated before
     // the infill outlines otherwise the infill will be seen as top or bottom
     // Calculate the top and bottom segments
-    CalculateTopBottomSegments();
+    /*CalculateTopBottomSegments();
 
     // Calculate the infill segments
     CalculateInfillSegments();
