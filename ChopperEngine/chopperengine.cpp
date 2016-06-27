@@ -745,7 +745,7 @@ static inline void GenerateOutlineSegments()
             if (isle.outlinePaths.size() < 1)
                 continue;
 
-            cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0f);
+            cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0);
 
             // The first outline will be one that is half an extrusion thinner
             // than the sliced outline, ths is sothat the dimensions
@@ -762,7 +762,7 @@ static inline void GenerateOutlineSegments()
                 outlineSegment.segmentSpeed = layerComp.layerSpeed;
                 outlineSegment.outlinePaths = outline;
                 isle.segments.push_back(outlineSegment);
-                cInt dist = halfNozzle - (NozzleWidth * scaleFactor * (j + 1));
+                cInt dist = halfNozzle - (cInt)(NozzleWidth * scaleFactor * (j + 1));
 
                 //We now shrink the outline with one extrusion width for the next shell if any
                 offset.Clear();
@@ -787,6 +787,8 @@ static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0
     Paths &rightList = grid.rightList;
     Paths &leftList = grid.leftList;
 
+    density /= 100.0f;
+
     // Calculate the needed spacing
 
     // d% = 1 / (x% + 1)
@@ -810,14 +812,17 @@ static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0
 
     std::size_t amountOfLines = (std::size_t)((sliceMesh->MaxVec.x * scaleFactor - modMinX) / divider);
 
+    cInt minY = (cInt)(sliceMesh->MinVec.y * scaleFactor);
+    cInt maxY = (cInt)(sliceMesh->MaxVec.y * scaleFactor);
+
     // Calculate the right and left line simultaneously
     for (std::size_t i = 0; i < amountOfLines; i++)
     {
         // First line angled to the right
-        p1.X = modMinX + i * divider + NozzleWidth * scaleFactor / 2;
-        p1.Y = sliceMesh->MinVec.y;
+        p1.X = modMinX + (i * divider) + (cInt)(NozzleWidth * scaleFactor / 2);
+        p1.Y = minY;
         p2.X = p1.X + xOffset;
-        p2.Y = sliceMesh->MaxVec.y;
+        p2.Y = maxY;
 
         // We make use of duplicated points so that the below changes do not affect this line
         Path line;
@@ -826,8 +831,8 @@ static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0
         line.shrink_to_fit();
         rightList.push_back(line);
 
-        p2.Y = sliceMesh->MinVec.y;
-        p1.Y = sliceMesh->MaxVec.y;
+        p2.Y = minY;
+        p1.Y = maxY;
 
         line.clear();
         line.push_back(p1);
@@ -1205,7 +1210,7 @@ static void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridL
         if (node->Contour.size() == 2)
         {
             // Make sure the infill line is longer than at least double the nozzlewidth
-            if (SquaredDist(node->Contour[0], node->Contour[1]) > NozzleWidth * scaleFactor * scaleFactor * 2)
+            if (SquaredDist(node->Contour[0], node->Contour[1]) > (cInt)(NozzleWidth * scaleFactor * scaleFactor * 2))
                 lines.emplace_back(node->Contour[0], node->Contour[1]);
         }
     }
