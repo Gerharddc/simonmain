@@ -21,6 +21,7 @@ public:
     virtual Base* operator++() = 0;
     virtual Base* operator*() = 0;
     virtual bool operator!=(const std::shared_ptr<BaseVecIterator<Base>> &other) = 0;
+    virtual bool operator==(const std::shared_ptr<BaseVecIterator<Base>> &other) = 0;
 };
 
 template <class Base, class Derived>
@@ -46,6 +47,11 @@ public:
     bool operator!=(const std::shared_ptr<BaseVecIterator<Base>> &other)
     {
         return (this->operator *() != **other);
+    }
+
+    bool operator==(const std::shared_ptr<BaseVecIterator<Base>> &other)
+    {
+        return (this->operator *() == **other);
     }
 };
 
@@ -99,7 +105,7 @@ public:
 
         VecItr->operator ++();
 
-        if (VecItr->operator !=(MapItr->second->end()))
+        if (VecItr->operator ==(MapItr->second->end()))
         {
             ++MapItr;
 

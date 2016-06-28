@@ -8,6 +8,7 @@
 #include <limits>
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 
 using namespace ChopperEngine;
 using namespace ClipperLib;
@@ -1191,7 +1192,7 @@ static inline void GenerateSkirt()
     SlicerLog("Generating skirt");
 }
 
-static void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridLines, const Paths &paths)
+static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridLines, const Paths &paths)
 {
     Clipper clipper;
     PolyTree result;
@@ -1279,6 +1280,7 @@ static inline void CalculateToolpath()
     for (std::size_t i = 0; i < layerCount; i++)
     {
         LayerComponent &curLayer = layerComponents[i];
+        std::cout << "Calculating toolpath for layer: " << std::to_string(i) << std::endl;
 
         // Move to the new z position
         cInt newZ = lastZ + GlobalSettings::LayerHeight.Get();
@@ -1300,8 +1302,7 @@ static inline void CalculateToolpath()
                 {
                     // This segment contains its linesegments in its fill polygons
                     fillSegment = true;
-                    lineList.reserve(lineList.size() + segment->fillLines.size());
-                    lineList.insert(lineList.end(), segment->fillLines.begin(), segment->fillLines.end());
+                    lineList = segment->fillLines;
                 }
                 else
                 {
@@ -1379,7 +1380,7 @@ static inline void CalculateToolpath()
                             for (interIdx = 0; interIdx < path.size(); interIdx++)
                             {
                                 pA = path[interIdx];
-                                pB = path[(interIdx == path.size()) ? 0 : interIdx + 1];
+                                pB = path[(interIdx == path.size()-1) ? 0 : interIdx + 1];
 
                                 if (Colinear(pA, p1, pB))
                                 {
@@ -1416,7 +1417,7 @@ static inline void CalculateToolpath()
                             while (noInter && (i < interPath->size()))
                             {
                                 pA = interPath->at(i);
-                                pB = interPath->at((i == interPath->size()) ? 0 : i + 1);
+                                pB = interPath->at((i == interPath->size()-1) ? 0 : i + 1);
 
                                 if (Colinear(pA, p1, pB))
                                     noInter = false;
@@ -1429,7 +1430,7 @@ static inline void CalculateToolpath()
                             while (noInter && (i > 0))
                             {
                                 pA = interPath->at(i - 1);
-                                pB = interPath->at((i == interPath->size()) ? 0 : i);
+                                pB = interPath->at((i == interPath->size()-1) ? 0 : i);
 
                                 if (Colinear(pA, p1, pB))
                                 {
@@ -1505,6 +1506,8 @@ static inline void StoreGCode(std::string outFilePath)
     int prev1F = 0;
     bool retracted = false;
 
+    os << std::fixed << std::setprecision(3);
+
     os << ";Total amount of layer: " << layerCount << std::endl;
     os << ";Estimated time: " << 0 << std::endl; // TODO
     os << ";Estimated filament: " << 0 << std::endl; // TODO
@@ -1516,7 +1519,7 @@ static inline void StoreGCode(std::string outFilePath)
     os << "G92 E0" << std::endl;
     os << "G1 F600" << std::endl;
 
-    for (std::size_t layerNum = 0; layerNum < layerCount; layerCount++)
+    for (std::size_t layerNum = 0; layerNum < layerCount; layerNum++)
     {
         const LayerComponent &layer = layerComponents[layerNum];
         os << ";Layer: " << layerNum << std::endl;
@@ -1577,7 +1580,6 @@ static inline void StoreGCode(std::string outFilePath)
                             os << " F" << prev1F;
                         }
 
-                        os << std::endl;
                         retracted = true;
                     }
                     else if (MovingSegment* ms = dynamic_cast<MovingSegment*>(ts))
@@ -1648,7 +1650,7 @@ static inline void StoreGCode(std::string outFilePath)
                     else
                     {
                         std::cout << "Trying to write unsopported segment to gcode." << std::endl;
-                        os << ";";
+                        os << "; Unown type: " << (int)ts->type;
                     }
 
                     os << std::endl;
@@ -1673,10 +1675,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // Calculate the amount layers that will be sliced
     layerCount = (std::size_t)(sliceMesh->MaxVec.z / GlobalSettings::LayerHeight.Get()) + 1;
 
-    /*if (layerComponents != nullptr)
-        layerComponents = (LayerComponent*)realloc(layerComponents, sizeof(LayerComponent) * layerCount);
-    else
-        layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);*/
+    //if (layerComponents != nullptr)
+      //  layerComponents = (LayerComponent*)realloc(layerComponents, sizeof(LayerComponent) * layerCount);
+    //else
+        //layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);
     layerComponents = new LayerComponent[layerCount];
 
     //for (std::size_t i = 0; i < layerCount; i++)
@@ -1721,10 +1723,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     TrimInfill();
 
     // Calculate the toolpath
-    //CalculateToolpath();
+    CalculateToolpath();
 
     // Write the toolpath as gcode
-    //StoreGCode(outputFile);
+    StoreGCode(outputFile);
 
     // Free the memory
     //if (layerComponents != nullptr)
