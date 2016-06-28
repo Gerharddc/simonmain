@@ -66,17 +66,6 @@ struct LineSegment
 
 typedef std::vector<LineSegment> LineList;
 
-enum class SegmentType
-{
-    OutlineSegment,
-    InfillSegment,
-    TopSegment,
-    BottomSegment,
-    SupportSegment,
-    SkirtSegment,
-    RaftSegment
-};
-
 enum class ToolSegType
 {
     Retraction,
@@ -177,6 +166,17 @@ struct ExtrudeSegment : public MovingSegment
     }
 };
 
+enum class SegmentType
+{
+    OutlineSegment,
+    InfillSegment,
+    TopSegment,
+    BottomSegment,
+    SupportSegment,
+    SkirtSegment,
+    RaftSegment
+};
+
 struct LayerSegment
 {
     Paths outlinePaths;
@@ -221,9 +221,6 @@ struct InfillGrid
 {
     Paths leftList, rightList;
 };
-
-// TODO: store multiple grids
-static InfillGrid mainGrid;
 
 static std::map<float, InfillGrid> InfillGridMap;
 
@@ -760,7 +757,7 @@ static inline void GenerateOutlineSegments()
             for (std::size_t j = 0; j < GlobalSettings::ShellThickness.Get(); j++)
             {
                 // Place the newly created outline in its own segment
-                SegmentWithInfill &outlineSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::OutlineSegment);
+                LayerSegment &outlineSegment = isle.segments.emplace<LayerSegment>(SegmentType::OutlineSegment);
                 outlineSegment.segmentSpeed = layerComp.layerSpeed;
                 outlineSegment.outlinePaths = outline;
                 cInt dist = halfNozzle - (cInt)(NozzleWidth * scaleFactor * (j + 1));
@@ -856,6 +853,7 @@ static inline void GenerateInfillGrids()
 
     GenerateInfillGrid(15.0f);
     GenerateInfillGrid(100.0f);
+    GenerateInfillGrid(10.0f);
 }
 
 static inline void CalculateTopBottomSegments()
@@ -1043,13 +1041,13 @@ static inline void CalculateInfillSegments()
             clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
 
             // Then add existing segments such as top or bottom and outline as the clip
-            for (LayerSegment seg : isle.segments)
+            for (const LayerSegment *seg : isle.segments)
             {
                 // We do not want to subtract outline segments because we already use the overall outline of the island
-                if (seg.type == SegmentType::OutlineSegment)
+                if (seg->type == SegmentType::OutlineSegment)
                     continue;
 
-                clipper.AddPaths(seg.outlinePaths, PolyType::ptClip, true);
+                clipper.AddPaths(seg->outlinePaths, PolyType::ptClip, true);
             }
 
             SegmentWithInfill infillSeg(SegmentType::InfillSegment);
@@ -1098,14 +1096,14 @@ static inline void CombineInfillSegmetns()
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
-                for (LayerSegment &seg : isle.segments)
+                for (LayerSegment *seg : isle.segments)
                 {
-                    if (seg.type != SegmentType::InfillSegment)
+                    if (seg->type != SegmentType::InfillSegment)
                         continue;
 
                     clipper.Clear();
                     clipper.AddPaths(combinedInfill, PolyType::ptSubject, true);
-                    clipper.AddPaths(seg.outlinePaths, PolyType::ptClip, true);
+                    clipper.AddPaths(seg->outlinePaths, PolyType::ptClip, true);
                     clipper.Execute(ClipType::ctUnion, combinedInfill);
                 }
             }
@@ -1129,14 +1127,14 @@ static inline void CombineInfillSegmetns()
             Paths commonInfill;
 
             // Start by setting all the infill in the current island as the base
-            for (LayerSegment &layerSeg : mainIsle.segments)
+            for (LayerSegment *layerSeg : mainIsle.segments)
             {
-                if (layerSeg.type != SegmentType::InfillSegment)
+                if (layerSeg->type != SegmentType::InfillSegment)
                     continue;
 
                 clipper.Clear();
                 clipper.AddPaths(commonInfill, PolyType::ptClip, true);
-                clipper.AddPaths(layerSeg.outlinePaths, PolyType::ptSubject, true);
+                clipper.AddPaths(layerSeg->outlinePaths, PolyType::ptSubject, true);
                 clipper.Execute(ClipType::ctUnion, commonInfill);
             }
 
@@ -1156,16 +1154,16 @@ static inline void CombineInfillSegmetns()
             {
                 for (LayerIsland &isle : layerComponents[j].islandList)
                 {
-                    for (LayerSegment &seg : isle.segments)
+                    for (LayerSegment *seg : isle.segments)
                     {
-                        if (seg.type != SegmentType::InfillSegment)
+                        if (seg->type != SegmentType::InfillSegment)
                             continue;
 
                         // Remove the common infill from the layersegment
                         clipper.Clear();
-                        clipper.AddPaths(seg.outlinePaths, PolyType::ptSubject, true);
+                        clipper.AddPaths(seg->outlinePaths, PolyType::ptSubject, true);
                         clipper.AddPaths(commonInfill, PolyType::ptClip, true);
-                        clipper.Execute(ClipType::ctDifference, seg.outlinePaths);
+                        clipper.Execute(ClipType::ctDifference, seg->outlinePaths);
                     }
                 }
             }
@@ -1223,9 +1221,9 @@ static inline void TrimInfill()
     {
         for (LayerIsland &isle : layerComponents[i].islandList)
         {
-            for (LayerSegment &segment : isle.segments)
+            for (LayerSegment *segment : isle.segments)
             {             
-                if (SegmentWithInfill* seg = dynamic_cast<SegmentWithInfill*>(&segment))
+                if (SegmentWithInfill* seg = dynamic_cast<SegmentWithInfill*>(segment))
                 {
                     bool goRight = right;
                     float density;
@@ -1295,11 +1293,11 @@ static inline void CalculateToolpath()
 
             bool fillSegment;
             // TODO: we should actually move from each segment to the closest one left
-            for (LayerSegment &seg : isle.segments)
+            for (LayerSegment *seg : isle.segments)
             {
                 // We need to convert all the polygons in the segment into lines so that we can do our calculations
                 LineList lineList;
-                if (SegmentWithInfill* segment = dynamic_cast<SegmentWithInfill*>(&seg))
+                if (SegmentWithInfill* segment = dynamic_cast<SegmentWithInfill*>(seg))
                 {
                     // This segment contains its linesegments in its fill polygons
                     fillSegment = true;
@@ -1310,7 +1308,7 @@ static inline void CalculateToolpath()
                 {
                     // This segment contains its linesegments in its outline polygons
                     fillSegment = false;
-                    for (Path &path : seg.outlinePaths)
+                    for (Path &path : seg->outlinePaths)
                     {
                         if (path.size() < 3)
                             continue;
@@ -1335,11 +1333,11 @@ static inline void CalculateToolpath()
                     const cInt minDist2 = minDist * minDist;
 
                     if (SquaredDist(lastPoint, lineList[0].p1) > minDist2)
-                        seg.toolSegments.emplace_back(RetractSegment(GlobalSettings::RetractionDistance.Get()));
+                        seg->toolSegments.emplace_back(RetractSegment(GlobalSettings::RetractionDistance.Get()));
                 }
 
                 // Create the actual move segment
-                seg.toolSegments.emplace_back(TravelSegment(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed));
+                seg->toolSegments.emplace_back(TravelSegment(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed));
 
                 // Remember if the last line in the segment had swapped points
                 bool lastSwapped = false;
@@ -1348,7 +1346,7 @@ static inline void CalculateToolpath()
                 if (fillSegment)
                 {
                     // Extrude the first line
-                    seg.toolSegments.emplace_back(ExtrudeSegment(lineList.front(), lastZ, seg.segmentSpeed));
+                    seg->toolSegments.emplace_back(ExtrudeSegment(lineList.front(), lastZ, seg->segmentSpeed));
                     IntPoint p1 = lineList.front().p2;
 
                     // If this is a bunch of disconnected fill lines we also need clean moves between them
@@ -1375,7 +1373,7 @@ static inline void CalculateToolpath()
                         std::size_t interIdx = 0;
 
                         // Now check between which two outline points we are
-                        for (Path &path : seg.outlinePaths)
+                        for (Path &path : seg->outlinePaths)
                         {
                             // We determine between which two lines the intersection is by checing
                             // for colinearity
@@ -1394,8 +1392,8 @@ static inline void CalculateToolpath()
 
                         // TODO: it should not be possible for this to happen
                         std::cout << "Infill point did not intersect outline" << std::endl;
-                        seg.toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
-                        seg.toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg.segmentSpeed));
+                        seg->toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                        seg->toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg->segmentSpeed));
                         p1 = p2;
                         continue; // Next line
 
@@ -1403,7 +1401,7 @@ static inline void CalculateToolpath()
 
                         // Determine if the other point is on the same line
                         if (Colinear(pA, p2, pB))
-                            seg.toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                            seg->toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
                         else
                         {
                             // Otherwise check if they are on the same polygon
@@ -1444,41 +1442,41 @@ static inline void CalculateToolpath()
                             }
 
                             if (noInter)
-                                seg.toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                                seg->toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
                             else
                             {
                                 // Move along the outline
                                 if (forwards)
                                 {
-                                    seg.toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed));
 
                                     for (std::size_t k = interIdx + 1; k < i; k++)
-                                        seg.toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k + 1),
+                                        seg->toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k + 1),
                                                                                   lastZ, curLayer.moveSpeed));
 
-                                    seg.toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
                                 }
                                 else
                                 {
-                                    seg.toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx), lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx), lastZ, curLayer.moveSpeed));
 
                                     for (std::size_t k = interIdx; k > i; k++)
-                                        seg.toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k - 1),
+                                        seg->toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k - 1),
                                                                                   lastZ, curLayer.moveSpeed));
 
-                                    seg.toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
                                 }
                             }
                         }
 
-                        seg.toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg.segmentSpeed));
+                        seg->toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg->segmentSpeed));
                         p1 = p2;
                     }
                 }
                 else
                 {
                     for (LineSegment line : lineList)
-                        seg.toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg.segmentSpeed));
+                        seg->toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg->segmentSpeed));
                 }
 
                 lastPoint = (lastSwapped) ? lineList.back().p1 : lineList.back().p2;
@@ -1563,11 +1561,11 @@ static inline void StoreGCode(std::string outFilePath)
         {
             os << ";Island" << std::endl;
 
-            for (const LayerSegment &seg : isle.segments)
+            for (const LayerSegment *seg : isle.segments)
             {
-                os << ";Segment: " << (int)seg.type << std::endl; // TODO
+                os << ";Segment: " << (int)seg->type << std::endl; // TODO
 
-                for (ToolSegment ts : seg.toolSegments)
+                for (ToolSegment ts : seg->toolSegments)
                 {
                     if (ts.type == ToolSegType::Retraction)
                     {
