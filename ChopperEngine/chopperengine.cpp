@@ -1283,7 +1283,8 @@ static inline void CalculateToolpath()
         std::cout << "Calculating toolpath for layer: " << std::to_string(i) << std::endl;
 
         // Move to the new z position
-        cInt newZ = lastZ + GlobalSettings::LayerHeight.Get();
+        // We need half a layerheight for the filament
+        cInt newZ = (GlobalSettings::LayerHeight.Get() * scaleFactor) * ((double)(i) + 0.5);
         curLayer.initialLayerMoves.emplace_back(lastPoint, lastZ, newZ, curLayer.layerSpeed);
         lastZ = newZ;
 
@@ -1359,14 +1360,14 @@ static inline void CalculateToolpath()
                         // move along that outline to the next point to avoid stringing
 
                         // First determine which other point is closest
-                        if (SquaredDist(p1, line.p1) < SquaredDist(p1, line.p2))
+                        if (SquaredDist(p1, line.p2) < SquaredDist(p1, line.p1))
                         {
                             line.SwapPoints();
                             lastSwapped = true;
                         }
                         else
                             lastSwapped = false;
-                        const IntPoint &p2 = line.p2;
+                        const IntPoint &p2 = line.p1;
 
                         IntPoint pA, pB;
                         Path *interPath;
@@ -1394,7 +1395,8 @@ static inline void CalculateToolpath()
                         std::cout << "Infill point did not intersect outline" << std::endl;
                         seg->toolSegments.emplace<TravelSegment>(p1, p2, lastZ, curLayer.moveSpeed);
                         seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
-                        p1 = p2;
+                        //p1 = p2;
+                        p1 = line.p2;
                         continue; // Next line
 
                         FindP2Intersect:
@@ -1419,7 +1421,7 @@ static inline void CalculateToolpath()
                                 pA = interPath->at(i);
                                 pB = interPath->at((i == interPath->size()-1) ? 0 : i + 1);
 
-                                if (Colinear(pA, p1, pB))
+                                if (Colinear(pA, p2, pB))
                                     noInter = false;
                                 else
                                     i++;
@@ -1432,7 +1434,7 @@ static inline void CalculateToolpath()
                                 pA = interPath->at(i - 1);
                                 pB = interPath->at((i == interPath->size()-1) ? 0 : i);
 
-                                if (Colinear(pA, p1, pB))
+                                if (Colinear(pA, p2, pB))
                                 {
                                     noInter = false;
                                     forwards = false;
@@ -1470,7 +1472,8 @@ static inline void CalculateToolpath()
                         }
 
                         seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
-                        p1 = p2;
+                        //p1 = p2;
+                        p1 = line.p2;
                     }
                 }
                 else
@@ -1661,7 +1664,8 @@ static inline void StoreGCode(std::string outFilePath)
 
     os << "M104 S0" << std::endl;
     os << "G91" << std::endl;
-    os << "G1 Z+0.5 E-5 X-15 Y-15 F4800" << std::endl;
+    os << "G1 E-5 F4800" << std::endl;
+    os << "G1 Z+0.5 X-15 Y-15 F4800" << std::endl;
     os << "G28 X0 Y0" << std::endl;
 
     os.flush();
