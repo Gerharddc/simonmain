@@ -5,75 +5,144 @@
 #include <typeindex>
 #include <map>
 #include <vector>
+#include <memory>
 
 // This class provides a polymorphic class container
 // that provides the ability to store different
 // types of classes inherited from a common
 // base class.
 
-typedef std::map<std::type_index, void*> TypeMap;
+template <class Base>
+class BaseVecIterator
+{
+public:
+    virtual ~BaseVecIterator() {}
+
+    virtual Base* operator++() = 0;
+    virtual Base* operator*() = 0;
+    virtual bool operator!=(const std::shared_ptr<BaseVecIterator<Base>> &other) = 0;
+};
+
+template <class Base, class Derived>
+class DerivedVecIterator : public BaseVecIterator<Base>
+{
+private:
+    typename std::vector<Derived>::iterator Itr;
+
+public:
+    DerivedVecIterator(typename std::vector<Derived>::iterator itr) : Itr(itr) {}
+
+    Base* operator++()
+    {
+        ++Itr;
+        return &(*Itr);
+    }
+
+    Base* operator*()
+    {
+        return &(*Itr);
+    }
+
+    bool operator!=(const std::shared_ptr<BaseVecIterator<Base>> &other)
+    {
+        return (this->operator *() != **other);
+    }
+};
+
+template <class Base>
+class BaseVector
+{
+public:
+    virtual ~BaseVector() {}
+
+    virtual std::shared_ptr<BaseVecIterator<Base>> begin() = 0;
+    virtual std::shared_ptr<BaseVecIterator<Base>> end() = 0;
+};
+
+template <class Base, class Derived>
+class DerivedVector : public BaseVector<Base>
+{
+private:
+    typename std::vector<Derived>::iterator Itr;
+
+public:
+    std::vector<Derived> Vect;
+
+    std::shared_ptr<BaseVecIterator<Base>> begin()
+    {
+        return std::make_shared<DerivedVecIterator<Base, Derived>>(Vect.begin());
+    }
+
+    std::shared_ptr<BaseVecIterator<Base>> end()
+    {
+        return std::make_shared<DerivedVecIterator<Base, Derived>>(Vect.end());
+    }
+};
 
 template <class Base>
 class PMIterator
 {
-public:
-    typedef std::vector<Base> BaseVector;
-
 private:
+    typedef std::map<std::type_index, std::shared_ptr<BaseVector<Base>>> TypeMap;
     const TypeMap &VecMap;
-    TypeMap::const_iterator MapItr;
-    typename BaseVector::iterator VecItr;
+    typename TypeMap::const_iterator MapItr;
+    std::shared_ptr<BaseVecIterator<Base>> VecItr;
 
 public:
-    PMIterator(const TypeMap &vecMap, TypeMap::const_iterator mapItr, typename BaseVector::iterator vecItr)
+    PMIterator(const TypeMap &vecMap, typename TypeMap::const_iterator mapItr, std::shared_ptr<BaseVecIterator<Base>> vecItr)
         : VecMap(vecMap), MapItr(mapItr), VecItr(vecItr) {}
 
-    Base& operator++()
+    Base* operator++()
     {
         // Once we have itterated to the last element in the current vector
         // we need to move to the next one in the map
 
-        ++VecItr;
+        VecItr->operator ++();
 
-        if (VecItr == ((BaseVector*)(MapItr->second))->end())
+        if (VecItr->operator !=(MapItr->second->end()))
         {
             ++MapItr;
 
             if (MapItr == VecMap.end())
                 --MapItr;
             else
-                VecItr = ((BaseVector*)(MapItr->second))->begin();
+                VecItr = MapItr->second->begin();
         }
 
-        return *VecItr;
+        return VecItr->operator *();
     }
 
     bool operator!=(const PMIterator<Base> &other)
     {
-        return (MapItr == other.MapItr) && (VecItr == other.VecItr);
+        return (MapItr != other.MapItr) || (VecItr->operator !=(other.VecItr));
     }
 
-    Base& operator*()
+    Base* operator*()
     {
-        return *VecItr;
+        return VecItr->operator *();
     }
 };
+
+// TODO: we could theoretically use normal pointers instead of shared ones in the map
 
 template <class Base>
 class PMCollection
 {
 private:
+    typedef std::map<std::type_index, std::shared_ptr<BaseVector<Base>>> TypeMap;
     TypeMap VecMap;
 
+    // Derived has to be derivative class of base
     template<class Derived>
     std::vector<Derived> &GetVec()
     {
-        return *((std::vector<Derived>*)VecMap[std::type_index(typeid(Derived))]);
+        if (VecMap.count(std::type_index(typeid(Derived))) == 0)
+            VecMap[std::type_index(typeid(Derived))] = std::make_shared<DerivedVector<Base, Derived>>();
+
+        return std::static_pointer_cast<DerivedVector<Base, Derived>>(VecMap[std::type_index(typeid(Derived))])->Vect;
     }
 
 public:
-    // Derived has to be derivative class of base
-
     template<class Derived, typename... Args>
     Derived& emplace(Args... args)
     {
@@ -90,13 +159,13 @@ public:
     PMIterator<Base> begin() const
     {
         auto vb = VecMap.begin();
-        return PMIterator<Base>(VecMap, vb, ((std::vector<Base>*)(vb->second))->begin());
+        return PMIterator<Base>(VecMap, vb, vb->second->begin());
     }
 
     PMIterator<Base> end() const
     {
         auto ve = --VecMap.end();
-        return PMIterator<Base>(VecMap, ve, ((std::vector<Base>*)(ve->second))->end());
+        return PMIterator<Base>(VecMap, ve, ve->second->end());
     }
 };
 
