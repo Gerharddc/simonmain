@@ -925,7 +925,7 @@ static inline void CalculateTopBottomSegments()
                     topSegment.infillMultiplier = 2.0f;
                 }
                 else
-                    isle.segments.pop_back<SegmentWithInfill>();
+                    isle.segments.pop_back();
             }
         }
 
@@ -1004,7 +1004,7 @@ static inline void CalculateTopBottomSegments()
                     bottomSegment.infillMultiplier = 2.0f;
                 }
                 else
-                    isle.segments.pop_back<SegmentWithInfill>();
+                    isle.segments.pop_back();
             }
         }
 
