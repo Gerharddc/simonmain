@@ -1675,14 +1675,13 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // Calculate the amount layers that will be sliced
     layerCount = (std::size_t)(sliceMesh->MaxVec.z / GlobalSettings::LayerHeight.Get()) + 1;
 
-    //if (layerComponents != nullptr)
-      //  layerComponents = (LayerComponent*)realloc(layerComponents, sizeof(LayerComponent) * layerCount);
-    //else
-        //layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);
-    layerComponents = new LayerComponent[layerCount];
+    if (layerComponents != nullptr)
+        layerComponents = (LayerComponent*)realloc(layerComponents, sizeof(LayerComponent) * layerCount);
+    else
+        layerComponents = (LayerComponent*)malloc(sizeof(LayerComponent) * layerCount);
 
-    //for (std::size_t i = 0; i < layerCount; i++)
-      //  layerComponents[i] = LayerComponent();
+    for (std::size_t i = 0; i < layerCount; i++)
+        new ((void*)(layerComponents + i)) LayerComponent();
 
     // Slice the triangles into layers
     SliceTrigsToLayers();
@@ -1729,7 +1728,11 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     StoreGCode(outputFile);
 
     // Free the memory
-    //if (layerComponents != nullptr)
-      //  free(layerComponents);
-    //delete layerComponents;
+    if (layerComponents != nullptr)
+    {
+        for (std::size_t i = 0; i < layerCount; i++)
+            layerComponents[i].~LayerComponent();
+
+        free(layerComponents);
+    }
 }
