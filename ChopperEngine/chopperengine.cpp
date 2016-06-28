@@ -182,7 +182,7 @@ struct LayerSegment
     Paths outlinePaths;
     SegmentType type;
     int segmentSpeed;
-    std::vector<ToolSegment> toolSegments;
+    PMCollection<ToolSegment> toolSegments;
 
     LayerSegment(SegmentType _type) :
         type(_type) {}
@@ -203,7 +203,6 @@ struct SegmentWithInfill : public LayerSegment
 struct LayerIsland
 {
     Paths outlinePaths;
-    //std::vector<LayerSegment> segments;
     PMCollection<LayerSegment> segments;
 };
 
@@ -1333,11 +1332,11 @@ static inline void CalculateToolpath()
                     const cInt minDist2 = minDist * minDist;
 
                     if (SquaredDist(lastPoint, lineList[0].p1) > minDist2)
-                        seg->toolSegments.emplace_back(RetractSegment(GlobalSettings::RetractionDistance.Get()));
+                        seg->toolSegments.emplace<RetractSegment>(GlobalSettings::RetractionDistance.Get());
                 }
 
                 // Create the actual move segment
-                seg->toolSegments.emplace_back(TravelSegment(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed));
+                seg->toolSegments.emplace<TravelSegment>(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed);
 
                 // Remember if the last line in the segment had swapped points
                 bool lastSwapped = false;
@@ -1346,7 +1345,7 @@ static inline void CalculateToolpath()
                 if (fillSegment)
                 {
                     // Extrude the first line
-                    seg->toolSegments.emplace_back(ExtrudeSegment(lineList.front(), lastZ, seg->segmentSpeed));
+                    seg->toolSegments.emplace<ExtrudeSegment>(lineList.front(), lastZ, seg->segmentSpeed);
                     IntPoint p1 = lineList.front().p2;
 
                     // If this is a bunch of disconnected fill lines we also need clean moves between them
@@ -1392,8 +1391,8 @@ static inline void CalculateToolpath()
 
                         // TODO: it should not be possible for this to happen
                         std::cout << "Infill point did not intersect outline" << std::endl;
-                        seg->toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
-                        seg->toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg->segmentSpeed));
+                        seg->toolSegments.emplace<TravelSegment>(p1, p2, lastZ, curLayer.moveSpeed);
+                        seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
                         p1 = p2;
                         continue; // Next line
 
@@ -1401,7 +1400,7 @@ static inline void CalculateToolpath()
 
                         // Determine if the other point is on the same line
                         if (Colinear(pA, p2, pB))
-                            seg->toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                            seg->toolSegments.emplace<TravelSegment>(p1, p2, lastZ, curLayer.moveSpeed);
                         else
                         {
                             // Otherwise check if they are on the same polygon
@@ -1442,41 +1441,41 @@ static inline void CalculateToolpath()
                             }
 
                             if (noInter)
-                                seg->toolSegments.emplace_back(TravelSegment(p1, p2, lastZ, curLayer.moveSpeed));
+                                seg->toolSegments.emplace<TravelSegment>(p1, p2, lastZ, curLayer.moveSpeed);
                             else
                             {
                                 // Move along the outline
                                 if (forwards)
                                 {
-                                    seg->toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace<TravelSegment>(p1, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed);
 
                                     for (std::size_t k = interIdx + 1; k < i; k++)
-                                        seg->toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k + 1),
-                                                                                  lastZ, curLayer.moveSpeed));
+                                        seg->toolSegments.emplace<TravelSegment>(interPath->at(k), interPath->at(k + 1),
+                                                                                  lastZ, curLayer.moveSpeed);
 
-                                    seg->toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace<TravelSegment>(interPath->at(i), p2, lastZ, curLayer.moveSpeed);
                                 }
                                 else
                                 {
-                                    seg->toolSegments.emplace_back(TravelSegment(p1, interPath->at(interIdx), lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace<TravelSegment>(p1, interPath->at(interIdx), lastZ, curLayer.moveSpeed);
 
                                     for (std::size_t k = interIdx; k > i; k++)
-                                        seg->toolSegments.emplace_back(TravelSegment(interPath->at(k), interPath->at(k - 1),
-                                                                                  lastZ, curLayer.moveSpeed));
+                                        seg->toolSegments.emplace<TravelSegment>(interPath->at(k), interPath->at(k - 1),
+                                                                                  lastZ, curLayer.moveSpeed);
 
-                                    seg->toolSegments.emplace_back(TravelSegment(interPath->at(i), p2, lastZ, curLayer.moveSpeed));
+                                    seg->toolSegments.emplace<TravelSegment>(interPath->at(i), p2, lastZ, curLayer.moveSpeed);
                                 }
                             }
                         }
 
-                        seg->toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg->segmentSpeed));
+                        seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
                         p1 = p2;
                     }
                 }
                 else
                 {
                     for (LineSegment line : lineList)
-                        seg->toolSegments.emplace_back(ExtrudeSegment(line, lastZ, seg->segmentSpeed));
+                        seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
                 }
 
                 lastPoint = (lastSwapped) ? lineList.back().p1 : lineList.back().p2;
@@ -1565,12 +1564,12 @@ static inline void StoreGCode(std::string outFilePath)
             {
                 os << ";Segment: " << (int)seg->type << std::endl; // TODO
 
-                for (ToolSegment ts : seg->toolSegments)
+                for (ToolSegment *ts : seg->toolSegments)
                 {
-                    if (ts.type == ToolSegType::Retraction)
+                    if (ts->type == ToolSegType::Retraction)
                     {
                         os << "G1";
-                        os << " E" << (currentE - (float)(((RetractSegment*)(&ts))->distance / scaleFactor));
+                        os << " E" << (currentE - (float)(((RetractSegment*)(ts))->distance / scaleFactor));
 
                         if (GlobalSettings::RetractionSpeed.Get() != prev1F)
                         {
@@ -1581,7 +1580,7 @@ static inline void StoreGCode(std::string outFilePath)
                         os << std::endl;
                         retracted = true;
                     }
-                    else if (MovingSegment* ms = dynamic_cast<MovingSegment*>(&ts))
+                    else if (MovingSegment* ms = dynamic_cast<MovingSegment*>(ts))
                     {
                         if (ms->p1 == ms->p2)
                             continue;
