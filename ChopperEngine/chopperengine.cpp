@@ -25,6 +25,14 @@ const double PI = 3.14159265358979323846;
 const float NozzleWidth = 0.5f;
 const float FilamentWidth = 2.8f;
 
+// Below are some test that output GCode allowing for visual tests
+// Uncomment to test if initial lines are calculated properly
+//#define TEST_INITIAL_LINES
+// Uncomment to test if islands are generated properly
+#define TEST_ISLAND_DETECTION
+    // Uncomment to test outline optimization
+    #define TEST_OUTLINE_OPTIMIZE
+
 void ChopperEngine::SlicerLog(std::string message)
 {
     if (slicerLogger != nullptr)
@@ -407,6 +415,41 @@ static void ProcessPolyNode(PolyNode &pNode, bool isHole, std::vector<LayerIslan
     }
 }
 
+#ifdef TEST_INITIAL_LINES
+static inline void ToolpathLines()
+{
+    SlicerLog("Calculating toolpath from initial lines");
+
+    IntPoint lastPoint(0, 0);
+    cInt lastZ = 0;
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        SlicerLog("Line toolpath: " + std::to_string(i));
+        LayerComponent &curLayer = layerComponents[i];
+
+        std::vector<TrigLineSegment> &lineList = curLayer.initialLineList;
+
+        curLayer.islandList.emplace_back();
+        LayerIsland &isle = curLayer.islandList.back();
+        LayerSegment &seg = isle.segments.emplace<LayerSegment>(SegmentType::OutlineSegment);
+
+        // Move to the new z position
+        // We need half a layerheight for the filament
+        cInt newZ = (GlobalSettings::LayerHeight.Get() * scaleFactor) * ((double)(i) + 0.5);
+        curLayer.initialLayerMoves.emplace_back(lastPoint, lastZ, newZ, curLayer.layerSpeed);
+        lastZ = newZ;
+
+        for (TrigLineSegment line : lineList)
+        {
+            seg.toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
+            seg.toolSegments.emplace<ExtrudeSegment>(line.p1, line.p2, lastZ, seg.segmentSpeed);
+            lastPoint = line.p2;
+        }
+    }
+}
+#endif
+
 static inline void CalculateIslandsFromInitialLines()
 {
     SlicerLog("Calculating initial islands");
@@ -425,29 +468,35 @@ static inline void CalculateIslandsFromInitialLines()
 
         for (std::size_t startIdx = 0; startIdx < lineList.size(); startIdx++)
         {
-            //Check if the line has lready been used
-            TrigLineSegment &curLine = lineList[startIdx];
-            if (curLine.usedInPolygon)
+            TrigLineSegment &startLine = lineList[startIdx];
+            if (startLine.usedInPolygon)
                 continue;
 
-            Path path;
-            path.push_back(curLine.p1);
+            startLine.usedInPolygon = true;
 
-            std::size_t lineIdx = startIdx;
-            bool closed = false;
+            // Start with the assumption that we are working on a closed path and move it if needed
+            closedPaths.emplace_back();
+            Path &curPath = closedPaths.back();
+            std::size_t lineIdxToConnectFrom = startIdx;
+            bool open = true;
+            curPath.push_back(startLine.p1);
+            curPath.push_back(startLine.p2);
+            IntPoint pointToConnectTo = startLine.p2;
 
-            while (!closed)
+            const cInt minDiff = (cInt)(0.001 * 0.001 * scaleFactor * scaleFactor);
+
+            // Try to build a closed polygon until we have exhausted all available connected lines
+            while (open)
             {
-                lineList[lineIdx].usedInPolygon = true;
-                IntPoint p1 = lineList[lineIdx].p2;
-                path.push_back(p1);
-
                 bool connected = false;
+                const Triangle &trigToConnectFrom = TrigAtIdx(lineList[lineIdxToConnectFrom].trigIdx);
 
+                // Go through all three vertices on the triangle
                 for (uint8_t j = 0; j < 3; j++)
                 {
-                    Vertex &v = VertAtIdx(TrigAtIdx(lineList[lineIdx].trigIdx).vertIdxs[j]);
+                    const Vertex &v = VertAtIdx(trigToConnectFrom.vertIdxs[j]);
 
+                    // Test against all triangles that share a vertex for a line connection
                     for (std::size_t touchIdx : v.trigIdxs)
                     {
                         // Check if this triangle has a linesegment on this layer
@@ -455,42 +504,37 @@ static inline void CalculateIslandsFromInitialLines()
                         if (touchLineItr == layerComp.faceToLineIdxs.end())
                             continue;
                         std::size_t touchLineIdx = touchLineItr->second;
-
-                        // Do not check a line against itself
-                        if (touchLineIdx == lineIdx)
-                            continue;
-
                         TrigLineSegment &touchLine = lineList[touchLineIdx];
 
-                        const cInt minDiff = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
+                        // Do not check the line against itself
+                        if (touchLineIdx == lineIdxToConnectFrom)
+                            continue;
 
-                        if (SquaredDist(p1, touchLine.p1) < minDiff)
+                        // Prevent infinite loops by reconnecting to old lines
+                        if (touchLine.usedInPolygon)
+                            continue;
+
+                        if (SquaredDist(pointToConnectTo, touchLine.p1) < minDiff)
                             connected = true;
-                        else if (SquaredDist(p1, touchLine.p2) < minDiff)
+                        else if (SquaredDist(pointToConnectTo, touchLine.p2) < minDiff)
                         {
-                            connected = true;
                             touchLine.SwapPoints();
+                            connected = true;
                         }
 
                         if (connected)
                         {
-                            if (touchLineIdx == startIdx)
+                            touchLine.usedInPolygon = true;
+
+                            if (SquaredDist(touchLine.p2, startLine.p1) < minDiff)
+                                open = false;
+                            else
                             {
-                                // If closed then the last point will be the same as the first and should
-                                // be removed
-                                path.pop_back();
-
-                                closed = true;
-                                break;
+                                curPath.push_back(touchLine.p2);
+                                pointToConnectTo = touchLine.p2;
+                                lineIdxToConnectFrom = touchLineIdx;
                             }
 
-                            if (touchLine.usedInPolygon) {
-                                connected = false;
-                                continue;
-                            }
-
-
-                            lineIdx = touchLineIdx;
                             break;
                         }
                     }
@@ -503,15 +547,18 @@ static inline void CalculateIslandsFromInitialLines()
                     break;
             }
 
-            if (closed)
-                closedPaths.push_back(path);
-            else
-                openPaths.push_back(path);
+            if (open)
+            {
+                openPaths.emplace_back(std::move(closedPaths.back()));
+                closedPaths.pop_back();
+            }
         }
 
         // The list is no longer needed and can be removed to save memory
         lineList.clear();
         lineList.shrink_to_fit();
+
+        // TODO: closing needs to be tested
 
         for (std::size_t j = 0; j < openPaths.size(); j++)
         {
@@ -676,7 +723,7 @@ static inline void OptimizeOutlinePaths()
                 {
                     IntPoint p1 = path[j];
 
-                    const cInt minDiff = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
+                    const cInt minDiff = (cInt)(0.075 * 0.075 * scaleFactor * scaleFactor);
                     if (j == path.size()-1)
                     {
                         // The last point should be checked differently to avoid checking the first point again
@@ -740,6 +787,8 @@ static inline void GenerateOutlineSegments()
     if (GlobalSettings::ShellThickness.Get() < 1)
         return;
 
+    cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0);
+
     for (std::size_t i = 0; i < layerCount; i++)
     {
         LayerComponent &layerComp = layerComponents[i];
@@ -750,9 +799,7 @@ static inline void GenerateOutlineSegments()
         {
             // TODO: remove the invalid islands
             if (isle.outlinePaths.size() < 1)
-                continue;
-
-            cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0);
+                continue;            
 
             // The first outline will be one that is half an extrusion thinner
             // than the sliced outline, ths is sothat the dimensions
@@ -784,6 +831,28 @@ static inline void GenerateOutlineSegments()
         }
     }
 }
+
+#ifdef TEST_ISLAND_DETECTION
+static inline void GenerateOutlineBasic()
+{
+    SlicerLog("Generating outline basic");
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        LayerComponent &layerComp = layerComponents[i];
+
+        SlicerLog("Basic outline: " + std::to_string(i));
+
+        for (LayerIsland &isle : layerComp.islandList)
+        {
+            // Place the newly created outline in its own segment
+            LayerSegment &outlineSegment = isle.segments.emplace<LayerSegment>(SegmentType::OutlineSegment);
+            outlineSegment.segmentSpeed = layerComp.layerSpeed;
+            outlineSegment.outlinePaths = isle.outlinePaths;
+        }
+    }
+}
+#endif
 
 static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
 {
@@ -1360,7 +1429,7 @@ static inline void CalculateToolpath()
                 // Remember if the last line in the segment had swapped points
                 bool lastSwapped = false;
 
-                // Now we need to start going through each line segment and add the extrusions
+                // Now we need to start going through each line segment and add the extrusions + moves
                 if (fillSegment)
                 {
                     // Extrude the first line
@@ -1504,6 +1573,63 @@ static inline void CalculateToolpath()
         }
     }
 }
+
+#ifdef TEST_ISLAND_DETECTION
+// This is a test method used to calculate a horible toolpath that only renders correct
+// as to evaluate other parts of the process for correctness.
+static inline void CalculateBasicToolpath()
+{
+    SlicerLog("Calculating basic toolpath");
+
+    IntPoint lastPoint(0, 0);
+    cInt lastZ = 0;
+
+    for (std::size_t i = 0; i < layerCount; i++)
+    {
+        SlicerLog("Basic toolpath: " + std::to_string(i));
+        LayerComponent &curLayer = layerComponents[i];
+
+        // Move to the new z position
+        // We need half a layerheight for the filament
+        cInt newZ = (GlobalSettings::LayerHeight.Get() * scaleFactor) * ((double)(i) + 0.5);
+        curLayer.initialLayerMoves.emplace_back(lastPoint, lastZ, newZ, curLayer.layerSpeed);
+        lastZ = newZ;
+
+        // TODO: we should actually move from each island to the closest one left
+        for (LayerIsland &isle : curLayer.islandList)
+        {
+            // The outline segments of an island should also have been generated before all infill type segments
+            // TODO: all outlines 1 list = fokop
+            for (LayerSegment *seg : isle.segments)
+            {
+                // This segment contains its linesegments in its outline polygons
+                for (Path &path : seg->outlinePaths)
+                {
+                    if (path.size() < 3)
+                        continue;
+
+                    LineList lineList;
+
+                    for (std::size_t i = 0; i < path.size() - 1; i++)
+                        lineList.emplace_back(path[i], path[i + 1]);
+
+                    lineList.emplace_back(path.back(), path.front());
+
+                    if (lineList.size() < 1)
+                        continue;
+
+                    seg->toolSegments.emplace<TravelSegment>(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed);
+
+                    for (LineSegment line : lineList)
+                        seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
+
+                    lastPoint = lineList.back().p2; // TODO: maybe other error?
+                }
+            }
+        }
+    }
+}
+#endif
 
 static inline void StoreGCode(std::string outFilePath)
 {
@@ -1709,6 +1835,18 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // Slice the triangles into layers
     SliceTrigsToLayers();
 
+#ifdef TEST_INITIAL_LINES
+    ToolpathLines();
+#elif defined(TEST_ISLAND_DETECTION)
+    CalculateIslandsFromInitialLines();
+    GenerateOutlineBasic();
+
+#ifdef TEST_OUTLINE_OPTIMIZE
+    OptimizeOutlinePaths();
+#endif
+
+    CalculateBasicToolpath();
+#else
     // Calculate islands from the original lines
     CalculateIslandsFromInitialLines();
 
@@ -1746,6 +1884,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 
     // Calculate the toolpath
     CalculateToolpath();
+#endif
 
     // Write the toolpath as gcode
     StoreGCode(outputFile);

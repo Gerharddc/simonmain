@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <utility>
 
 // This class provides a polymorphic class container
 // that provides the ability to store different
@@ -29,12 +30,25 @@ public:
         curAlloc = sizeof(Base) * DefAlloc;
     }
 
+    // When moved, the previous item becomes invalid
+    PMCollection(PMCollection &&other)
+    {
+        offsets = std::move(other.offsets);
+        items = other.items;
+        other.items = nullptr;
+        curAlloc = other.curAlloc;
+        curUsed = other.curUsed;
+    }
+
+    PMCollection(const PMCollection &other) = delete;
+
     ~PMCollection()
     {
         for (auto itr = begin(); itr != end(); ++itr)
             (*itr)->~Base();
 
-        free(items);
+        if (items != nullptr)
+            free(items);
     }
 
     Base* back()
