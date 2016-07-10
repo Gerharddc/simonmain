@@ -10,6 +10,8 @@
 #include <fstream>
 #include <iomanip>
 
+#include <functional>
+
 using namespace ChopperEngine;
 using namespace ClipperLib;
 
@@ -421,18 +423,17 @@ static inline void CalculateIslandsFromInitialLines()
         // We need a list of polygons which have already been closed and those that still need closing
         Paths closedPaths, openPaths;
 
-        // i = startLine idx
-        for (std::size_t i = 0; i < lineList.size(); i++)
+        for (std::size_t startIdx = 0; startIdx < lineList.size(); startIdx++)
         {
             //Check if the line has lready been used
-            TrigLineSegment &curLine = lineList[i];
+            TrigLineSegment &curLine = lineList[startIdx];
             if (curLine.usedInPolygon)
                 continue;
 
             Path path;
             path.push_back(curLine.p1);
 
-            std::size_t lineIdx = i;
+            std::size_t lineIdx = startIdx;
             bool closed = false;
 
             while (!closed)
@@ -473,7 +474,7 @@ static inline void CalculateIslandsFromInitialLines()
 
                         if (connected)
                         {
-                            if (touchLineIdx == i)
+                            if (touchLineIdx == startIdx)
                             {
                                 // If closed then the last point will be the same as the first and should
                                 // be removed
@@ -483,8 +484,11 @@ static inline void CalculateIslandsFromInitialLines()
                                 break;
                             }
 
-                            if (touchLine.usedInPolygon)
+                            if (touchLine.usedInPolygon) {
+                                connected = false;
                                 continue;
+                            }
+
 
                             lineIdx = touchLineIdx;
                             break;
@@ -580,7 +584,7 @@ static inline void CalculateIslandsFromInitialLines()
                         if (diff < bestDist)
                         {
                             bestDist = diff;
-                            bestA = i;
+                            bestA = k;
                             bestB = j;
                             wrongWay = true;
                         }
@@ -649,8 +653,12 @@ static bool InALine(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
 
 static inline void OptimizeOutlinePaths()
 {
+    SlicerLog("Optimizing outline paths");
+
     for (std::size_t a = 0; a < layerCount; a++)
     {
+        SlicerLog("Optimize: " + std::to_string(a));
+
         LayerComponent &layerComp = layerComponents[a];
 
         for (LayerIsland &isle : layerComp.islandList)
@@ -878,6 +886,8 @@ static inline void CalculateTopBottomSegments()
     {
         for (std::size_t i = 1; i < layerCount - tBCount; i++)
         {
+            SlicerLog("Top: " + std::to_string(i));
+
             //First we need to calculate the intersection of the top few layers above it
             Paths aboveIntersection;
 
@@ -890,7 +900,6 @@ static inline void CalculateTopBottomSegments()
                 {
                     clipper.Clear();
                     clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
-                    std::cout << "Size: " << isle.outlinePaths.size() << std::endl;
                     clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
                     clipper.Execute(ClipType::ctUnion, combinedIsles);
                 }
@@ -931,6 +940,8 @@ static inline void CalculateTopBottomSegments()
 
         for (std::size_t i = layerCount - 1; i > layerCount - tBCount - 1; i--)
         {
+            SlicerLog("Top: " + std::to_string(i));
+
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
                 SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
@@ -957,6 +968,8 @@ static inline void CalculateTopBottomSegments()
         {
             if (i < 1)
                 continue;
+
+            SlicerLog("Bottom: " + std::to_string(i));
 
             // First we need to calculate the intersection of the bottom few layers below it
             Paths belowIntersection;
@@ -1011,6 +1024,8 @@ static inline void CalculateTopBottomSegments()
         // Every island in the bottom layer is obviously a bottom segment
         for (std::size_t i = 0; i < tBCount; i++)
         {
+            SlicerLog("Bottom: " + std::to_string(i));
+
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
                 SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
@@ -1033,6 +1048,8 @@ static inline void CalculateInfillSegments()
 
     for (std::size_t i = layerCount-1; i > 0; i--)
     {
+        SlicerLog("Infill: " + std::to_string(i));
+
         for (LayerIsland &isle : layerComponents[i].islandList)
         {
             clipper.Clear();
@@ -1279,8 +1296,8 @@ static inline void CalculateToolpath()
 
     for (std::size_t i = 0; i < layerCount; i++)
     {
+        SlicerLog("Toolpath: " + std::to_string(i));
         LayerComponent &curLayer = layerComponents[i];
-        std::cout << "Calculating toolpath for layer: " << std::to_string(i) << std::endl;
 
         // Move to the new z position
         // We need half a layerheight for the filament
@@ -1524,6 +1541,8 @@ static inline void StoreGCode(std::string outFilePath)
 
     for (std::size_t layerNum = 0; layerNum < layerCount; layerNum++)
     {
+        SlicerLog("Writing: " + std::to_string(layerNum));
+
         const LayerComponent &layer = layerComponents[layerNum];
         os << ";Layer: " << layerNum << std::endl;
 
@@ -1652,7 +1671,7 @@ static inline void StoreGCode(std::string outFilePath)
                     }
                     else
                     {
-                        std::cout << "Trying to write unsopported segment to gcode." << std::endl;
+                        std::cout << "Trying to write unsupported segment to gcode." << std::endl;
                         os << "; Unown type: " << (int)ts->type;
                     }
 
@@ -1730,6 +1749,8 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 
     // Write the toolpath as gcode
     StoreGCode(outputFile);
+
+    SlicerLog("Done");
 
     // Free the memory
     if (layerComponents != nullptr)
