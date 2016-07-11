@@ -65,6 +65,19 @@ static void UpdateMesh(Mesh *mesh, MeshGroupData *mg)
         mesh->vertexFloats[idx + 2] = v.z;
     }
 
+    // Update the min and max values
+    glm::vec4 min(mesh->MinVec.x, mesh->MinVec.y, mesh->MinVec.z, 1.0f);
+    min = mg->gpuMat * glm::inverse(mg->meshMat) * min;
+    mesh->MinVec.x = min.x;
+    mesh->MinVec.y = min.y;
+    mesh->MinVec.z = min.z;
+
+    glm::vec4 max(mesh->MaxVec.x, mesh->MaxVec.y, mesh->MaxVec.z, 1.0f);
+    max = mg->gpuMat * glm::inverse(mg->meshMat) * max;
+    mesh->MaxVec.x = max.x;
+    mesh->MaxVec.y = max.y;
+    mesh->MaxVec.z = max.z;
+
     // Update the parameters
     mg->rotOnMesh = mg->rotOnMat;
     mg->scaleOnMesh = mg->scaleOnMat;
