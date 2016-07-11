@@ -33,9 +33,9 @@ const float FilamentWidth = 2.8f;
 // Uncomment to test outline optimization
 //#define TEST_OUTLINE_OPTIMIZE
 // Uncomment to test full outline generation
-#define TEST_OUTLINE_GENERATION
+//#define TEST_OUTLINE_GENERATION
 // Uncomment to test outline toolpath generation
-//#define TEST_OUTLINE_TOOLPATH
+#define TEST_OUTLINE_TOOLPATH
 
 #ifdef TEST_OUTLINE_OPTIMIZE
 #define TEST_ISLAND_DETECTION
@@ -1369,6 +1369,24 @@ static bool Colinear(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
     return (p3.Y - p1.Y)*(p2.X - p1.X) == (p2.Y - p1.Y)*(p3.X - p1.X);
 }
 
+static void AddRetractedMove(PMCollection<ToolSegment> &toolSegments,
+                            const IntPoint &p1,const IntPoint &p2,
+                             int moveSpeed, cInt lastZ)
+{
+    // Retract filament to avoid stringing if possible and if the distance is long enough
+    if (GlobalSettings::RetractionSpeed.Get() > 0 && GlobalSettings::RetractionDistance.Get() > 0)
+    {
+        const cInt minDist = 10 * scaleFactor;
+        const cInt minDist2 = minDist * minDist;
+
+        if (SquaredDist(p1, p2) > minDist2)
+            toolSegments.emplace<RetractSegment>(GlobalSettings::RetractionDistance.Get());
+    }
+
+    // Create the actual move segment
+    toolSegments.emplace<TravelSegment>(p1, p2, lastZ, moveSpeed);
+}
+
 static inline void CalculateToolpath()
 {
     SlicerLog("Calculating toolpath");
@@ -1392,59 +1410,26 @@ static inline void CalculateToolpath()
         {
             // The outline segments of an island should also have been generated before all infill type segments
 
-            bool fillSegment;
             // TODO: we should actually move from each segment to the closest one left
             for (LayerSegment *seg : isle.segments)
             {
-                // We need to convert all the polygons in the segment into lines so that we can do our calculations
-                LineList lineList;
+                // Infill segments have infill lines whilst other segments have their
+                // outlines extruded
                 if (SegmentWithInfill* segment = dynamic_cast<SegmentWithInfill*>(seg))
                 {
                     // This segment contains its linesegments in its fill polygons
-                    fillSegment = true;
-                    lineList = segment->fillLines;
-                }
-                else
-                {
-                    // This segment contains its linesegments in its outline polygons
-                    fillSegment = false;
-                    for (Path &path : seg->outlinePaths)
-                    {
-                        if (path.size() < 3)
-                            continue;
+                    LineList &lineList = segment->fillLines;
 
-                        for (std::size_t i = 0; i < path.size() - 1; i++)
-                            lineList.emplace_back(path[i], path[i + 1]);
+                    // Move to the next segment if this one does not have any lines
+                    if (lineList.size() < 1)
+                        continue;
 
-                        lineList.emplace_back(path.back(), path.front());
-                    }
-                }
+                    // We now need to move to the new segment
+                    AddRetractedMove(seg->toolSegments, lastPoint, lineList.front().p1, curLayer.moveSpeed, lastZ);
 
-                // Move to the next segment if this one does not have any lines
-                if (lineList.size() < 1)
-                    continue;
+                    // Remember if the last line in the segment had swapped points
+                    bool lastSwapped = false;
 
-                // We now need to move to the new segment
-
-                // Retract filament to avoid stringing if possible and if the distance is long enough
-                if (GlobalSettings::RetractionSpeed.Get() > 0 && GlobalSettings::RetractionDistance.Get() > 0)
-                {
-                    const cInt minDist = 10 * scaleFactor;
-                    const cInt minDist2 = minDist * minDist;
-
-                    if (SquaredDist(lastPoint, lineList[0].p1) > minDist2)
-                        seg->toolSegments.emplace<RetractSegment>(GlobalSettings::RetractionDistance.Get());
-                }
-
-                // Create the actual move segment
-                seg->toolSegments.emplace<TravelSegment>(lastPoint, lineList[0].p1, lastZ, curLayer.moveSpeed);
-
-                // Remember if the last line in the segment had swapped points
-                bool lastSwapped = false;
-
-                // Now we need to start going through each line segment and add the extrusions + moves
-                if (fillSegment)
-                {
                     // Extrude the first line
                     seg->toolSegments.emplace<ExtrudeSegment>(lineList.front(), lastZ, seg->segmentSpeed);
                     IntPoint p1 = lineList.front().p2;
@@ -1574,14 +1559,27 @@ static inline void CalculateToolpath()
                         //p1 = p2;
                         p1 = line.p2;
                     }
+
+                    lastPoint = (lastSwapped) ? lineList.back().p1 : lineList.back().p2;
                 }
                 else
                 {
-                    for (LineSegment line : lineList)
-                        seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
-                }
+                    // This segment contains its linesegments in its outline polygons
+                    for (Path &path : seg->outlinePaths)
+                    {
+                        if (path.size() < 3)
+                            continue;
 
-                lastPoint = (lastSwapped) ? lineList.back().p1 : lineList.back().p2;
+                        AddRetractedMove(seg->toolSegments, lastPoint, path.front(), curLayer.moveSpeed, lastZ);
+
+                        for (std::size_t i = 0; i < path.size() - 1; i++)
+                            seg->toolSegments.emplace<ExtrudeSegment>(path[i], path[i + 1], lastZ, seg->segmentSpeed);
+
+                        seg->toolSegments.emplace<ExtrudeSegment>(path.back(), path.front(), lastZ, seg->segmentSpeed);
+
+                        lastPoint = path.front();
+                    }
+                }               
             }
         }
     }
