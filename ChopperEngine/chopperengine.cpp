@@ -29,9 +29,19 @@ const float FilamentWidth = 2.8f;
 // Uncomment to test if initial lines are calculated properly
 //#define TEST_INITIAL_LINES
 // Uncomment to test if islands are generated properly
+//#define TEST_ISLAND_DETECTION
+// Uncomment to test outline optimization
+//#define TEST_OUTLINE_OPTIMIZE
+// Uncomment to test full outline generation
+#define TEST_OUTLINE_GENERATION
+// Uncomment to test outline toolpath generation
+//#define TEST_OUTLINE_TOOLPATH
+
+#ifdef TEST_OUTLINE_OPTIMIZE
 #define TEST_ISLAND_DETECTION
-    // Uncomment to test outline optimization
-    #define TEST_OUTLINE_OPTIMIZE
+#elif defined(TEST_OUTLINE_TOOLPATH)
+#define TEST_OUTLINE_GENERATION
+#endif
 
 void ChopperEngine::SlicerLog(std::string message)
 {
@@ -716,6 +726,9 @@ static inline void OptimizeOutlinePaths()
                 Path optiPath;
                 optiPath.reserve(path.size());
 
+                if (path.size() < 3)
+                    continue;
+
                 // Go through each point and check if the next one is either
                 // too close or part of an almost straight line
                 std::size_t j = 0;
@@ -739,7 +752,7 @@ static inline void OptimizeOutlinePaths()
                         IntPoint p2 = path[k];
 
                         // Skip past all the very close points
-                        while ((k < path.size()) && (SquaredDist(p1, p2) < minDiff))
+                        while ((k < path.size()-1) && (SquaredDist(p1, p2) < minDiff))
                         {
                             k++;
                             p2 = path[k];
@@ -761,7 +774,7 @@ static inline void OptimizeOutlinePaths()
                                 inLine = false;
                         }
 
-                        if (k == path.size())
+                        if (k >= path.size())
                             j = path.size()-1;
                         else
                             j = k;
@@ -1574,7 +1587,7 @@ static inline void CalculateToolpath()
     }
 }
 
-#ifdef TEST_ISLAND_DETECTION
+#if defined(TEST_ISLAND_DETECTION) || defined(TEST_OUTLINE_GENERATION)
 // This is a test method used to calculate a horible toolpath that only renders correct
 // as to evaluate other parts of the process for correctness.
 static inline void CalculateBasicToolpath()
@@ -1839,13 +1852,20 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     ToolpathLines();
 #elif defined(TEST_ISLAND_DETECTION)
     CalculateIslandsFromInitialLines();
-    GenerateOutlineBasic();
-
 #ifdef TEST_OUTLINE_OPTIMIZE
     OptimizeOutlinePaths();
 #endif
-
+    GenerateOutlineBasic();
     CalculateBasicToolpath();
+#elif defined(TEST_OUTLINE_GENERATION)
+    CalculateIslandsFromInitialLines();
+    OptimizeOutlinePaths();
+    GenerateOutlineSegments();
+#ifdef TEST_OUTLINE_TOOLPATH
+    CalculateToolpath();
+#else
+    CalculateBasicToolpath();
+#endif
 #else
     // Calculate islands from the original lines
     CalculateIslandsFromInitialLines();
