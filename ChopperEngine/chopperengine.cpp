@@ -693,7 +693,7 @@ static inline void CalculateIslandsFromInitialLines()
 
             while (SquaredDist(closedPath.front(), closedPath.back()) > minDiff)
             {
-                cInt bestDiff = minDiff * 5;
+                cInt bestDiff = minDiff * 3;
                 long bestIdx = -1;
                 bool bestSwapped = false;
 
@@ -748,12 +748,12 @@ static inline void CalculateIslandsFromInitialLines()
                 continue;
 
             closedPaths.emplace_back(toClose[a]);
-            Path &closedPath = closedPaths.back();
+            Path &forcedPath = closedPaths.back();
             toClose[a].clear();
 
             while (true)
             {
-                cInt bestDiff = SquaredDist(closedPath.front(), closedPath.back());
+                cInt bestDiff = SquaredDist(forcedPath.front(), forcedPath.back());
                 long bestIdx = -1;
                 bool bestSwapped = false;
 
@@ -763,23 +763,23 @@ static inline void CalculateIslandsFromInitialLines()
                         continue;
 
                     const Path &testPath = toClose[b];
-                    if (SquaredDist(closedPath.back(), testPath.front()) < bestDiff)
+                    if (SquaredDist(forcedPath.back(), testPath.front()) < bestDiff)
                     {
                         bestIdx = b;
-                        bestDiff = SquaredDist(closedPath.back(), testPath.front());
+                        bestDiff = SquaredDist(forcedPath.back(), testPath.front());
                         bestSwapped = false;
                     }
-                    else if (SquaredDist(closedPath.back(), testPath.back()) < bestDiff)
+                    else if (SquaredDist(forcedPath.back(), testPath.back()) < bestDiff)
                     {
                         bestIdx = b;
-                        bestDiff = SquaredDist(closedPath.back(), testPath.back());
+                        bestDiff = SquaredDist(forcedPath.back(), testPath.back());
                         bestSwapped = true;
                     }
                 }
 
                 if (bestIdx == -1)
                 {
-                    // Give up
+                    // Close is up
                     std::cout << "Forced close: " << a << std::endl;
                     break;
                 }
@@ -788,25 +788,12 @@ static inline void CalculateIslandsFromInitialLines()
                     if (bestSwapped)
                         std::reverse(toClose[bestIdx].begin(), toClose[bestIdx].end());
 
-                    closedPath.reserve(closedPath.size() + toClose[bestIdx].size());
-                    closedPath.insert(closedPath.begin(), toClose[bestIdx].begin(), toClose[bestIdx].end());
+                    forcedPath.reserve(forcedPath.size() + toClose[bestIdx].size());
+                    forcedPath.insert(forcedPath.begin(), toClose[bestIdx].begin(), toClose[bestIdx].end());
                     toClose[bestIdx].clear();
                 }
             }
         }
-
-        /*Paths stillOpen;
-        while (openPaths.size() > 0)
-        {
-            if (openPaths.back().size() > 0)
-                stillOpen.emplace_back(std::move(openPaths.back()));
-
-            openPaths.pop_back();
-        }
-
-        if (stillOpen.size() > 0)
-            std::cout << "Still open paths: " << stillOpen.size()
-                      << " closed: " << closedPaths.size() << std::endl;*/
 
 #ifndef TEST_NO_OPTIMIZE
         OptimizePaths(closedPaths);
@@ -818,15 +805,11 @@ static inline void CalculateIslandsFromInitialLines()
         PolyTree resultTree;
         Clipper clipper;
         clipper.AddPaths(closedPaths, PolyType::ptSubject, true);
-        //clipper.Execute(ClipType::ctUnion, resultTree, PolyFillType::pftEvenOdd, PolyFillType::pftEvenOdd);
+        clipper.Execute(ClipType::ctUnion, resultTree, PolyFillType::pftNonZero, PolyFillType::pftNonZero);
         clipper.Execute(ClipType::ctUnion, resultTree);
 
         // We need to itterate through the tree recursively because of its child structure
         ProcessPolyNode(&resultTree, layerComp.islandList);
-
-        /*layerComp.islandList.emplace_back();
-        LayerIsland &isle = layerComp.islandList.back();
-        isle.outlinePaths = closedPaths;*/
 
         // Optimize memory usage
         layerComp.islandList.shrink_to_fit();
