@@ -38,16 +38,16 @@ struct HashVertex
     // NOTE: this has not been optimized for best spreading at all!!!
     std::size_t operator()(const float *arrPos) const
     {
-        uint32_t a = *((uint32_t*)(arrPos));
-        uint32_t b = *((uint32_t*)(arrPos + 1));
-        uint32_t c = *((uint32_t*)(arrPos + 2));
+        std::size_t a = *((uint32_t*)(arrPos));
+        std::size_t b = *((uint32_t*)(arrPos + 1));
+        std::size_t c = *((uint32_t*)(arrPos + 2));
         return a*3 + b*5 + c*7;
     }
 };
 
 struct CompVertex
 {
-    // This functor compares to vertices
+    // This functor compares two vertices
     bool operator()(const float *arrPos1, const float *arrPos2) const
     {
         return (arrPos1[0] ==  arrPos2[0]) && (arrPos1[1] ==  arrPos2[1]) && (arrPos1[2] ==  arrPos2[2]);
@@ -61,19 +61,19 @@ static inline Mesh* ImportBinary(std::ifstream &is, unsigned int trigCount)
     MinVec.ToMax();
     MaxVec.ToMin();
 
+    std::cout << "Trigs: " << std::to_string(trigCount) << std::endl;
+
     // We allocate this buffer once and resuse it for all the floats that need to be read
     char buf[4];
 
     // Store a hashtable of the exisiting vertices to easily find indices of exisitng vertices
-    std::unordered_map<float*, int, HashVertex, CompVertex> vecTable;
+    std::unordered_map<float*, std::size_t, HashVertex, CompVertex> vecTable;
 
-    uint16_t curIdx = 0; // The first open index in the vertex buffer
-    uint16_t saveIdx = 0; // The current index that need to be saved
+    std::size_t curIdx = 0; // The first open index in the vertex buffer
+    std::size_t saveIdx = 0; // The current index that need to be saved
 
     for (unsigned int i = 0; i < trigCount; i++)
     {
-        // Read the normal first
-        //ReadVec3(is, buf, &(mesh->normalFloats[i * 3]));
         // Read past the normal
         is.seekg((std::size_t)is.tellg() + sizeof(float) * 3);
 

@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
-
+#include <exception>
 #include <functional>
 
 using namespace ChopperEngine;
@@ -29,19 +29,19 @@ const float FilamentWidth = 2.8f;
 // Uncomment to test if initial lines are calculated properly
 //#define TEST_INITIAL_LINES
 // Uncomment to test if islands are generated properly
-//#define TEST_ISLAND_DETECTION
-// Uncomment to test outline optimization
-//#define TEST_OUTLINE_OPTIMIZE
+#define TEST_ISLAND_DETECTION
 // Uncomment to test full outline generation
 //#define TEST_OUTLINE_GENERATION
 // Uncomment to test outline toolpath generation
-#define TEST_OUTLINE_TOOLPATH
+//#define TEST_OUTLINE_TOOLPATH
 
-#ifdef TEST_OUTLINE_OPTIMIZE
-#define TEST_ISLAND_DETECTION
-#elif defined(TEST_OUTLINE_TOOLPATH)
+#if defined(TEST_OUTLINE_TOOLPATH)
 #define TEST_OUTLINE_GENERATION
 #endif
+
+// Below are some experimental features disabled by default
+// Uncomment to combine a few layers' worth of infill segment
+//#define COMBINE_INFILL
 
 void ChopperEngine::SlicerLog(std::string message)
 {
@@ -255,11 +255,25 @@ static LayerComponent* layerComponents = nullptr;
 
 static inline Vertex &VertAtIdx(std::size_t idx)
 {
+    if (idx > sliceMesh->vertexCount)
+    {
+        std::cout << "Vertex: " << std::to_string(idx) << " not in "
+                  << std::to_string(sliceMesh->vertexCount) << std::endl;
+        throw std::runtime_error("Vertex idx too large.");
+    }
+
     return sliceMesh->vertices[idx];
 }
 
 static inline Triangle &TrigAtIdx(std::size_t idx)
 {
+    if (idx > sliceMesh->trigCount)
+    {
+        std::cout << "Trig: " << std::to_string(idx) << " not in "
+                  << std::to_string(sliceMesh->trigCount) << std::endl;
+        throw std::runtime_error("Trig idx too large.");
+    }
+
     return sliceMesh->trigs[idx];
 }
 
@@ -393,35 +407,22 @@ static inline cInt SquaredDist(const IntPoint& p1, const IntPoint& p2)
     return std::pow(p2.X - p1.X, 2) + std::pow(p2.Y - p1.Y, 2);
 }
 
-static void ProcessPolyNode(PolyNode &pNode, bool isHole, std::vector<LayerIsland> &isleList)
+static void ProcessPolyNode(PolyNode *pNode, std::vector<LayerIsland> &isleList)
 {
-    // Non-hole nodes together with their child holes form the outlines of islands
-    // but non-hole children form new islands
-    if (!isHole)
+    for (PolyNode *child : pNode->Childs)
     {
-        isleList.emplace_back();
-        LayerIsland &isle = isleList.back();
-        isle.outlinePaths.push_back(pNode.Contour);
+        // Trying to emplace here does not work because the reference to the
+        // back iterator clashes with the recursive function
+        LayerIsland isle;
+        isle.outlinePaths.push_back(child->Contour);
 
-        for (PolyNode *cNode : pNode.Childs)
+        for (PolyNode *grandChild : child->Childs)
         {
-            if (cNode->IsHole())
-            {
-                isle.outlinePaths.push_back(cNode->Contour);
-                ProcessPolyNode(*cNode, true, isleList);
-            }
+            isle.outlinePaths.push_back(grandChild->Contour);
+            ProcessPolyNode(grandChild, isleList);
+        }
 
-            else
-                ProcessPolyNode(*cNode, false, isleList);
-        }
-    }
-    else
-    {
-        // A non-hole node should not be able to contain holes
-        for (PolyNode *cNode : pNode.Childs)
-        {
-            ProcessPolyNode(*cNode, false, isleList);
-        }
+        isleList.emplace_back(std::move(isle));
     }
 }
 
@@ -460,6 +461,107 @@ static inline void ToolpathLines()
 }
 #endif
 
+static IntPoint operator-(const IntPoint &p1, const IntPoint &p2)
+{
+    return IntPoint(p1.X - p2.X, p1.Y - p2.Y);
+}
+
+static bool InALine(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
+{
+    // We calculate the cosine between p2p1 and p2p3 to see if they
+    // are almost in a straight line
+
+    IntPoint A = p1 - p2;
+    IntPoint B = p3 - p2;
+    double dotP = A.X * A.X + B.Y * B.Y;
+    double magA = std::sqrt(A.X * A.X + A.Y * A.Y);
+    double magB = std::sqrt(B.X * B.X + B.Y * B.Y);
+
+    double magAB = magA * magB;
+    if (magAB != 0)
+    {
+        double cos = dotP / (magA * magB);
+        const double thresh = std::cos(177.5 / 180.0 * PI);
+
+        // More negative cos is closer to 180 degrees
+        return (cos < thresh);
+    }
+    else
+        return true;
+}
+
+static inline void OptimizePaths(Paths& paths)
+{
+    for (std::size_t i = 0; i < paths.size(); i++)
+    {
+        Path &path = paths[i];
+        Path optiPath;
+        optiPath.reserve(path.size());
+
+        if (path.size() < 3)
+            continue;
+
+        // Go through each point and check if the next one is either
+        // too close or part of an almost straight line
+        std::size_t j = 0;
+        while (true)
+        {
+            IntPoint p1 = path[j];
+
+            const cInt minDiff = (cInt)(0.075 * 0.075 * scaleFactor * scaleFactor);
+            if (j == path.size()-1)
+            {
+                // The last point should be checked differently to avoid checking the first point again
+                IntPoint p2 = path[0];
+                if ((SquaredDist(p1, p2) >= minDiff) && (!InALine(p1, p2, path[1])))
+                    optiPath.push_back(p2);
+
+                break;
+            }
+            else
+            {
+                std::size_t k = j + 1;
+                IntPoint p2 = path[k];
+
+                // Skip past all the very close points
+                while ((k < path.size()-1) && (SquaredDist(p1, p2) < minDiff))
+                {
+                    k++;
+                    p2 = path[k];
+                }
+
+                // Skip past points almost in line with their following
+                // and previous points
+                bool inLine = true;
+                while ((k < path.size()-1) && inLine)
+                {
+                    IntPoint p3 = path[(k == path.size()) ? 0 : k + 1];
+
+                    if (InALine(p1, p2, p3))
+                    {
+                        k++;
+                        p2 = path[k];
+                    }
+                    else
+                        inLine = false;
+                }
+
+                if (k >= path.size())
+                    j = path.size()-1;
+                else
+                    j = k;
+
+                // We can now add the valid point and search for the next one
+                optiPath.push_back(p2);
+            }
+        }
+
+        // Finally we can move to the optimized path
+        optiPath.shrink_to_fit();
+        paths[i] = optiPath;
+    }
+}
+
 static inline void CalculateIslandsFromInitialLines()
 {
     SlicerLog("Calculating initial islands");
@@ -493,8 +595,6 @@ static inline void CalculateIslandsFromInitialLines()
             curPath.push_back(startLine.p2);
             IntPoint pointToConnectTo = startLine.p2;
 
-            const cInt minDiff = (cInt)(0.001 * 0.001 * scaleFactor * scaleFactor);
-
             // Try to build a closed polygon until we have exhausted all available connected lines
             while (open)
             {
@@ -524,9 +624,9 @@ static inline void CalculateIslandsFromInitialLines()
                         if (touchLine.usedInPolygon)
                             continue;
 
-                        if (SquaredDist(pointToConnectTo, touchLine.p1) < minDiff)
+                        if (pointToConnectTo == touchLine.p1)
                             connected = true;
-                        else if (SquaredDist(pointToConnectTo, touchLine.p2) < minDiff)
+                        else if (pointToConnectTo == touchLine.p2)
                         {
                             touchLine.SwapPoints();
                             connected = true;
@@ -536,7 +636,7 @@ static inline void CalculateIslandsFromInitialLines()
                         {
                             touchLine.usedInPolygon = true;
 
-                            if (SquaredDist(touchLine.p2, startLine.p1) < minDiff)
+                            if (touchLine.p2 == startLine.p1)
                                 open = false;
                             else
                             {
@@ -559,7 +659,9 @@ static inline void CalculateIslandsFromInitialLines()
 
             if (open)
             {
-                openPaths.emplace_back(std::move(closedPaths.back()));
+                if (closedPaths.back().size() > 0)
+                    openPaths.emplace_back(std::move(closedPaths.back()));
+
                 closedPaths.pop_back();
             }
         }
@@ -570,225 +672,164 @@ static inline void CalculateIslandsFromInitialLines()
 
         // TODO: closing needs to be tested
 
-        for (std::size_t j = 0; j < openPaths.size(); j++)
+        if (openPaths.size() > 0)
+            std::cout << "Open paths: " << openPaths.size()
+                      << " closed: " << closedPaths.size() << std::endl;
+
+        const cInt minDiff = (cInt)(0.05 * 0.05 * scaleFactor * scaleFactor);
+
+        //Paths toForceClose;
+        Paths toClose;
+
+        // First try to close up little gaps or create longer chains
+        for (std::size_t a = 0; a < openPaths.size(); a++)
         {
-            if (openPaths[j].size() < 1)
+            if (openPaths[a].size() == 0)
                 continue;
 
-            for (std::size_t k = 0; k < openPaths.size(); k++)
+            closedPaths.emplace_back(openPaths[a]);
+            Path &closedPath = closedPaths.back();
+            openPaths[a].clear();
+
+            while (SquaredDist(closedPath.front(), closedPath.back()) > minDiff)
             {
-                if (openPaths[k].size() < 1)
-                    continue;
+                cInt bestDiff = minDiff * 5;
+                long bestIdx = -1;
+                bool bestSwapped = false;
 
-                IntPoint p1 = openPaths[j].back();
-                IntPoint p2 = openPaths[k].front();
-
-                const cInt minDiff = (cInt)(0.02 * 0.02 * scaleFactor * scaleFactor);
-                if (SquaredDist(p1, p2) < minDiff)
+                for (std::size_t b = a + 1; b < openPaths.size(); b++)
                 {
-                    if (j == k)
-                    {
-                        closedPaths.push_back(openPaths[j]);
-                        openPaths[j].clear();
-                        break;
-                    }
-                    else
-                    {
-                        openPaths[j].reserve(openPaths[j].size() + openPaths[k].size());
-                        openPaths[j].insert(openPaths[j].begin(), openPaths[k].begin(), openPaths[k].end());
-                        openPaths[k].clear();
-                    }
-                }
-            }
-        }
-
-        // TODO: combine the below and the above, also possibly add hashing
-
-        while (true)
-        {
-            long bestDist = std::numeric_limits<long>::max();
-            long bestA = -1;
-            long bestB = -1;
-            bool wrongWay = false;
-
-            for (std::size_t j = 0; j < openPaths.size(); j++)
-            {
-                if (openPaths[j].size() < 1)
-                    continue;
-
-                for (std::size_t k = 0; k < openPaths.size(); k++)
-                {
-                    if (openPaths[k].size() < 1)
+                    if (openPaths[b].size() == 0)
                         continue;
 
-                    IntPoint p1 = openPaths[j].back();
-                    IntPoint p2 = openPaths[k].front();
-
-                    long diff = SquaredDist(p1, p2);
-                    if (diff < bestDist)
+                    const Path &testPath = openPaths[b];
+                    if (SquaredDist(closedPath.back(), testPath.front()) < bestDiff)
                     {
-                        bestDist = diff;
-                        bestA = j;
-                        bestB = k;
-                        wrongWay = false;
+                        bestIdx = b;
+                        bestDiff = SquaredDist(closedPath.back(), testPath.front());
+                        bestSwapped = false;
                     }
-
-                    if (j != k)
+                    else if (SquaredDist(closedPath.back(), testPath.back()) < bestDiff)
                     {
-                        p2 = openPaths[k].back();
-                        diff = SquaredDist(p1, p2);
-
-                        if (diff < bestDist)
-                        {
-                            bestDist = diff;
-                            bestA = k;
-                            bestB = j;
-                            wrongWay = true;
-                        }
+                        bestIdx = b;
+                        bestDiff = SquaredDist(closedPath.back(), testPath.back());
+                        bestSwapped = true;
                     }
                 }
-            }
 
-            if (bestDist == std::numeric_limits<long>::max())
-                break;
+                if (bestIdx == -1)
+                {
+                    // We will try to force it closed later
+                    toClose.emplace_back(std::move(closedPath));
+                    closedPaths.pop_back();
 
-            if (bestA == bestB)
-            {
-                closedPaths.push_back(openPaths[bestA]);
-                openPaths[bestA].clear();
-            }
-            else
-            {
-                if (wrongWay)
-                    std::reverse(openPaths[bestA].begin(), openPaths[bestA].end());
+                    break;
+                }
+                else
+                {
+                    if (bestSwapped)
+                        std::reverse(openPaths[bestIdx].begin(), openPaths[bestIdx].end());
 
-                openPaths[bestA].reserve(openPaths[bestA].size() + openPaths[bestB].size());
-                openPaths[bestA].insert(openPaths[bestA].begin(), openPaths[bestB].begin(), openPaths[bestB].end());
-                openPaths[bestB].clear();
+                    closedPath.reserve(closedPath.size() + openPaths[bestIdx].size());
+                    closedPath.insert(closedPath.begin(), openPaths[bestIdx].begin(), openPaths[bestIdx].end());
+                    openPaths[bestIdx].clear();
+                }
             }
         }
+
+        if (toClose.size() > 0)
+            std::cout << "To force: " << toClose.size()
+                      << " closed: " << closedPaths.size() << std::endl;
+
+        // Finally pair up the chains that need to be forced close
+        for (std::size_t a = 0; a < toClose.size(); a++)
+        {
+            if (toClose[a].size() == 0)
+                continue;
+
+            closedPaths.emplace_back(toClose[a]);
+            Path &closedPath = closedPaths.back();
+            toClose[a].clear();
+
+            while (true)
+            {
+                cInt bestDiff = SquaredDist(closedPath.front(), closedPath.back());
+                long bestIdx = -1;
+                bool bestSwapped = false;
+
+                for (std::size_t b = a + 1; b < toClose.size(); b++)
+                {
+                    if (toClose[b].size() == 0)
+                        continue;
+
+                    const Path &testPath = toClose[b];
+                    if (SquaredDist(closedPath.back(), testPath.front()) < bestDiff)
+                    {
+                        bestIdx = b;
+                        bestDiff = SquaredDist(closedPath.back(), testPath.front());
+                        bestSwapped = false;
+                    }
+                    else if (SquaredDist(closedPath.back(), testPath.back()) < bestDiff)
+                    {
+                        bestIdx = b;
+                        bestDiff = SquaredDist(closedPath.back(), testPath.back());
+                        bestSwapped = true;
+                    }
+                }
+
+                if (bestIdx == -1)
+                {
+                    // Give up
+                    std::cout << "Forced close: " << a << std::endl;
+                    break;
+                }
+                else
+                {
+                    if (bestSwapped)
+                        std::reverse(toClose[bestIdx].begin(), toClose[bestIdx].end());
+
+                    closedPath.reserve(closedPath.size() + toClose[bestIdx].size());
+                    closedPath.insert(closedPath.begin(), toClose[bestIdx].begin(), toClose[bestIdx].end());
+                    toClose[bestIdx].clear();
+                }
+            }
+        }
+
+        /*Paths stillOpen;
+        while (openPaths.size() > 0)
+        {
+            if (openPaths.back().size() > 0)
+                stillOpen.emplace_back(std::move(openPaths.back()));
+
+            openPaths.pop_back();
+        }
+
+        if (stillOpen.size() > 0)
+            std::cout << "Still open paths: " << stillOpen.size()
+                      << " closed: " << closedPaths.size() << std::endl;*/
+
+#ifndef TEST_NO_OPTIMIZE
+        OptimizePaths(closedPaths);
+#endif
 
         // We now need to put the newly created polygons through clipper sothat it can detect holes for us
         // and then make proper islands with the returned data
 
         PolyTree resultTree;
         Clipper clipper;
-        clipper.AddPaths(closedPaths, PolyType::ptClip, true);
-        clipper.Execute(ClipType::ctUnion, resultTree, PolyFillType::pftEvenOdd, PolyFillType::pftEvenOdd);
+        clipper.AddPaths(closedPaths, PolyType::ptSubject, true);
+        //clipper.Execute(ClipType::ctUnion, resultTree, PolyFillType::pftEvenOdd, PolyFillType::pftEvenOdd);
+        clipper.Execute(ClipType::ctUnion, resultTree);
 
         // We need to itterate through the tree recursively because of its child structure
-        for (PolyNode *pNode : resultTree.Childs)
-            ProcessPolyNode(*pNode, false, layerComp.islandList);
+        ProcessPolyNode(&resultTree, layerComp.islandList);
+
+        /*layerComp.islandList.emplace_back();
+        LayerIsland &isle = layerComp.islandList.back();
+        isle.outlinePaths = closedPaths;*/
 
         // Optimize memory usage
         layerComp.islandList.shrink_to_fit();
-    }
-}
-
-static IntPoint operator-(const IntPoint &p1, const IntPoint &p2)
-{
-    return IntPoint(p1.X - p2.X, p1.Y - p2.Y);
-}
-
-static bool InALine(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
-{
-    // We calculate the cosine between p2p1 and p2p3 to see if they
-    // are almost in a straight line
-
-    IntPoint A = p1 - p2;
-    IntPoint B = p3 - p2;
-    double dotP = A.X * A.X + B.Y * B.Y;
-    double magA = std::sqrt(A.X * A.X + A.Y * A.Y);
-    double magB = std::sqrt(B.X * B.X + B.Y * B.Y);
-
-    double cos = dotP / (magA * magB);
-    const double thresh = std::cos(177.5 / 180.0 * PI);
-
-    // More negative cos is closer to 180 degrees
-    return (cos < thresh);
-}
-
-static inline void OptimizeOutlinePaths()
-{
-    SlicerLog("Optimizing outline paths");
-
-    for (std::size_t a = 0; a < layerCount; a++)
-    {
-        SlicerLog("Optimize: " + std::to_string(a));
-
-        LayerComponent &layerComp = layerComponents[a];
-
-        for (LayerIsland &isle : layerComp.islandList)
-        {
-            for (std::size_t i = 0; i < isle.outlinePaths.size(); i++)
-            {
-                Path &path = isle.outlinePaths[i];
-                Path optiPath;
-                optiPath.reserve(path.size());
-
-                if (path.size() < 3)
-                    continue;
-
-                // Go through each point and check if the next one is either
-                // too close or part of an almost straight line
-                std::size_t j = 0;
-                while (true)
-                {
-                    IntPoint p1 = path[j];
-
-                    const cInt minDiff = (cInt)(0.075 * 0.075 * scaleFactor * scaleFactor);
-                    if (j == path.size()-1)
-                    {
-                        // The last point should be checked differently to avoid checking the first point again
-                        IntPoint p2 = path[0];
-                        if ((SquaredDist(p1, p2) >= minDiff) && (!InALine(p1, p2, path[1])))
-                            optiPath.push_back(p2);
-
-                        break;
-                    }
-                    else
-                    {
-                        std::size_t k = j + 1;
-                        IntPoint p2 = path[k];
-
-                        // Skip past all the very close points
-                        while ((k < path.size()-1) && (SquaredDist(p1, p2) < minDiff))
-                        {
-                            k++;
-                            p2 = path[k];
-                        }
-
-                        // Skip past points almost in line with their following
-                        // and previous points
-                        bool inLine = true;
-                        while ((k < path.size()) && inLine)
-                        {
-                            IntPoint p3 = path[(k == path.size()) ? 0 : k + 1];
-
-                            if (InALine(p1, p2, p3))
-                            {
-                                k++;
-                                p2 = path[k];
-                            }
-                            else
-                                inLine = false;
-                        }
-
-                        if (k >= path.size())
-                            j = path.size()-1;
-                        else
-                            j = k;
-
-                        // We can now add the valid point and search for the next one
-                        optiPath.push_back(p2);
-                    }
-                }
-
-                // Finally we can move to the optimized path
-                optiPath.shrink_to_fit();
-                isle.outlinePaths[i] = optiPath;
-            }
-        }
     }
 }
 
@@ -1149,7 +1190,8 @@ static inline void CalculateInfillSegments()
                 clipper.AddPaths(seg->outlinePaths, PolyType::ptClip, true);
             }
 
-            SegmentWithInfill infillSeg(SegmentType::InfillSegment);
+            //SegmentWithInfill infillSeg(SegmentType::InfillSegment);
+            SegmentWithInfill &infillSeg = isle.segments.emplace<SegmentWithInfill>(SegmentType::InfillSegment);
             infillSeg.segmentSpeed = GlobalSettings::InfillSpeed.Get();
 
             // We then need to perform a difference operation to determine the infill segments
@@ -1163,7 +1205,7 @@ static inline void CalculateSupportSegments()
     // TODO: implement this
 }
 
-static inline void CombineInfillSegmetns()
+static inline void CombineInfillSegments()
 {
     SlicerLog("Combining infill segments");
 
@@ -1476,7 +1518,7 @@ static inline void CalculateToolpath()
                         }
 
                         // TODO: it should not be possible for this to happen
-                        std::cout << "Infill point did not intersect outline" << std::endl;
+                        //std::cout << "Infill point did not intersect outline" << std::endl;
                         seg->toolSegments.emplace<TravelSegment>(p1, p2, lastZ, curLayer.moveSpeed);
                         seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
                         //p1 = p2;
@@ -1484,6 +1526,8 @@ static inline void CalculateToolpath()
                         continue; // Next line
 
                         FindP2Intersect:
+
+                        std::cout << "Infill point did intersect outline" << std::endl;
 
                         // Determine if the other point is on the same line
                         if (Colinear(pA, p2, pB))
@@ -1850,9 +1894,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     ToolpathLines();
 #elif defined(TEST_ISLAND_DETECTION)
     CalculateIslandsFromInitialLines();
-#ifdef TEST_OUTLINE_OPTIMIZE
-    OptimizeOutlinePaths();
-#endif
+
+//#ifdef TEST_OUTLINE_OPTIMIZE
+  //  OptimizeOutlinePaths();
+//#endif
     GenerateOutlineBasic();
     CalculateBasicToolpath();
 #elif defined(TEST_OUTLINE_GENERATION)
@@ -1867,9 +1912,6 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 #else
     // Calculate islands from the original lines
     CalculateIslandsFromInitialLines();
-
-    // Optimize the outline polygons
-    OptimizeOutlinePaths();
 
     // Generate the outline segments
     GenerateOutlineSegments();
@@ -1888,8 +1930,10 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     // Calculate the support segments
     CalculateSupportSegments();
 
+#ifdef COMBINE_INFILL
     // Combine the infill segments
-    CombineInfillSegmetns();
+    CombineInfillSegments();
+#endif
 
     // Generate a raft
     GenerateRaft();
@@ -1905,7 +1949,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 #endif
 
     // Write the toolpath as gcode
-    StoreGCode(outputFile);
+    StoreGCode("/home/Simon/Test/test.gcode");//outputFile);
 
     SlicerLog("Done");
 

@@ -14,7 +14,7 @@ Mesh::Mesh(std::size_t size)
 
     // The arrays in triangles need to be initialized
     for (std::size_t i = 0; i < size; i++)
-        trigs[i] = Triangle();
+        new (trigs + i) Triangle();
 
     // The std::vectors in the vertices need to be initialized, we also need to keep track of how many there are as to be able to
     // properly destruct them later on
