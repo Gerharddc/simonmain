@@ -29,7 +29,7 @@ const float FilamentWidth = 2.8f;
 // Uncomment to test if initial lines are calculated properly
 //#define TEST_INITIAL_LINES
 // Uncomment to test if islands are generated properly
-#define TEST_ISLAND_DETECTION
+//#define TEST_ISLAND_DETECTION
 // Uncomment to test full outline generation
 //#define TEST_OUTLINE_GENERATION
 // Uncomment to test outline toolpath generation
@@ -917,15 +917,20 @@ static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0
     // 2 points of linesegment
     IntPoint p1, p2;
 
+    float MaxY = sliceMesh->MaxVec.y;
+    float MinY = sliceMesh->MinVec.y;
+    float MinX = sliceMesh->MinVec.x;
+    float MaxX = sliceMesh->MaxVec.x;
+
     // We need to start creating diagonal lines before
     // the min x sothat there are lines over every part of the model
-    cInt xOffset = (cInt)((sliceMesh->MaxVec.y - sliceMesh->MinVec.y) * scaleFactor / std::tan(angle));
-    cInt modMinX = sliceMesh->MinVec.x - xOffset;
+    cInt xOffset = (cInt)((MaxY - MinY) * scaleFactor / std::tan(angle));
+    cInt modMinX = MinX - xOffset;
 
-    std::size_t amountOfLines = (std::size_t)((sliceMesh->MaxVec.x * scaleFactor - modMinX) / divider);
+    std::size_t amountOfLines = (std::size_t)((MaxX * scaleFactor - modMinX) / divider);
 
-    cInt minY = (cInt)(sliceMesh->MinVec.y * scaleFactor);
-    cInt maxY = (cInt)(sliceMesh->MaxVec.y * scaleFactor);
+    cInt minY = (cInt)(MinY * scaleFactor);
+    cInt maxY = (cInt)(MaxY * scaleFactor);
 
     // Calculate the right and left line simultaneously
     for (std::size_t i = 0; i < amountOfLines; i++)
@@ -1385,14 +1390,14 @@ static inline void TrimInfill()
 
 const cInt MoveHigher = scaleFactor / 10;
 
-static bool Colinear(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
+/*static bool Colinear(const IntPoint &p1, const IntPoint &p2, const IntPoint &p3)
 {
     // (y3 - y1)/(x3 - x1) should = (y2 - y1)/(x2 - x1)
     // so without division and need for conversion to floats
     // (y3 - y1)*(x2 - x1) should = (y2 - y1)*(x3 - x1)
 
     return (p3.Y - p1.Y)*(p2.X - p1.X) == (p2.Y - p1.Y)*(p3.X - p1.X);
-}
+}*/
 
 static void AddRetractedMove(PMCollection<ToolSegment> &toolSegments,
                             const IntPoint &p1,const IntPoint &p2,
@@ -1492,7 +1497,7 @@ static inline void CalculateToolpath()
                                 pA = path[interIdx];
                                 pB = path[(interIdx == path.size()-1) ? 0 : interIdx + 1];
 
-                                if (Colinear(pA, p1, pB))
+                                if (InALine(pA, p1, pB))
                                 {
                                     interPath = &path;
                                     goto FindP2Intersect;
@@ -1513,7 +1518,7 @@ static inline void CalculateToolpath()
                         std::cout << "Infill point did intersect outline" << std::endl;
 
                         // Determine if the other point is on the same line
-                        if (Colinear(pA, p2, pB))
+                        if (InALine(pA, p2, pB))
                             seg->toolSegments.emplace<TravelSegment>(p1, p2, lastZ, curLayer.moveSpeed);
                         else
                         {
@@ -1532,7 +1537,7 @@ static inline void CalculateToolpath()
                                 pA = interPath->at(i);
                                 pB = interPath->at((i == interPath->size()-1) ? 0 : i + 1);
 
-                                if (Colinear(pA, p2, pB))
+                                if (InALine(pA, p2, pB))
                                     noInter = false;
                                 else
                                     i++;
@@ -1545,7 +1550,7 @@ static inline void CalculateToolpath()
                                 pA = interPath->at(i - 1);
                                 pB = interPath->at((i == interPath->size()-1) ? 0 : i);
 
-                                if (Colinear(pA, p2, pB))
+                                if (InALine(pA, p2, pB))
                                 {
                                     noInter = false;
                                     forwards = false;
@@ -1877,10 +1882,6 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     ToolpathLines();
 #elif defined(TEST_ISLAND_DETECTION)
     CalculateIslandsFromInitialLines();
-
-//#ifdef TEST_OUTLINE_OPTIMIZE
-  //  OptimizeOutlinePaths();
-//#endif
     GenerateOutlineBasic();
     CalculateBasicToolpath();
 #elif defined(TEST_OUTLINE_GENERATION)
@@ -1932,9 +1933,9 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
 #endif
 
     // Write the toolpath as gcode
-    StoreGCode("/home/Simon/Test/test.gcode");//outputFile);
+    StoreGCode(outputFile);
 
-    SlicerLog("Done");
+    SlicerLog("Done with " + outputFile);
 
     // Free the memory
     if (layerComponents != nullptr)
