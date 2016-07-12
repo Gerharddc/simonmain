@@ -12,6 +12,7 @@
 #include <exception>
 #include <functional>
 #include <unordered_map>
+#include <stack>
 
 using namespace ChopperEngine;
 using namespace ClipperLib;
@@ -38,7 +39,7 @@ const float FilamentWidth = 2.8f;
 // Uncomment to test infill with safe toolpath
 #define TEST_INFILL
 // Uncomment to use failsafe infill
-#define FAILSAFE_INFILL
+//#define FAILSAFE_INFILL
 
 #if defined(TEST_OUTLINE_TOOLPATH)
 #define TEST_OUTLINE_GENERATION
@@ -1018,6 +1019,9 @@ static inline void CalculateTopBottomSegments()
 
     // TODO: implement seperate top and bottom thickness
     Clipper clipper;
+    ClipperOffset offset;
+
+    cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0);
 
     // To calculate the top segments we need to go from the bottom up,
     // take each island as a subject, take the outline of the above layer
@@ -1065,12 +1069,17 @@ static inline void CalculateTopBottomSegments()
                 clipper.Execute(ClipType::ctIntersection, aboveIntersection);
             }
 
+            // Grow the intersection a bit just to get rid of noise when cutting from it
+            offset.Clear();
+            offset.AddPaths(aboveIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
+            offset.Execute(aboveIntersection, halfNozzle);
+
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
                 SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
                 clipper.Clear();
-                clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
-                clipper.AddPaths(aboveIntersection, PolyType::ptClip, true);
+                clipper.AddPaths(isle.outlinePaths, PolyType::ptClip, true);
+                clipper.AddPaths(aboveIntersection, PolyType::ptSubject, true);
                 clipper.Execute(ClipType::ctDifference, topSegment.outlinePaths);
 
                 if (topSegment.outlinePaths.size() > 0)
@@ -1148,12 +1157,17 @@ static inline void CalculateTopBottomSegments()
                 clipper.Execute(ClipType::ctIntersection, belowIntersection);
             }
 
+            // Grow the intersection a bit just to get rid of noise when cutting from it
+            offset.Clear();
+            offset.AddPaths(belowIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
+            offset.Execute(belowIntersection, halfNozzle);
+
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
                 SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
                 clipper.Clear();
-                clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
-                clipper.AddPaths(belowIntersection, PolyType::ptClip, true);
+                clipper.AddPaths(isle.outlinePaths, PolyType::ptClip, true);
+                clipper.AddPaths(belowIntersection, PolyType::ptSubject, true);
                 clipper.Execute(ClipType::ctDifference, bottomSegment.outlinePaths);
 
                 if (bottomSegment.outlinePaths.size() > 0)
@@ -1221,6 +1235,8 @@ static inline void CalculateInfillSegments()
 
             // We then need to perform a difference operation to determine the infill segments
             clipper.Execute(ClipType::ctDifference, infillSeg.outlinePaths);
+
+            //infillSeg.outlinePaths = isle.outlinePaths;
         }
     }
 }
@@ -1230,6 +1246,7 @@ static inline void CalculateSupportSegments()
     // TODO: implement this
 }
 
+#ifdef COMBINE_INFILL
 static inline void CombineInfillSegments()
 {
     SlicerLog("Combining infill segments");
@@ -1345,6 +1362,7 @@ static inline void CombineInfillSegments()
         }
     }
 }
+#endif
 
 static inline void GenerateRaft()
 {
@@ -1359,6 +1377,15 @@ static inline void GenerateSkirt()
 }
 
 #ifndef FAILSAFE_INFILL
+struct SectPoint
+{
+    IntPoint point;
+    const Path *path;
+
+    SectPoint (cInt x, cInt y, const Path *path_)
+        : point(x, y), path(path_) {}
+};
+
 static inline cInt xOnAxis(const IntPoint &p, bool right)
 {
     if (right)
@@ -1367,9 +1394,9 @@ static inline cInt xOnAxis(const IntPoint &p, bool right)
         return p.X + p.Y;
 }
 
-bool CompForY(const IntPoint &a, const IntPoint &b)
+static bool CompForY(const SectPoint &a, const SectPoint &b)
 {
-    return (a.Y < b.Y);
+    return (a.point.Y < b.point.Y);
 }
 
 static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillLines,
@@ -1388,11 +1415,11 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
     // If other  angles need support these trig values should be
     // cached for densities
 
-    cInt divider = densityDividers[density];
+    double divider = densityDividers[density];
 
     // We store all intersections on the same diagonal line as to
     // connect them into lines later
-    std::map<cInt, std::vector<IntPoint>> sectMap;
+    std::map<cInt, std::vector<SectPoint>> sectMap;
 
     right = true;
 
@@ -1407,38 +1434,41 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
             IntPoint p1 = path[i];
             IntPoint p2 = (i < path.size()-1) ? path[i + 1] : path[0];
 
+            double leftMost = xOnAxis(p1, right);
+            double rightMost = xOnAxis(p2, right);
             IntPoint leftP, rightP;
 
-            if (p1.X < p2.X) {
-                leftP = p1;
-                rightP = p2;
-            }
-            else {
+            if (rightMost < leftMost)
+            {
+                cInt temp = leftMost;
+                leftMost = rightMost;
+                rightMost = temp;
+
                 leftP = p2;
                 rightP = p1;
             }
+            else
+            {
+                leftP = p1;
+                rightP = p2;
+            }
 
-            // Calculate the leftmost axisPoint inside the line
-            cInt leftMost = xOnAxis(leftP, right);
+            // We add a small rounding margin to prevent loss of seemingly obvious line
             cInt leftIdx = std::ceil(leftMost / divider);
-            // And the rightmost
-            cInt rightMost = xOnAxis(rightP, right);
             cInt rightIdx = std::floor(rightMost / divider);
 
             double yRise = rightP.Y - leftP.Y;
             double xRise = rightP.X - leftP.X;
             double xDist = rightMost - leftMost;
 
-            if (xDist != xRise)
-                std::cout << "xRise: " << xRise << " xDist:" << xDist << std::endl;
-
             // Now get all the points of intersection on this line
             for (cInt idx = leftIdx; idx <= rightIdx; idx++) {
+                double idxX = (idx * divider);
                 double xDiff = (idx * divider) - leftMost;
                 double xPerc = xDiff / xDist;
-                cInt yVal = leftP.Y + (cInt)(xPerc * yRise);
                 cInt xVal = leftP.X + (cInt)(xPerc * xRise);
-                sectMap[idx].emplace_back(xVal, yVal);
+                cInt yVal = leftP.Y + (cInt)(xPerc * yRise);
+                sectMap[idx].emplace_back(xVal, yVal, &path);
             }
         }
     }
@@ -1446,11 +1476,144 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
     // Now go through all the points on each line and create the segments
     for (auto pair : sectMap)
     {
-        std::vector<IntPoint> &points = pair.second;
-        std::sort(points.begin(), points.end(), CompForY);
+        std::vector<SectPoint> &points = pair.second;
+        if (points.size() < 2)
+            continue;
 
-        for (std::size_t i = 0; i < points.size()-1; i+=2)
-            infillLines.emplace_back(points[i], points[i + 1]);
+        // We should now sort the points and remove duplicates
+        /*std::vector<IntPoint> clean;
+
+        IntPoint minPoint(0, std::numeric_limits<cInt>::max());
+        for (IntPoint p : points)
+        {
+            if (p.Y < minPoint.Y)
+                minPoint = p;
+        }
+        clean.push_back(minPoint);
+
+        while (true)
+        {
+            bool found = false;
+            minPoint = IntPoint(0, std::numeric_limits<cInt>::max());
+
+            const cInt minLen = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
+            for (IntPoint p : points)
+            {
+                if ((p.Y > clean.back().Y) && (p.Y < minPoint.Y)
+                        && SquaredDist(p, clean.back()) > minLen)
+                {
+                    found = true;
+                    minPoint = p;
+                }
+            }
+
+            if (found)
+                clean.push_back(minPoint);
+            else
+                break;
+        }
+
+        for (std::size_t i = 0; i < clean.size()-1; i+=2)
+            infillLines.emplace_back(clean[i], clean[i + 1]);*/
+
+        std::sort(points.begin(), points.end(), CompForY);
+        std::stack<const Path*> pathStack;
+        bool curOpen = false;
+        IntPoint lastP;
+
+        std::size_t i = 0;
+        while (i < points.size())
+        {
+            const cInt minLen = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
+            //if (SquaredDist(points[i], points[i + 1]) < minLen)
+            /*if (points[i] == points[i + 1])
+            {
+                i++;
+                continue;
+            }*/
+            /*std::size_t j = i + 1;
+            //while (j < points.size()-1 && SquaredDist(points[i], points[j]) < minLen)
+            while (j < points.size()-1 && points[i] == points[j])
+                j++;
+
+            infillLines.emplace_back(points[i], points[j]);
+            i+=2;*/
+            //i++;
+            //i = j + 1;
+
+            if (pathStack.size() == 0)
+            {
+                pathStack.push(points[i].path);
+                curOpen = false;
+                lastP = points[i].point;
+                i++;
+                continue;
+            }
+
+            if (points[i].path == pathStack.top())
+            {
+                if ((points[i + 1].path == pathStack.top()) &&
+                        (i < points.size()-1) &&
+                        (SquaredDist(points[i].point, points[i + 1].point) < minLen))
+                {
+                    i++;
+                    continue;
+                }
+                else
+                {
+                    if (!curOpen)
+                    {
+                        infillLines.emplace_back(lastP, points[i].point);
+                        curOpen = true;
+                    }
+                    else
+                    {
+                        curOpen = false;
+                    }
+                    pathStack.pop();
+
+                    lastP = points[i].point;
+                    i++;
+                    continue;
+                }
+            }
+            else
+            {
+                if (!curOpen)
+                {
+                    infillLines.emplace_back(lastP, points[i].point);
+                    curOpen = true;
+                }
+                else
+                {
+                    curOpen = false;
+                }
+
+                pathStack.push(points[i].path);
+                lastP = points[i].point;
+                i++;
+                continue;
+            }
+
+            /*if (points[i + 1].path == points[i].path)
+            {
+                if (SquaredDist(points[i].point, points[i + 1].point) < minLen)
+                {
+                    i++;
+                    continue;
+                }
+            }*/
+
+            /*std::size_t j = i + 1;
+            while (points[j].path == points[i].path &&
+                   SquaredDist(points[i].point, points[j].point) < minLen)
+                j++;
+
+            if (points[j].path == points[i].path)
+            {
+                pathStack.pop();
+            }*/
+        }
     }
 }
 #else
@@ -1604,6 +1767,22 @@ static inline void CalculateToolpath()
                         seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
                         lastPoint = line.p2;
                     }
+
+                    // This segment contains its linesegments in its outline polygons
+                    /*for (Path &path : seg->outlinePaths)
+                    {
+                        if (path.size() < 3)
+                            continue;
+
+                        AddRetractedMove(seg->toolSegments, lastPoint, path.front(), curLayer.moveSpeed, lastZ);
+
+                        for (std::size_t i = 0; i < path.size() - 1; i++)
+                            seg->toolSegments.emplace<ExtrudeSegment>(path[i], path[i + 1], lastZ, seg->segmentSpeed);
+
+                        seg->toolSegments.emplace<ExtrudeSegment>(path.back(), path.front(), lastZ, seg->segmentSpeed);
+
+                        lastPoint = path.front();
+                    }*/
 #else
                     // Remember if the last line in the segment had swapped points
                     bool lastSwapped = false;
@@ -1745,6 +1924,8 @@ static inline void CalculateToolpath()
                 }
                 else
                 {
+//#define NO_OUTLINE_TOOLPATH
+#if !defined(NO_OUTLINE_TOOLPATH) || !defined(TEST_INFILL)
                     // This segment contains its linesegments in its outline polygons
                     for (Path &path : seg->outlinePaths)
                     {
@@ -1760,6 +1941,7 @@ static inline void CalculateToolpath()
 
                         lastPoint = path.front();
                     }
+#endif
                 }               
             }
         }
@@ -1815,7 +1997,7 @@ static inline void CalculateBasicToolpath()
                     for (LineSegment line : lineList)
                         seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
 
-                    lastPoint = lineList.back().p2; // TODO: maybe other error?
+                    lastPoint = lineList.back().p2;
                 }
             }
         }
@@ -2035,7 +2217,6 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateBasicToolpath();
 #elif defined(TEST_OUTLINE_GENERATION)
     CalculateIslandsFromInitialLines();
-    OptimizeOutlinePaths();
     GenerateOutlineSegments();
 #ifdef TEST_OUTLINE_TOOLPATH
     CalculateToolpath();
@@ -2062,7 +2243,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateTopBottomSegments();
 
     // Calculate the infill segments
-    //CalculateInfillSegments();
+    CalculateInfillSegments();
 
     // Calculate the support segments
     CalculateSupportSegments();
