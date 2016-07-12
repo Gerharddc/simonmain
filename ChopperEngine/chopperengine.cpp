@@ -37,7 +37,7 @@ const float FilamentWidth = 2.8f;
 // Uncomment to test outline toolpath generation
 //#define TEST_OUTLINE_TOOLPATH
 // Uncomment to test infill with safe toolpath
-#define TEST_INFILL
+//#define TEST_INFILL
 // Uncomment to use failsafe infill
 //#define FAILSAFE_INFILL
 
@@ -1021,7 +1021,7 @@ static inline void CalculateTopBottomSegments()
     Clipper clipper;
     ClipperOffset offset;
 
-    cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0);
+    cInt partNozzle = (NozzleWidth * scaleFactor / 10.0);
 
     // To calculate the top segments we need to go from the bottom up,
     // take each island as a subject, take the outline of the above layer
@@ -1072,14 +1072,14 @@ static inline void CalculateTopBottomSegments()
             // Grow the intersection a bit just to get rid of noise when cutting from it
             offset.Clear();
             offset.AddPaths(aboveIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
-            offset.Execute(aboveIntersection, halfNozzle);
+            offset.Execute(aboveIntersection, partNozzle);
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
                 SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
                 clipper.Clear();
-                clipper.AddPaths(isle.outlinePaths, PolyType::ptClip, true);
-                clipper.AddPaths(aboveIntersection, PolyType::ptSubject, true);
+                clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
+                clipper.AddPaths(aboveIntersection, PolyType::ptClip, true);
                 clipper.Execute(ClipType::ctDifference, topSegment.outlinePaths);
 
                 if (topSegment.outlinePaths.size() > 0)
@@ -1160,14 +1160,14 @@ static inline void CalculateTopBottomSegments()
             // Grow the intersection a bit just to get rid of noise when cutting from it
             offset.Clear();
             offset.AddPaths(belowIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
-            offset.Execute(belowIntersection, halfNozzle);
+            offset.Execute(belowIntersection, partNozzle);
 
             for (LayerIsland &isle : layerComponents[i].islandList)
             {
                 SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
                 clipper.Clear();
-                clipper.AddPaths(isle.outlinePaths, PolyType::ptClip, true);
-                clipper.AddPaths(belowIntersection, PolyType::ptSubject, true);
+                clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
+                clipper.AddPaths(belowIntersection, PolyType::ptClip, true);
                 clipper.Execute(ClipType::ctDifference, bottomSegment.outlinePaths);
 
                 if (bottomSegment.outlinePaths.size() > 0)
@@ -1421,8 +1421,6 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
     // connect them into lines later
     std::map<cInt, std::vector<SectPoint>> sectMap;
 
-    right = true;
-
     for (const Path &path : outlines)
     {
         if (path.size() < 3)
@@ -1480,42 +1478,6 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
         if (points.size() < 2)
             continue;
 
-        // We should now sort the points and remove duplicates
-        /*std::vector<IntPoint> clean;
-
-        IntPoint minPoint(0, std::numeric_limits<cInt>::max());
-        for (IntPoint p : points)
-        {
-            if (p.Y < minPoint.Y)
-                minPoint = p;
-        }
-        clean.push_back(minPoint);
-
-        while (true)
-        {
-            bool found = false;
-            minPoint = IntPoint(0, std::numeric_limits<cInt>::max());
-
-            const cInt minLen = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
-            for (IntPoint p : points)
-            {
-                if ((p.Y > clean.back().Y) && (p.Y < minPoint.Y)
-                        && SquaredDist(p, clean.back()) > minLen)
-                {
-                    found = true;
-                    minPoint = p;
-                }
-            }
-
-            if (found)
-                clean.push_back(minPoint);
-            else
-                break;
-        }
-
-        for (std::size_t i = 0; i < clean.size()-1; i+=2)
-            infillLines.emplace_back(clean[i], clean[i + 1]);*/
-
         std::sort(points.begin(), points.end(), CompForY);
         std::stack<const Path*> pathStack;
         bool curOpen = false;
@@ -1524,95 +1486,45 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
         std::size_t i = 0;
         while (i < points.size())
         {
-            const cInt minLen = (cInt)(0.01 * 0.01 * scaleFactor * scaleFactor);
-            //if (SquaredDist(points[i], points[i + 1]) < minLen)
-            /*if (points[i] == points[i + 1])
-            {
-                i++;
-                continue;
-            }*/
-            /*std::size_t j = i + 1;
-            //while (j < points.size()-1 && SquaredDist(points[i], points[j]) < minLen)
-            while (j < points.size()-1 && points[i] == points[j])
-                j++;
-
-            infillLines.emplace_back(points[i], points[j]);
-            i+=2;*/
-            //i++;
-            //i = j + 1;
+            const cInt minLen = (cInt)(0.0001 * 0.0001 * scaleFactor * scaleFactor);
 
             if (pathStack.size() == 0)
             {
                 pathStack.push(points[i].path);
                 curOpen = false;
-                lastP = points[i].point;
-                i++;
-                continue;
-            }
-
-            if (points[i].path == pathStack.top())
-            {
-                if ((points[i + 1].path == pathStack.top()) &&
-                        (i < points.size()-1) &&
-                        (SquaredDist(points[i].point, points[i + 1].point) < minLen))
-                {
-                    i++;
-                    continue;
-                }
-                else
-                {
-                    if (!curOpen)
-                    {
-                        infillLines.emplace_back(lastP, points[i].point);
-                        curOpen = true;
-                    }
-                    else
-                    {
-                        curOpen = false;
-                    }
-                    pathStack.pop();
-
-                    lastP = points[i].point;
-                    i++;
-                    continue;
-                }
             }
             else
             {
-                if (!curOpen)
+                if (points[i].path == pathStack.top())
+                {
+                    if ((points[i + 1].path == pathStack.top()) &&
+                            (i < points.size()-1) &&
+                            (SquaredDist(points[i].point, points[i + 1].point) < minLen))
+                    {
+                        i++;
+                        continue;
+                    }
+                    else
+                    {
+                        pathStack.pop();
+                    }
+                }
+                else
+                {
+                    pathStack.push(points[i].path);
+                }
+
+                if (curOpen)
+                    curOpen = false;
+                else
                 {
                     infillLines.emplace_back(lastP, points[i].point);
                     curOpen = true;
                 }
-                else
-                {
-                    curOpen = false;
-                }
-
-                pathStack.push(points[i].path);
-                lastP = points[i].point;
-                i++;
-                continue;
             }
 
-            /*if (points[i + 1].path == points[i].path)
-            {
-                if (SquaredDist(points[i].point, points[i + 1].point) < minLen)
-                {
-                    i++;
-                    continue;
-                }
-            }*/
-
-            /*std::size_t j = i + 1;
-            while (points[j].path == points[i].path &&
-                   SquaredDist(points[i].point, points[j].point) < minLen)
-                j++;
-
-            if (points[j].path == points[i].path)
-            {
-                pathStack.pop();
-            }*/
+            lastP = points[i].point;
+            i++;
         }
     }
 }
