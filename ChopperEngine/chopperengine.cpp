@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <exception>
 #include <functional>
+#include <unordered_map>
 
 using namespace ChopperEngine;
 using namespace ClipperLib;
@@ -34,6 +35,8 @@ const float FilamentWidth = 2.8f;
 //#define TEST_OUTLINE_GENERATION
 // Uncomment to test outline toolpath generation
 //#define TEST_OUTLINE_TOOLPATH
+// Uncomment to test infill with safe toolpath
+#define TEST_INFILL
 
 #if defined(TEST_OUTLINE_TOOLPATH)
 #define TEST_OUTLINE_GENERATION
@@ -891,7 +894,35 @@ static inline void GenerateOutlineBasic()
 }
 #endif
 
-static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
+std::unordered_map<float, cInt> densityDividers;
+
+static void CalculateDensityDivider(float density)
+{
+    // Calculate the needed spacing
+
+    // d% = 1 / (x% + 1)
+    // d% * x + d% = 1
+    // a + d% = 1
+    // a = 1 - d%
+    // x = a / d%
+
+    float d = density / 100.0f;
+    float a = 1 - d;
+    float x = a / d;
+    cInt spacing = (cInt)(NozzleWidth * scaleFactor * x);
+    densityDividers[density] = spacing + (NozzleWidth * scaleFactor);
+}
+
+static inline void CalculateDensityDividers()
+{
+    densityDividers.clear();
+
+    CalculateDensityDivider(15.0f);
+    CalculateDensityDivider(100.0f);
+    CalculateDensityDivider(10.0f);
+}
+
+/*static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
 {
     // TODO: get blank constructor working
     InfillGridMap.emplace(std::make_pair(density, InfillGrid()));
@@ -973,7 +1004,7 @@ static inline void GenerateInfillGrids()
     GenerateInfillGrid(15.0f);
     GenerateInfillGrid(100.0f);
     GenerateInfillGrid(10.0f);
-}
+}*/
 
 static inline void CalculateTopBottomSegments()
 {
@@ -1321,7 +1352,99 @@ static inline void GenerateSkirt()
     SlicerLog("Generating skirt");
 }
 
-static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridLines, const Paths &paths)
+static inline cInt xOnAxis(const IntPoint &p, bool right)
+{
+    if (right)
+        return p.X - p.Y;
+    else
+        return p.X + p.Y;
+}
+
+bool CompForY(const IntPoint &a, const IntPoint &b)
+{
+    return (a.Y < b.Y);
+}
+
+static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillLines,
+                        float density, bool right)
+{
+    // All infill is aligned acording to the x-axis so we work with
+    // the diagonal lines through the x-axis spaced according to the
+    // divider value
+    // This means we project each point of each poin to the axis and work
+    // with the infill lines between 2 points that are then projected back
+    // to these lines of the path. All paths are stored according to the index
+    // of the diagonal line on the x-axis and then connected from bottom
+    // to top.
+
+    // By using 45 degrees we can avoid the use of trig functions
+    // If other  angles need support these trig values should be
+    // cached for densities
+
+    cInt divider = densityDividers[density];
+
+    // We store all intersections on the same diagonal line as to
+    // connect them into lines later
+    std::map<cInt, std::vector<IntPoint>> sectMap;
+
+    right = true;
+
+    for (const Path &path : outlines)
+    {
+        if (path.size() < 3)
+            continue;
+
+        for (std::size_t i = 0; i < path.size(); i++)
+        {
+            // Get the points for each line in the path
+            IntPoint p1 = path[i];
+            IntPoint p2 = (i < path.size()-1) ? path[i + 1] : path[0];
+
+            IntPoint leftP, rightP;
+
+            if (p1.X < p2.X) {
+                leftP = p1;
+                rightP = p2;
+            }
+            else {
+                leftP = p2;
+                rightP = p1;
+            }
+
+            // Calculate the leftmost axisPoint inside the line
+            cInt leftMost = xOnAxis(leftP, right);
+            cInt leftIdx = std::ceil(leftMost / divider);
+            // And the rightmost
+            cInt rightMost = xOnAxis(rightP, right);
+            cInt rightIdx = std::floor(rightMost / divider);
+
+            double yRise = rightP.Y - leftP.Y;
+            double xRise = rightP.X - leftP.Y;
+            double xDist = rightMost - leftMost;
+
+            // Now get all the points of intersection on this line
+            for (cInt idx = leftIdx; idx <= rightIdx; idx++) {
+                double xDiff = (idx * divider) - leftMost;
+                double xPerc = xDiff / xDist;
+                cInt yVal = leftP.Y + (cInt)(xPerc * yRise);
+                cInt xVal = leftP.X + (cInt)(xPerc * xRise);
+                sectMap[idx].emplace_back(xVal, yVal);
+            }
+        }
+    }
+
+    // Now go through all the points on each line and create the segments
+    for (auto pair : sectMap)
+    {
+        std::vector<IntPoint> &points = pair.second;
+        std::sort(points.begin(), points.end(), CompForY);
+
+        for (std::size_t i = 0; i < points.size()-1; i+=2)
+            infillLines.emplace_back(points[i], points[i + 1]);
+    }
+}
+
+/*static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridLines, const Paths &paths)
 {
     Clipper clipper;
     PolyTree result;
@@ -1338,7 +1461,7 @@ static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths
                 lines.emplace_back(node->Contour[0], node->Contour[1]);
         }
     }
-}
+}*/
 
 static inline void TrimInfill()
 {
@@ -1377,8 +1500,9 @@ static inline void TrimInfill()
                         break;
                     }
 
-                    ClipLinesToPaths(seg->fillLines, (goRight) ? InfillGridMap[density].rightList :
-                                                              InfillGridMap[density].leftList, seg->outlinePaths);
+                    FillInPaths(seg->outlinePaths, seg->fillLines, density, goRight);
+                    //ClipLinesToPaths(seg->fillLines, (goRight) ? InfillGridMap[density].rightList :
+                      //                                        InfillGridMap[density].leftList, seg->outlinePaths);
                     seg->fillDensity = density;
                 }
             }
@@ -1457,6 +1581,14 @@ static inline void CalculateToolpath()
                     // We now need to move to the new segment
                     AddRetractedMove(seg->toolSegments, lastPoint, lineList.front().p1, curLayer.moveSpeed, lastZ);
 
+#ifdef TEST_INFILL
+                    for (LineSegment &line : lineList)
+                    {
+                        seg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
+                        seg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, seg->segmentSpeed);
+                        lastPoint = line.p2;
+                    }
+#else
                     // Remember if the last line in the segment had swapped points
                     bool lastSwapped = false;
 
@@ -1593,6 +1725,7 @@ static inline void CalculateToolpath()
                     }
 
                     lastPoint = (lastSwapped) ? lineList.back().p1 : lineList.back().p2;
+#endif
                 }
                 else
                 {
@@ -1901,7 +2034,8 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     GenerateOutlineSegments();
 
     // Generate the infill grids
-    GenerateInfillGrids();
+    //GenerateInfillGrids();
+    CalculateDensityDividers();
 
     // The top and bottom segments need to calculated before
     // the infill outlines otherwise the infill will be seen as top or bottom
