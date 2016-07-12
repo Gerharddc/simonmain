@@ -37,6 +37,8 @@ const float FilamentWidth = 2.8f;
 //#define TEST_OUTLINE_TOOLPATH
 // Uncomment to test infill with safe toolpath
 #define TEST_INFILL
+// Uncomment to use failsafe infill
+#define FAILSAFE_INFILL
 
 #if defined(TEST_OUTLINE_TOOLPATH)
 #define TEST_OUTLINE_GENERATION
@@ -894,6 +896,7 @@ static inline void GenerateOutlineBasic()
 }
 #endif
 
+#ifndef FAILSAFE_INFILL
 std::unordered_map<float, cInt> densityDividers;
 
 static void CalculateDensityDivider(float density)
@@ -921,8 +924,10 @@ static inline void CalculateDensityDividers()
     CalculateDensityDivider(100.0f);
     CalculateDensityDivider(10.0f);
 }
+#endif
 
-/*static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
+#ifdef FAILSAFE_INFILL
+static inline void GenerateInfillGrid(float density, float angle = 45.0f / 180.0f * PI)
 {
     // TODO: get blank constructor working
     InfillGridMap.emplace(std::make_pair(density, InfillGrid()));
@@ -1004,7 +1009,8 @@ static inline void GenerateInfillGrids()
     GenerateInfillGrid(15.0f);
     GenerateInfillGrid(100.0f);
     GenerateInfillGrid(10.0f);
-}*/
+}
+#endif
 
 static inline void CalculateTopBottomSegments()
 {
@@ -1352,6 +1358,7 @@ static inline void GenerateSkirt()
     SlicerLog("Generating skirt");
 }
 
+#ifndef FAILSAFE_INFILL
 static inline cInt xOnAxis(const IntPoint &p, bool right)
 {
     if (right)
@@ -1419,8 +1426,11 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
             cInt rightIdx = std::floor(rightMost / divider);
 
             double yRise = rightP.Y - leftP.Y;
-            double xRise = rightP.X - leftP.Y;
+            double xRise = rightP.X - leftP.X;
             double xDist = rightMost - leftMost;
+
+            if (xDist != xRise)
+                std::cout << "xRise: " << xRise << " xDist:" << xDist << std::endl;
 
             // Now get all the points of intersection on this line
             for (cInt idx = leftIdx; idx <= rightIdx; idx++) {
@@ -1443,8 +1453,9 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
             infillLines.emplace_back(points[i], points[i + 1]);
     }
 }
+#else
 
-/*static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridLines, const Paths &paths)
+static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths &gridLines, const Paths &paths)
 {
     Clipper clipper;
     PolyTree result;
@@ -1461,7 +1472,8 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
                 lines.emplace_back(node->Contour[0], node->Contour[1]);
         }
     }
-}*/
+}
+#endif
 
 static inline void TrimInfill()
 {
@@ -1500,9 +1512,13 @@ static inline void TrimInfill()
                         break;
                     }
 
+#ifdef FAILSAFE_INFILL
+                    ClipLinesToPaths(seg->fillLines, (goRight) ? InfillGridMap[density].rightList :
+                                                              InfillGridMap[density].leftList, seg->outlinePaths);
+#else
                     FillInPaths(seg->outlinePaths, seg->fillLines, density, goRight);
-                    //ClipLinesToPaths(seg->fillLines, (goRight) ? InfillGridMap[density].rightList :
-                      //                                        InfillGridMap[density].leftList, seg->outlinePaths);
+#endif
+
                     seg->fillDensity = density;
                 }
             }
@@ -2034,8 +2050,11 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     GenerateOutlineSegments();
 
     // Generate the infill grids
-    //GenerateInfillGrids();
+#ifdef FAILSAFE_INFILL
+    GenerateInfillGrids();
+#else
     CalculateDensityDividers();
+#endif
 
     // The top and bottom segments need to calculated before
     // the infill outlines otherwise the infill will be seen as top or bottom
@@ -2043,7 +2062,7 @@ void ChopperEngine::SliceFile(Mesh *inputMesh, std::string outputFile)
     CalculateTopBottomSegments();
 
     // Calculate the infill segments
-    CalculateInfillSegments();
+    //CalculateInfillSegments();
 
     // Calculate the support segments
     CalculateSupportSegments();
