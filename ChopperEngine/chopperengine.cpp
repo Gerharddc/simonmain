@@ -1235,8 +1235,6 @@ static inline void CalculateInfillSegments()
 
             // We then need to perform a difference operation to determine the infill segments
             clipper.Execute(ClipType::ctDifference, infillSeg.outlinePaths);
-
-            //infillSeg.outlinePaths = isle.outlinePaths;
         }
     }
 }
@@ -1399,6 +1397,15 @@ static bool CompForY(const SectPoint &a, const SectPoint &b)
     return (a.point.Y < b.point.Y);
 }
 
+static bool Clockwise(const IntPoint &A, const IntPoint &B, const IntPoint &C)
+{
+    // http://gamedev.stackexchange.com/questions/45412/understanding-math-used-to-determine-if-vector-is-clockwise-counterclockwise-f
+    IntPoint v1 = A - B;
+    IntPoint v2 = C - B;
+
+    return (v1.Y*v2.X < v1.X*v2.Y);
+}
+
 static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillLines,
                         float density, bool right)
 {
@@ -1435,6 +1442,7 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
             double leftMost = xOnAxis(p1, right);
             double rightMost = xOnAxis(p2, right);
             IntPoint leftP, rightP;
+            bool swapped;
 
             if (rightMost < leftMost)
             {
@@ -1444,11 +1452,13 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
 
                 leftP = p2;
                 rightP = p1;
+                swapped = true;
             }
             else
             {
                 leftP = p1;
                 rightP = p2;
+                swapped = false;
             }
 
             // We add a small rounding margin to prevent loss of seemingly obvious line
@@ -1459,14 +1469,84 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
             double xRise = rightP.X - leftP.X;
             double xDist = rightMost - leftMost;
 
+            // Intersections at the ends of linesegments are corners which are confusing
+            // because they create the same point twice and som corners touch a line
+            // inside a polygon while others are where it exists a polygon.
+            //
+            // At an exit corner the direction of the angle between the two lines on the
+            // point is the same as the direction to the line through the points whilst
+            // for touching corners they differ. We should only place one point for an
+            // exit corner and no points for an inside one because an inside one does
+            // signal a break in the line.
+
             // Now get all the points of intersection on this line
             for (cInt idx = leftIdx; idx <= rightIdx; idx++) {
-                double idxX = (idx * divider);
                 double xDiff = (idx * divider) - leftMost;
                 double xPerc = xDiff / xDist;
+
+                // Skip past perfect intersection on p1 and check
+                // if perfect intersection on p2 are inside or outside
+                if ((!swapped && (xPerc == 0.0)) || (swapped && (xPerc == 1.0)))
+                    continue;
+                else if ((swapped && (xPerc == 0.0)) || (!swapped && (xPerc == 1.0)))
+                {
+                    IntPoint p3;
+                    if (i < path.size()-2)
+                        p3 = path[i + 2];
+                    else if (i < path.size()-1)
+                        p3 = path[0];
+                    else
+                        p3 = path[1];
+
+                    //v1 = p2 to p1;
+                    //v2 = p2 to p3;
+
+                    // Get the closest point on the line to p1
+                    IntPoint pA;
+                    IntPoint v = p1 - p2;
+                    if (v.X == 0)
+                    {
+                        cInt delta = v.Y;
+                        pA.Y = p2.Y + delta;
+                        pA.X = (right) ? (p2.X + delta) : (p2.X - delta);
+                    }
+                    else
+                    {
+                        cInt delta = v.X;
+                        pA.X = p2.X + delta;
+                        pA.Y = (right) ? (p2.Y + delta) : (p2.Y - delta);
+                    }
+
+                    // Determine if it is CW from v1 to v2
+                    // and it should the opposite the other way
+                    bool clockV1ToV2 = Clockwise(p2, p1, p3);
+
+                    if (Clockwise(p2, p1, pA) != clockV1ToV2)
+                        continue;
+
+                    // Get the closest point on the line to p3
+                    v = p3 - p2;
+                    if (v.X == 0)
+                    {
+                        cInt delta = v.Y;
+                        pA.Y = p2.Y + delta;
+                        pA.X = (right) ? (p2.X + delta) : (p2.X - delta);
+                    }
+                    else
+                    {
+                        cInt delta = v.X;
+                        pA.X = p2.X + delta;
+                        pA.Y = (right) ? (p2.Y + delta) : (p2.Y - delta);
+                    }
+
+                    // opposite (see above)
+                    if (Clockwise(p2, p3, pA) == clockV1ToV2)
+                        continue;
+                }
+
                 cInt xVal = leftP.X + (cInt)(xPerc * xRise);
                 cInt yVal = leftP.Y + (cInt)(xPerc * yRise);
-                sectMap[idx].emplace_back(xVal, yVal, &path);
+                sectMap[idx].emplace_back(xVal, yVal, &path);               
             }
         }
     }
@@ -1479,53 +1559,9 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
             continue;
 
         std::sort(points.begin(), points.end(), CompForY);
-        std::stack<const Path*> pathStack;
-        bool curOpen = false;
-        IntPoint lastP;
 
-        std::size_t i = 0;
-        while (i < points.size())
-        {
-            const cInt minLen = (cInt)(0.0001 * 0.0001 * scaleFactor * scaleFactor);
-
-            if (pathStack.size() == 0)
-            {
-                pathStack.push(points[i].path);
-                curOpen = false;
-            }
-            else
-            {
-                if (points[i].path == pathStack.top())
-                {
-                    if ((points[i + 1].path == pathStack.top()) &&
-                            (i < points.size()-1) &&
-                            (SquaredDist(points[i].point, points[i + 1].point) < minLen))
-                    {
-                        i++;
-                        continue;
-                    }
-                    else
-                    {
-                        pathStack.pop();
-                    }
-                }
-                else
-                {
-                    pathStack.push(points[i].path);
-                }
-
-                if (curOpen)
-                    curOpen = false;
-                else
-                {
-                    infillLines.emplace_back(lastP, points[i].point);
-                    curOpen = true;
-                }
-            }
-
-            lastP = points[i].point;
-            i++;
-        }
+        for (std::size_t i = 0; i < points.size()-1; i+=2)
+            infillLines.emplace_back(points[i].point, points[i + 1].point);
     }
 }
 #else
@@ -1558,6 +1594,8 @@ static inline void TrimInfill()
 
     for (std::size_t i = 0; i < layerCount; i++)
     {
+        SlicerLog("Infill: " + std::to_string(i));
+
         for (LayerIsland &isle : layerComponents[i].islandList)
         {
             for (LayerSegment *segment : isle.segments)
