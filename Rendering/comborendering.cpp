@@ -14,6 +14,7 @@
 #include "stlexporting.h"
 #include "gcodeimporting.h"
 #include "Misc/globalsettings.h"
+#include "ChopperEngine/chopperengine.h"
 
 // TODO: make relative to bed size
 static const float DefaultZoom = 3.0f;
@@ -212,8 +213,10 @@ std::string ComboRendering::SaveMeshes(std::string fileName)
 
 std::string ComboRendering::SliceMeshes(std::string fileName)
 {
-    SaveMeshes(fileName);
+    //SaveMeshes(fileName);
     // TODO: implement slice
+    ChopperEngine::SliceFile(stlMeshes.begin().operator *(), fileName);
+
     return "";
 }
 

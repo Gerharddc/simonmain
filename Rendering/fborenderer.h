@@ -18,7 +18,7 @@ private:
     QString m_saveName = "Untitled";
     bool m_slicerRunning = false;
     QString m_slicerStatus = "Not running";
-    QProcess *sliceProcess;
+    //QProcess *sliceProcess;
     QString gcodePath = "";
     void EmitMeshProps();
 

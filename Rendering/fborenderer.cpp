@@ -75,15 +75,15 @@ void CallFBOUpdate(void *context)
 
 FBORenderer::FBORenderer()
 {
-    sliceProcess = new QProcess();
-    QObject::connect(sliceProcess, SIGNAL(readyReadStandardError()), this, SLOT(ReadSlicerOutput()));
-    QObject::connect(sliceProcess, SIGNAL(finished(int)), this, SLOT(SlicerFinsihed(int)));
+    //sliceProcess = new QProcess();
+    //QObject::connect(sliceProcess, SIGNAL(readyReadStandardError()), this, SLOT(ReadSlicerOutput()));
+    //QObject::connect(sliceProcess, SIGNAL(finished(int)), this, SLOT(SlicerFinsihed(int)));
     ComboRendering::SetUpdateHandler(CallFBOUpdate, this);
 }
 
 FBORenderer::~FBORenderer()
 {
-    delete sliceProcess;
+    //delete sliceProcess;
 }
 
 void FBORenderer::rotateView(float x, float y)
@@ -317,11 +317,12 @@ QString FBORenderer::sliceMeshes()
 
     // We wait async for the mesh that is being saved async and then start the slicer
     std::thread([](FBORenderer *fbo) {
-        QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(fbo->saveName().toStdString()));
+        //QString stlName = QString::fromStdString(ComboRendering::SaveMeshes(fbo->saveName().toStdString()));
+        QString stlName = fbo->saveName() + ".stl";
         fbo->gcodePath = QString(stlName);
         fbo->gcodePath.replace(".stl", ".gcode");
 
-        QStringList arguments;
+        /*QStringList arguments;
         //arguments << "slice" << "-v";
         //arguments << "-j" << "/home/Simon/.Cura/simon.json";
         //arguments << "-j" << "fdmprinter.json";
@@ -347,7 +348,11 @@ QString FBORenderer::sliceMeshes()
         arguments << stlName;
 
         // Start the slicer through the message queue (thread safe)
-        QMetaObject::invokeMethod(fbo, "StartSliceThread", Q_ARG(QStringList, arguments));
+        QMetaObject::invokeMethod(fbo, "StartSliceThread", Q_ARG(QStringList, arguments));*/
+
+        ComboRendering::SliceMeshes(fbo->gcodePath.toStdString());
+
+        QMetaObject::invokeMethod(fbo, "SlicerFinsihed", Q_ARG(int, 1));
     }, this).detach();
 
     return "started";
@@ -364,7 +369,7 @@ QString FBORenderer::printToolpath()
 
 void FBORenderer::ReadSlicerOutput()
 {
-    QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
+    /*QStringList sl = QString(sliceProcess->readAllStandardError()).split("\n");
 
     //for (QString str : sl)
       //  std::cout << str.toStdString() << std::endl;
@@ -373,7 +378,7 @@ void FBORenderer::ReadSlicerOutput()
         sl.removeLast(); // The last one is usually empty
     if (sl.count() > 0)
         m_slicerStatus = sl.back();
-        emit slicerStatusChanged();
+        emit slicerStatusChanged();*/
 }
 
 void FBORenderer::SlicerFinsihed(int)
@@ -395,7 +400,7 @@ void FBORenderer::StartSliceThread(QStringList arguments)
 {
     const QString program = "CuraEngine";
 
-    sliceProcess->start(program, arguments);
+    //sliceProcess->start(program, arguments);
 }
 
 void FBORenderer::removeSelectedMeshes()
