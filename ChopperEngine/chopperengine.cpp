@@ -1709,6 +1709,127 @@ static bool FindClosestPoint(const Path &outPath, const IntPoint &lastPoint, std
     return false;
 }
 
+// Extrudes a line in a infill segment whilst moving along the outline
+static void ExtrudeLine(const std::size_t lineIdx, IntPoint &lastPoint, const cInt lastZ, bool &firstLine,
+                        const LayerComponent &curLayer, SegmentWithInfill* infillSeg)
+{
+    LineSegment &line = infillSeg->fillLines[lineIdx];
+
+    // Create a clean move to the line if needed
+    if (firstLine)
+        firstLine = false;
+    else
+    {
+        if (SquaredDist(lastPoint, line.p2) < SquaredDist(lastPoint, line.p1))
+            line.SwapPoints();
+
+        IntPoint pA, pB;
+        const Path *interPath;
+        std::size_t interIdx = 0;
+
+        // Now check between which two outline points we are
+        for (const Path &path : infillSeg->outlinePaths)
+        {
+            // We determine between which two lines the intersection is by checing
+            // for colinearity
+            for (interIdx = 0; interIdx < path.size(); interIdx++)
+            {
+                pA = path[interIdx];
+                pB = path[(interIdx == path.size()-1) ? 0 : interIdx + 1];
+
+                if (InALine(pA, lastPoint, pB))
+                {
+                    interPath = &path;
+                    goto FoundP2Intersect;
+                }
+            }
+        }
+
+        // TODO: it should not be possible for this to happen
+        //std::cout << "Infill point did not intersect outline" << std::endl;
+        infillSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
+        goto ExtrudeLine;
+
+        FoundP2Intersect:
+
+        // Determine if the other point is on the same line
+        if (InALine(pA, line.p1, pB))
+            infillSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
+        else
+        {
+            // Otherwise check if they are on the same polygon
+            bool noInter = true;
+            bool forwards = true;
+
+            // The intersection should be closeish to the first one
+
+            // TODO: implement the ability to wrap when searching backwards and forwards
+
+            // Check forwards first
+            std::size_t i = interIdx + 1;
+            while (noInter && (i < interPath->size()))
+            {
+                pA = interPath->at(i);
+                pB = interPath->at((i == interPath->size()-1) ? 0 : i + 1);
+
+                if (InALine(pA, line.p1, pB))
+                    noInter = false;
+                else
+                    i++;
+            }
+
+            // Then backwards
+            i = interIdx;
+            while (noInter && (i > 0))
+            {
+                pA = interPath->at(i - 1);
+                pB = interPath->at((i == interPath->size()-1) ? 0 : i);
+
+                if (InALine(pA, line.p1, pB))
+                {
+                    noInter = false;
+                    forwards = false;
+                }
+                else
+                    i--;
+            }
+
+            if (noInter)
+                infillSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
+            else
+            {
+                // Move along the outline
+                if (forwards)
+                {
+                    infillSeg->toolSegments.emplace<TravelSegment>(lastPoint, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed);
+
+                    for (std::size_t k = interIdx + 1; k < i; k++)
+                        infillSeg->toolSegments.emplace<TravelSegment>(interPath->at(k), interPath->at(k + 1),
+                                                                  lastZ, curLayer.moveSpeed);
+
+                    infillSeg->toolSegments.emplace<TravelSegment>(interPath->at(i), line.p1, lastZ, curLayer.moveSpeed);
+                }
+                else
+                {
+                    infillSeg->toolSegments.emplace<TravelSegment>(lastPoint, interPath->at(interIdx), lastZ, curLayer.moveSpeed);
+
+                    for (std::size_t k = interIdx; k > i; k++)
+                        infillSeg->toolSegments.emplace<TravelSegment>(interPath->at(k), interPath->at(k - 1),
+                                                                  lastZ, curLayer.moveSpeed);
+
+                    infillSeg->toolSegments.emplace<TravelSegment>(interPath->at(i), line.p1, lastZ, curLayer.moveSpeed);
+                }
+            }
+        }
+    }
+
+    // Extrude the line
+    ExtrudeLine:
+    infillSeg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, infillSeg->segmentSpeed);
+
+    lastPoint = line.p2;
+}
+
 static inline void CalculateToolpath()
 {
     SlicerLog("Calculating toolpath");
@@ -1727,6 +1848,8 @@ static inline void CalculateToolpath()
         curLayer.initialLayerMoves.emplace_back(lastPoint, lastZ, newZ, curLayer.layerSpeed);
         lastZ = newZ;
 
+#define NEW_TP
+#ifdef NEW_TP
         // Create a list of islands left to go to
         std::size_t isleCount = curLayer.islandList.size();
         std::size_t islesLeft = isleCount;
@@ -1749,8 +1872,15 @@ static inline void CalculateToolpath()
 
                 LayerIsland &isle = curLayer.islandList[j];
                 LayerSegment *outSeg = isle.segments.begin().operator *();
+
+                // TODO: get rid of these segments
                 if (outSeg->outlinePaths.size() == 0)
+                {
+                    islesUsed[j] = true;
+                    islesLeft--;
                     continue;
+                }
+
                 Path &outPath = outSeg->outlinePaths[0];
 
                 if (FindClosestPoint(outPath, lastPoint, closestPoint, closestDist))
@@ -1761,7 +1891,6 @@ static inline void CalculateToolpath()
             islesUsed[closestIsle] = true;
             islesLeft--;
             LayerIsland &curIsle = curLayer.islandList[closestIsle];
-            LayerSegment *curSeg = curIsle.segments.begin().operator *();
 
             bool firstSeg = true;
 
@@ -1780,7 +1909,6 @@ static inline void CalculateToolpath()
                     closestDist = std::numeric_limits<std::size_t>::max();
                     std::size_t closIdx = 0;
                     bool closSwapped = false;
-                    bool firstLine = true;
                     for (std::size_t k = 0; k < infillSeg->fillLines.size(); k++)
                     {
                         const LineSegment &line = infillSeg->fillLines[k];
@@ -1805,131 +1933,28 @@ static inline void CalculateToolpath()
                         infillSeg->fillLines[closIdx].SwapPoints();
 
                     // Move to the closest line
-                    AddRetractedMove(curSeg->toolSegments, lastPoint, infillSeg->fillLines[closIdx].p1, curLayer.moveSpeed, lastZ);
+                    AddRetractedMove(infillSeg->toolSegments, lastPoint, infillSeg->fillLines[closIdx].p1, curLayer.moveSpeed, lastZ);
 
                     // Extrude all the lines
-                    for (std::size_t k = closIdx; k < infillSeg->fillLines.size(); k++)
+                    bool firstLine = true;
+
+                    /*for (std::size_t k = 0; k < infillSeg->fillLines.size(); k++)
                     {
-                        LineSegment &line = infillSeg->fillLines[closIdx];
-
-                        // Create a clean move to the line if needed
-                        if (firstLine)
-                            firstLine = false;
-                        else
-                        {
-                            if (SquaredDist(lastPoint, line.p2) < SquaredDist(lastPoint, line.p1))
-                                line.SwapPoints();
-
-                            IntPoint pA, pB;
-                            const Path *interPath;
-                            std::size_t interIdx = 0;
-
-                            // Now check between which two outline points we are
-                            for (const Path &path : curSeg->outlinePaths)
-                            {
-                                // We determine between which two lines the intersection is by checing
-                                // for colinearity
-                                for (interIdx = 0; interIdx < path.size(); interIdx++)
-                                {
-                                    pA = path[interIdx];
-                                    pB = path[(interIdx == path.size()-1) ? 0 : interIdx + 1];
-
-                                    if (InALine(pA, lastPoint, pB))
-                                    {
-                                        interPath = &path;
-                                        goto FoundP2Intersect;
-                                    }
-                                }
-                            }
-
-                            // TODO: it should not be possible for this to happen
-                            //std::cout << "Infill point did not intersect outline" << std::endl;
-                            curSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
-                            goto ExtrudeLine;
-
-                            FoundP2Intersect:
-
-                            // Determine if the other point is on the same line
-                            if (InALine(pA, line.p1, pB))
-                                curSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
-                            else
-                            {
-                                // Otherwise check if they are on the same polygon
-                                bool noInter = true;
-                                bool forwards = true;
-
-                                // The intersection should be closeish to the first one
-
-                                // TODO: implement the ability to wrap when searching backwards and forwards
-
-                                // Check forwards first
-                                std::size_t i = interIdx + 1;
-                                while (noInter && (i < interPath->size()))
-                                {
-                                    pA = interPath->at(i);
-                                    pB = interPath->at((i == interPath->size()-1) ? 0 : i + 1);
-
-                                    if (InALine(pA, line.p1, pB))
-                                        noInter = false;
-                                    else
-                                        i++;
-                                }
-
-                                // Then backwards
-                                i = interIdx;
-                                while (noInter && (i > 0))
-                                {
-                                    pA = interPath->at(i - 1);
-                                    pB = interPath->at((i == interPath->size()-1) ? 0 : i);
-
-                                    if (InALine(pA, line.p1, pB))
-                                    {
-                                        noInter = false;
-                                        forwards = false;
-                                    }
-                                    else
-                                        i--;
-                                }
-
-                                if (noInter)
-                                    curSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
-                                else
-                                {
-                                    // Move along the outline
-                                    if (forwards)
-                                    {
-                                        curSeg->toolSegments.emplace<TravelSegment>(lastPoint, interPath->at(interIdx + 1), lastZ, curLayer.moveSpeed);
-
-                                        for (std::size_t k = interIdx + 1; k < i; k++)
-                                            curSeg->toolSegments.emplace<TravelSegment>(interPath->at(k), interPath->at(k + 1),
-                                                                                      lastZ, curLayer.moveSpeed);
-
-                                        curSeg->toolSegments.emplace<TravelSegment>(interPath->at(i), line.p1, lastZ, curLayer.moveSpeed);
-                                    }
-                                    else
-                                    {
-                                        curSeg->toolSegments.emplace<TravelSegment>(lastPoint, interPath->at(interIdx), lastZ, curLayer.moveSpeed);
-
-                                        for (std::size_t k = interIdx; k > i; k++)
-                                            curSeg->toolSegments.emplace<TravelSegment>(interPath->at(k), interPath->at(k - 1),
-                                                                                      lastZ, curLayer.moveSpeed);
-
-                                        curSeg->toolSegments.emplace<TravelSegment>(interPath->at(i), line.p1, lastZ, curLayer.moveSpeed);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Extrude the line
-                        ExtrudeLine:
-                        curSeg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, curSeg->segmentSpeed);
-
+                        LineSegment &line = infillSeg->fillLines[k];
+                        infillSeg->toolSegments.emplace<TravelSegment>(lastPoint, line.p1, lastZ, curLayer.moveSpeed);
+                        infillSeg->toolSegments.emplace<ExtrudeSegment>(line, lastZ, infillSeg->segmentSpeed);
                         lastPoint = line.p2;
-                    }
+                    }*/
+
+                    for (std::size_t k = closIdx; k < infillSeg->fillLines.size(); k++)
+                        ExtrudeLine(k, lastPoint, lastZ, firstLine, curLayer, infillSeg);
+
+                    for (std::size_t k = 0; k < closIdx; k++)
+                        ExtrudeLine(k, lastPoint, lastZ, firstLine, curLayer, infillSeg);
                 }
                 else
                 {
-                    for (const Path &path : curSeg->outlinePaths)
+                    for (const Path &path : seg->outlinePaths)
                     {
                         // Find the closest point to the previous segment if needed
                         std::size_t closIdx = 0;
@@ -1945,18 +1970,16 @@ static inline void CalculateToolpath()
                         }
 
                         // Move to the path
-                        AddRetractedMove(curSeg->toolSegments, lastPoint, path[closIdx], curLayer.moveSpeed, lastZ);
+                        AddRetractedMove(seg->toolSegments, lastPoint, path[closIdx], curLayer.moveSpeed, lastZ);
 
                         // Extrude the outline starting with the closest point
                         for (std::size_t k = closIdx; k < path.size()-1; k++)
-                           curSeg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, curSeg->segmentSpeed);
-                        curSeg->toolSegments.emplace<ExtrudeSegment>(path.back(), path.front(), lastZ, curSeg->segmentSpeed);
+                           seg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, seg->segmentSpeed);
 
-                        if (closIdx > 0)
-                        {
-                            for (std::size_t k = 0; k < closIdx-1; k++)
-                               curSeg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, curSeg->segmentSpeed);
-                        }
+                        seg->toolSegments.emplace<ExtrudeSegment>(path.back(), path.front(), lastZ, seg->segmentSpeed);
+
+                        for (std::size_t k = 0; k < closIdx; k++)
+                           seg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, seg->segmentSpeed);
 
                         lastPoint = path[closIdx];
                     }
@@ -1964,8 +1987,9 @@ static inline void CalculateToolpath()
             }
         }
 
-        //delete[] islesUsed;
+        delete[] islesUsed;
         continue;
+#endif
 
         // TODO: we should actually move from each island to the closest one left
         for (LayerIsland &isle : curLayer.islandList)
