@@ -1552,6 +1552,13 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
     }
 
     // Now go through all the points on each line and create the segments
+
+    // We need to group all lines on roughly the same level to avoid jumping
+    // up and down between them.
+    // Therefore an intial list is kept of all non-bottom lines and then added
+    // to the standard list going zig zag
+    std::map<std::size_t, std::vector<LineSegment>> higherLines;
+
     for (auto pair : sectMap)
     {
         std::vector<SectPoint> &points = pair.second;
@@ -1560,8 +1567,44 @@ static void FillInPaths(const Paths &outlines, std::vector<LineSegment> &infillL
 
         std::sort(points.begin(), points.end(), CompForY);
 
-        for (std::size_t i = 0; i < points.size()-1; i+=2)
-            infillLines.emplace_back(points[i].point, points[i + 1].point);
+        // Add the bottom lines
+        infillLines.emplace_back(points[0].point, points[1].point);
+
+        // Store the higher lines for later adding
+        for (std::size_t i = 2; i < points.size(); i += 2)
+            higherLines[i].emplace_back(points[i].point, points[i + 1].point);
+
+        /*for (std::size_t i = 0; i < points.size()-1; i+=2)
+            infillLines.emplace_back(points[i].point, points[i + 1].point);*/
+    }
+
+    // Now add back the higher lines from right to left (because we just went from left ro right)
+    // and then the other way etc. untill all have been added
+
+    // Reserve enough space for all the lines
+    std::size_t fullSize = infillLines.size();
+    for (auto pair : higherLines)
+        fullSize += pair.second.size();
+    infillLines.reserve(fullSize);
+
+    bool rightToLeft = true;
+    for (auto pair : higherLines)
+    {
+        std::vector<LineSegment> &lines = pair.second;
+
+        if (rightToLeft)
+        {
+            for (std::size_t i = lines.size(); i > 0; i--)
+                infillLines.push_back(lines[i - 1]);
+
+            rightToLeft = false;
+        }
+        else
+        {
+            std::move(lines.begin(), lines.end(), std::back_inserter(infillLines));
+
+            rightToLeft = true;
+        }
     }
 }
 #else
@@ -1764,14 +1807,14 @@ static void ExtrudeLine(const std::size_t lineIdx, IntPoint &lastPoint, const cI
 
             // The intersection should be closeish to the first one
             // Do a fanout search for the point from the previous one
-            std::size_t i = 1;
-            std::size_t fullSize = interPath->size();
-            std::size_t halfSize = (fullSize / 2) + 1;
+            cInt i = 1;
+            cInt fullSize = interPath->size();
+            cInt halfSize = (fullSize / 2) + 1;
             while (noInter && (i < halfSize))
             {
                 // Search a step forward
-                long aIdx = interIdx + i;
-                long bIdx = aIdx + 1;
+                cInt aIdx = interIdx + i;
+                cInt bIdx = aIdx + 1;
 
                 // Implement wrapping
                 if (aIdx >= fullSize)
