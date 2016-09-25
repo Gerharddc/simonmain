@@ -1672,7 +1672,7 @@ static void AddRetractedMove(PMCollection<ToolSegment> &toolSegments,
 
 // Do a binary search for the closest point on a polygon to a defined other point
 // return true if closer distance than the parameter
-static bool FindClosestPoint(const Path &outPath, const IntPoint &lastPoint, int &closestPoint, std::size_t &closestDist)
+static bool FindClosestPoint(const Path &outPath, const IntPoint &lastPoint, std::size_t &closestPoint, std::size_t &closestDist)
 {
     //std::size_t clos = SquaredDist(lastPoint, outPath[0]);
     std::size_t upIdx = outPath.size() - 1;
@@ -1737,8 +1737,8 @@ static inline void CalculateToolpath()
         // Continue to the closest island until all have been moved to
         while (islesLeft > 0)
         {
-            int closestIsle = -1;
-            int closestPoint = -1;
+            std::size_t closestIsle = 0;
+            std::size_t closestPoint = 0;
             std::size_t closestDist = std::numeric_limits<std::size_t>::max();
 
             // Do a binary search for the closest point on each island
@@ -1748,8 +1748,6 @@ static inline void CalculateToolpath()
                     continue;
 
                 LayerIsland &isle = curLayer.islandList[j];
-                //if (!(isle.segments.begin() != isle.segments.end()))
-                  //  continue;
                 LayerSegment *outSeg = isle.segments.begin().operator *();
                 if (outSeg->outlinePaths.size() == 0)
                     continue;
@@ -1775,6 +1773,9 @@ static inline void CalculateToolpath()
 
                 if (SegmentWithInfill* infillSeg = dynamic_cast<SegmentWithInfill*>(seg))
                 {
+                    if (infillSeg->fillLines.size() == 0)
+                        continue;
+
                     // Find the closest line to start from
                     closestDist = std::numeric_limits<std::size_t>::max();
                     std::size_t closIdx = 0;
@@ -1784,7 +1785,7 @@ static inline void CalculateToolpath()
                     {
                         const LineSegment &line = infillSeg->fillLines[k];
 
-                        if (SquaredDist(lastPoint, line.p1) < closestDist)
+                        if ((std::size_t)SquaredDist(lastPoint, line.p1) < closestDist)
                         {
                             closSwapped = false;
                             closestDist = SquaredDist(lastPoint, line.p1);
@@ -1792,7 +1793,7 @@ static inline void CalculateToolpath()
                         }
 
                         // The other point can be even closer
-                        if (SquaredDist(lastPoint, line.p2) < closestDist)
+                        if ((std::size_t)SquaredDist(lastPoint, line.p2) < closestDist)
                         {
                             closSwapped = true;
                             closestDist = SquaredDist(lastPoint, line.p2);
@@ -1931,7 +1932,7 @@ static inline void CalculateToolpath()
                     for (const Path &path : curSeg->outlinePaths)
                     {
                         // Find the closest point to the previous segment if needed
-                        int closIdx = 0;
+                        std::size_t closIdx = 0;
                         if (firstSeg)
                         {
                             closIdx = closestPoint;
@@ -1950,8 +1951,12 @@ static inline void CalculateToolpath()
                         for (std::size_t k = closIdx; k < path.size()-1; k++)
                            curSeg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, curSeg->segmentSpeed);
                         curSeg->toolSegments.emplace<ExtrudeSegment>(path.back(), path.front(), lastZ, curSeg->segmentSpeed);
-                        for (long k = 0; k < closIdx-1; k++)
-                           curSeg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, curSeg->segmentSpeed);
+
+                        if (closIdx > 0)
+                        {
+                            for (std::size_t k = 0; k < closIdx-1; k++)
+                               curSeg->toolSegments.emplace<ExtrudeSegment>(path[k], path[k + 1], lastZ, curSeg->segmentSpeed);
+                        }
 
                         lastPoint = path[closIdx];
                     }
