@@ -158,6 +158,12 @@ struct MovingSegment : public ToolSegment
         return (cInt)(std::sqrt(std::pow((long)p2.X - (long)p1.X, 2) +
                          std::pow((long)p2.Y - (long)p1.Y, 2) + std::pow((long)p2.Z - (long)p1.Z, 2)));
     }
+
+    void SetStartPoint(IntPoint p)
+    {
+        p1.X = p.X;
+        p1.Y = p.Y;
+    }
 };
 
 struct TravelSegment : public MovingSegment
@@ -309,7 +315,7 @@ static void MultiRunFunction(MultiFunction function,
     if (cores == 0)
         cores = 2;
 
-    std::size_t blockSize = std::max(idsLeft / (cores * 5), (cInt)1);
+    std::size_t blockSize = std::max(idsLeft / (cores * 3), (cInt)1);
 
     std::thread threads[cores];
     bool doneFlags[cores];
@@ -677,11 +683,12 @@ static inline void OptimizePaths(Paths& paths)
     }
 }
 
-static inline void CalculateIslandsFromInitialLines()
+static void CalculateIslandsFromInitialLinesMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
 {
-    SlicerLog("Calculating initial islands");
+    SlicerLog(std::string("Calculating islands: ") + std::to_string(startIdx)
+              + std::string(" to ") + std::to_string(endIdx));
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    for (std::size_t i = startIdx; i < endIdx; i++)
     {
         SlicerLog("Calculating islands for layer: " + std::to_string(i));
         LayerComponent &layerComp = layerComponents[i];
@@ -929,19 +936,24 @@ static inline void CalculateIslandsFromInitialLines()
         // Optimize memory usage
         layerComp.islandList.shrink_to_fit();
     }
+
+    *doneFlag = true;
 }
 
-static inline void GenerateOutlineSegments()
+static inline void CalculateIslandsFromInitialLines()
 {
-    SlicerLog("Generating outline segments");
+    SlicerLog("Calculating initial islands");
 
-    // Check if there should be at least one shell
-    if (GlobalSettings::ShellThickness.Get() < 1)
-        return;
+    MultiRunFunction(CalculateIslandsFromInitialLinesMF, 0, layerCount);
+}
+
+static void GenerateOutlineSegmentsMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
+{
+    SlicerLog(std::string("Outline: ") + std::to_string(startIdx) + std::string(" to ") + std::to_string(endIdx));
 
     cInt halfNozzle = -(NozzleWidth * scaleFactor / 2.0);
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    for (std::size_t i = startIdx; i < endIdx; i++)
     {
         LayerComponent &layerComp = layerComponents[i];
 
@@ -951,7 +963,7 @@ static inline void GenerateOutlineSegments()
         {
             // TODO: remove the invalid islands
             if (isle.outlinePaths.size() < 1)
-                continue;            
+                continue;
 
             // The first outline will be one that is half an extrusion thinner
             // than the sliced outline, ths is sothat the dimensions
@@ -982,6 +994,19 @@ static inline void GenerateOutlineSegments()
             offset.Execute(isle.outlinePaths, NozzleWidth * scaleFactor);
         }
     }
+
+    *doneFlag = true;
+}
+
+static inline void GenerateOutlineSegments()
+{
+    SlicerLog("Generating outline segments");
+
+    // Check if there should be at least one shell
+    if (GlobalSettings::ShellThickness.Get() < 1)
+        return;
+
+    MultiRunFunction(GenerateOutlineSegmentsMF, 0, layerCount);
 }
 
 #ifdef TEST_ISLAND_DETECTION
@@ -1308,16 +1333,16 @@ static inline void CalculateTopBottomSegments()
     }
 }
 
-static inline void CalculateInfillSegments()
+static void CalculateInfillSegmentsMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
 {
-    SlicerLog("Calculating infill segments");
+    SlicerLog(std::string("Infill: ") + std::to_string(startIdx) + std::string(" to ") + std::to_string(endIdx));
 
     // To calculate the segments that need normal infill we need to go through each island in each layer, we then need to subtract the
     // top or bottom segments from the outline shape polygons of the layer and we then have the segments that need normal infill
 
     Clipper clipper;
 
-    for (std::size_t i = layerCount-1; i > 0; i--)
+    for (std::size_t i = startIdx; i < endIdx; i++)
     {
         SlicerLog("Infill: " + std::to_string(i));
 
@@ -1346,6 +1371,15 @@ static inline void CalculateInfillSegments()
             clipper.Execute(ClipType::ctDifference, infillSeg.outlinePaths);
         }
     }
+
+    *doneFlag = true;
+}
+
+static inline void CalculateInfillSegments()
+{
+    SlicerLog("Calculating infill segments");
+
+    MultiRunFunction(CalculateInfillSegmentsMF, 0, layerCount);
 }
 
 static inline void CalculateSupportSegments()
@@ -1735,20 +1769,21 @@ static inline void ClipLinesToPaths(std::vector<LineSegment> &lines, const Paths
 }
 #endif
 
-static inline void TrimInfill()
+static void TrimInfillMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
 {
-    SlicerLog("Trimming infill");
+    SlicerLog(std::string("Trim infill: ") + std::to_string(startIdx) + std::string(" to ") + std::to_string(endIdx));
 
-    bool right = false;
+    // Even layers go right
+    bool right = (std::div(startIdx, 2).rem == 0);
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    for (std::size_t i = startIdx; i < endIdx; i++)
     {
-        SlicerLog("Infill: " + std::to_string(i));
+        SlicerLog("Trim infill: " + std::to_string(i));
 
         for (LayerIsland &isle : layerComponents[i].islandList)
         {
             for (LayerSegment *segment : isle.segments)
-            {             
+            {
                 if (SegmentWithInfill* seg = dynamic_cast<SegmentWithInfill*>(segment))
                 {
                     bool goRight = right;
@@ -1788,6 +1823,15 @@ static inline void TrimInfill()
 
         right = !right;
     }
+
+    *doneFlag = true;
+}
+
+static inline void TrimInfill()
+{
+    SlicerLog("Trimming infill");
+
+    MultiRunFunction(TrimInfillMF, 0, layerCount);
 }
 
 const cInt MoveHigher = scaleFactor / 10;
@@ -2068,14 +2112,16 @@ static void ExtrudeLine(const std::size_t lineIdx, IntPoint &lastPoint, const cI
     lastPoint = line.p2;
 }
 
-static inline void CalculateToolpath()
+static IntPoint *LayerLastPoints;
+
+static void CalculateToolpathMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
 {
-    SlicerLog("Calculating toolpath");
+    SlicerLog(std::string("Toolpath: ") + std::to_string(startIdx) + std::string(" to ") + std::to_string(endIdx));
 
     IntPoint lastPoint(0, 0);
-    cInt lastZ = 0;
+    cInt lastZ = std::max((double)0, (GlobalSettings::LayerHeight.Get() * scaleFactor) * ((double)(startIdx) - 0.5));
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    for (std::size_t i = startIdx; i < endIdx; i++)
     {
         SlicerLog("Toolpath: " + std::to_string(i));
         LayerComponent &curLayer = layerComponents[i];
@@ -2138,7 +2184,7 @@ static inline void CalculateToolpath()
                         lastPoint = path.front();
                     }
 #endif
-                }               
+                }
             }
         }
 #else
@@ -2273,7 +2319,26 @@ static inline void CalculateToolpath()
 
         delete[] islesUsed;
 #endif
+
+        LayerLastPoints[i] = lastPoint;
     }
+
+    *doneFlag = true;
+}
+
+static inline void CalculateToolpath()
+{
+    SlicerLog("Calculating toolpath");
+
+    LayerLastPoints = new IntPoint[layerCount];
+
+    MultiRunFunction(CalculateToolpathMF, 0, layerCount);
+
+    // Adjust the starting position of each layer to the end of the last one
+    for (std::size_t i = 1; i < layerCount; i++)
+        layerComponents[i].initialLayerMoves[0].SetStartPoint(LayerLastPoints[i - 1]);
+
+    delete[] LayerLastPoints;
 }
 
 #if defined(TEST_ISLAND_DETECTION) || defined(TEST_OUTLINE_GENERATION)
