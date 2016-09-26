@@ -319,14 +319,12 @@ static void MultiRunFunction(MultiFunction function,
 
     std::thread threads[cores];
     bool doneFlags[cores];
-    bool wasRunning[cores];
     unsigned int threadCount = 0;
 
     // Init the flags
     for (unsigned int i = 0; i < cores; i++)
     {
         doneFlags[i] = false;
-        wasRunning[i] = false;
     }
 
     // Spawn the initial threads
@@ -334,7 +332,6 @@ static void MultiRunFunction(MultiFunction function,
     {
         threads[threadCount] = std::thread(function, lastIdx, std::min(endIdx, lastIdx + blockSize),
                                            &(doneFlags[threadCount]));
-        wasRunning[threadCount] = true;
         lastIdx += blockSize;
         idsLeft -= blockSize;
         threadCount++;
@@ -344,33 +341,28 @@ static void MultiRunFunction(MultiFunction function,
     // Respawn threads with new data until we have processed everything
     while (threadCount > 0)
     {
-        bool wasChange = false;
-
         // Check if any threads have finished
+        unsigned int prevCount = threadCount;
+        threadCount = 0;
         for (unsigned int i = 0; i < cores; i++)
         {
-            if (wasRunning[i] && doneFlags[i])
-            {
-                // Just wait for it to properly finish
-                threads[i].join();
-
-                wasRunning[i] = false;
-                threadCount--;
-                wasChange = true;
-            }
+            if (!doneFlags[i])
+                threadCount++;
         }
 
         // Spawn new threads if there is work left and slots have become open
-        if (wasChange)
+        if (threadCount != prevCount)
         {
             unsigned int i = 0;
             while ((idsLeft > 0) && (i < cores))
             {
                 if (doneFlags[i])
                 {
+                    // Just wait for it to properly finish
+                    threads[i].join();
+
                     threads[i] = std::thread(function, lastIdx, std::min(endIdx, lastIdx + blockSize),
                                              &(doneFlags[threadCount]));
-                    wasRunning[i] = true;
                     lastIdx += blockSize;
                     idsLeft -= blockSize;
                     threadCount++;
@@ -385,12 +377,19 @@ static void MultiRunFunction(MultiFunction function,
         else
             sleepTime *= 1.5;
 
-        if (sleepTime == std::chrono::milliseconds(0))
-            std::chrono::milliseconds(50);
-
         // Give the threads a little time to possibly finish
-        std::this_thread::sleep_for(sleepTime);
+        if (threadCount > 0)
+        {
+            if (sleepTime == std::chrono::milliseconds(0))
+                std::chrono::milliseconds(50);
+
+            std::this_thread::sleep_for(sleepTime);
+        }
     }
+
+    // Ensure all the threads have properly terminated
+    for (unsigned int i = 0; i < cores; i++)
+        threads[i].join();
 }
 
 static void SliceTrigsToLayersMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
@@ -2336,7 +2335,10 @@ static inline void CalculateToolpath()
 
     // Adjust the starting position of each layer to the end of the last one
     for (std::size_t i = 1; i < layerCount; i++)
-        layerComponents[i].initialLayerMoves[0].SetStartPoint(LayerLastPoints[i - 1]);
+    {
+        if (layerComponents[i].initialLayerMoves.size() > 0)
+            layerComponents[i].initialLayerMoves[0].SetStartPoint(LayerLastPoints[i - 1]);
+    }
 
     delete[] LayerLastPoints;
 }
