@@ -13,6 +13,8 @@
 #include <functional>
 #include <unordered_map>
 #include <stack>
+#include <thread>
+#include <mutex>
 
 using namespace ChopperEngine;
 using namespace ClipperLib;
@@ -292,12 +294,104 @@ static inline Triangle &TrigAtIdx(std::size_t idx)
 
 // TODO: reduce allocation of items to vectors, rather emplaceback
 
-
-static inline void SliceTrigsToLayers()
+// This function tries to run as many threads of the specified function as
+// is reasonable and only returns when all have finished
+// The functions need to run on data between two indices
+// and toggle a flag when done
+typedef void(*MultiFunction)(std::size_t, std::size_t, bool*);
+static void MultiRunFunction(MultiFunction function,
+                             std::size_t startIdx, std::size_t endIdx)
 {
-    SlicerLog("Slicing triangles into layers");
+    cInt idsLeft = endIdx - startIdx + 1;
+    std::size_t lastIdx = 0;
 
-    for (std::size_t i = 0; i < layerCount; i++)
+    unsigned int cores = std::thread::hardware_concurrency();
+    if (cores == 0)
+        cores = 2;
+
+    std::size_t blockSize = std::max(idsLeft / (cores * 5), (cInt)1);
+
+    std::thread threads[cores];
+    bool doneFlags[cores];
+    bool wasRunning[cores];
+    unsigned int threadCount = 0;
+
+    // Init the flags
+    for (unsigned int i = 0; i < cores; i++)
+    {
+        doneFlags[i] = false;
+        wasRunning[i] = false;
+    }
+
+    // Spawn the initial threads
+    while (idsLeft > 0 && threadCount < cores)
+    {
+        threads[threadCount] = std::thread(function, lastIdx, std::min(endIdx, lastIdx + blockSize),
+                                           &(doneFlags[threadCount]));
+        wasRunning[threadCount] = true;
+        lastIdx += blockSize;
+        idsLeft -= blockSize;
+        threadCount++;
+    }
+
+    auto sleepTime = std::chrono::milliseconds(50);
+    // Respawn threads with new data until we have processed everything
+    while (threadCount > 0)
+    {
+        bool wasChange = false;
+
+        // Check if any threads have finished
+        for (unsigned int i = 0; i < cores; i++)
+        {
+            if (wasRunning[i] && doneFlags[i])
+            {
+                // Just wait for it to properly finish
+                threads[i].join();
+
+                wasRunning[i] = false;
+                threadCount--;
+                wasChange = true;
+            }
+        }
+
+        // Spawn new threads if there is work left and slots have become open
+        if (wasChange)
+        {
+            unsigned int i = 0;
+            while ((idsLeft > 0) && (i < cores))
+            {
+                if (doneFlags[i])
+                {
+                    threads[i] = std::thread(function, lastIdx, std::min(endIdx, lastIdx + blockSize),
+                                             &(doneFlags[threadCount]));
+                    wasRunning[i] = true;
+                    lastIdx += blockSize;
+                    idsLeft -= blockSize;
+                    threadCount++;
+                }
+
+                i++;
+            }
+
+            // Adjust the sleeptime based on the current completion rate
+            sleepTime /= 1.5;
+        }
+        else
+            sleepTime *= 1.5;
+
+        if (sleepTime == std::chrono::milliseconds(0))
+            std::chrono::milliseconds(50);
+
+        // Give the threads a little time to possibly finish
+        std::this_thread::sleep_for(sleepTime);
+    }
+}
+
+static void SliceTrigsToLayersMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
+{
+    SlicerLog(std::string("Slicing trigs: ") + std::to_string(startIdx) + std::string(" to ") + std::to_string(endIdx));
+
+    for (std::size_t i = startIdx; i < endIdx; i++)
     {
         double zPoint = (double)i * GlobalSettings::LayerHeight.Get();
         std::vector<TrigLineSegment> &lineList = layerComponents[i].initialLineList;
@@ -412,6 +506,15 @@ static inline void SliceTrigsToLayers()
             }
         }
     }
+
+    *doneFlag = true;
+}
+
+static inline void SliceTrigsToLayers()
+{
+    SlicerLog("Slicing triangles into layers");
+
+    MultiRunFunction(SliceTrigsToLayersMF, 0, layerCount);
 }
 
 static inline long SquaredDist(const IntPoint& p1, const IntPoint& p2)
