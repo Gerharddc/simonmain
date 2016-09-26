@@ -1151,185 +1151,199 @@ static inline void CalculateTopBottomSegments()
     SlicerLog("Calculating top and bottom segments");
 
     // TODO: implement seperate top and bottom thickness
-    Clipper clipper;
-    ClipperOffset offset;
-
     cInt partNozzle = (NozzleWidth * scaleFactor / 10.0);
-
-    // To calculate the top segments we need to go from the bottom up,
-    // take each island as a subject, take the outline of the above layer
-    // as a clipper and perform a difference operation. The result will
-    // then be the top segment(s) for each layer
-
-    // Go from the second layer to the second highest layer as everything
-    // on the top layer is a top segment in any case
-    // and everything on the first layer is a bottom segment in any case
 
     std::size_t tBCount = std::ceil(GlobalSettings::TopBottomThickness.Get() / GlobalSettings::LayerHeight.Get());
 
-    if (tBCount > 0) // TODO: top
+    // We can run the top and bottom segment generation in 2 threads because they are independant
+
+    std::thread topThread([=]()
     {
-        for (std::size_t i = 1; i < layerCount - tBCount; i++)
+        // To calculate the top segments we need to go from the bottom up,
+        // take each island as a subject, take the outline of the above layer
+        // as a clipper and perform a difference operation. The result will
+        // then be the top segment(s) for each layer
+
+        // Go from the second layer to the second highest layer as everything
+        // on the top layer is a top segment in any case
+        // and everything on the first layer is a bottom segment in any case
+
+        Clipper clipper;
+        ClipperOffset offset;
+
+        if (tBCount > 0) // TODO: top
         {
-            SlicerLog("Top: " + std::to_string(i));
-
-            //First we need to calculate the intersection of the top few layers above it
-            Paths aboveIntersection;
-
-            for (std::size_t j = i + 1; j < std::min(i + tBCount + 1, layerCount); j++)
+            for (std::size_t i = 1; i < layerCount - tBCount; i++)
             {
-                Paths combinedIsles;
+                SlicerLog("Top: " + std::to_string(i));
 
-                // Combine the outlines of the islands into one
-                for (LayerIsland &isle : layerComponents[j].islandList)
+                //First we need to calculate the intersection of the top few layers above it
+                Paths aboveIntersection;
+
+                for (std::size_t j = i + 1; j < std::min(i + tBCount + 1, layerCount); j++)
                 {
+                    Paths combinedIsles;
+
+                    // Combine the outlines of the islands into one
+                    for (LayerIsland &isle : layerComponents[j].islandList)
+                    {
+                        clipper.Clear();
+                        clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
+                        clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
+                        clipper.Execute(ClipType::ctUnion, combinedIsles);
+                    }
+
+                    // Set the intial top if still unset
+                    if (aboveIntersection.size() < 1)
+                    {
+                        aboveIntersection = combinedIsles;
+                        continue;
+                    }
+
                     clipper.Clear();
+                    clipper.AddPaths(aboveIntersection, PolyType::ptSubject, true);
                     clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
-                    clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
-                    clipper.Execute(ClipType::ctUnion, combinedIsles);
+                    clipper.Execute(ClipType::ctIntersection, aboveIntersection);
                 }
 
-                // Set the intial top if still unset
-                if (aboveIntersection.size() < 1)
+                // Grow the intersection a bit just to get rid of noise when cutting from it
+                offset.Clear();
+                offset.AddPaths(aboveIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
+                offset.Execute(aboveIntersection, partNozzle);
+
+                for (LayerIsland &isle : layerComponents[i].islandList)
                 {
-                    aboveIntersection = combinedIsles;
-                    continue;
-                }
+                    SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
+                    clipper.Clear();
+                    clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
+                    clipper.AddPaths(aboveIntersection, PolyType::ptClip, true);
+                    clipper.Execute(ClipType::ctDifference, topSegment.outlinePaths);
 
-                clipper.Clear();
-                clipper.AddPaths(aboveIntersection, PolyType::ptSubject, true);
-                clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
-                clipper.Execute(ClipType::ctIntersection, aboveIntersection);
+                    if (topSegment.outlinePaths.size() > 0)
+                    {
+                        // All top segments are probably bridges
+                        // TODO: implement bridge speed
+                        topSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
+                        // Extrude more for a bridge
+                        topSegment.infillMultiplier = 2.0f;
+                    }
+                    else
+                        isle.segments.pop_back();
+                }
             }
 
-            // Grow the intersection a bit just to get rid of noise when cutting from it
-            offset.Clear();
-            offset.AddPaths(aboveIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
-            offset.Execute(aboveIntersection, partNozzle);
-
-            for (LayerIsland &isle : layerComponents[i].islandList)
+            for (std::size_t i = layerCount - 1; i > layerCount - tBCount - 1; i--)
             {
-                SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
-                clipper.Clear();
-                clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
-                clipper.AddPaths(aboveIntersection, PolyType::ptClip, true);
-                clipper.Execute(ClipType::ctDifference, topSegment.outlinePaths);
+                SlicerLog("Top: " + std::to_string(i));
 
-                if (topSegment.outlinePaths.size() > 0)
+                for (LayerIsland &isle : layerComponents[i].islandList)
                 {
+                    SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
+                    topSegment.outlinePaths = isle.outlinePaths;
                     // All top segments are probably bridges
                     // TODO: implement bridge speed
                     topSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
                     // Extrude more for a bridge
                     topSegment.infillMultiplier = 2.0f;
                 }
-                else
-                    isle.segments.pop_back();
             }
         }
+    });
 
-        for (std::size_t i = layerCount - 1; i > layerCount - tBCount - 1; i--)
+    std::thread bottomThread([=](){
+        // To calculate the bottom segments we need to go from the top down,
+        // take each island as a subject, take the outline of the layer below
+        // as a clipper and perform a difference operation. The result will
+        // then be the bottom segment(s) for each layer
+
+        // Go through every layer from the second highest layer to the second lowest layer
+
+        Clipper clipper;
+        ClipperOffset offset;
+
+        if (tBCount > 0) // TODO: bottom
         {
-            SlicerLog("Top: " + std::to_string(i));
-
-            for (LayerIsland &isle : layerComponents[i].islandList)
+            for (std::size_t i = layerCount - 2; i > tBCount - 1; i--)
             {
-                SegmentWithInfill &topSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::TopSegment);
-                topSegment.outlinePaths = isle.outlinePaths;
-                // All top segments are probably bridges
-                // TODO: implement bridge speed
-                topSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
-                // Extrude more for a bridge
-                topSegment.infillMultiplier = 2.0f;
-            }
-        }
-    }
-
-    // To calculate the bottom segments we need to go from the top down,
-    // take each island as a subject, take the outline of the layer below
-    // as a clipper and perform a difference operation. The result will
-    // then be the bottom segment(s) for each layer
-
-    // Go through every layer from the second highest layer to the second lowest layer
-
-    if (tBCount > 0) // TODO: bottom
-    {
-        for (std::size_t i = layerCount - 2; i > tBCount - 1; i--)
-        {
-            if (i < 1)
-                continue;
-
-            SlicerLog("Bottom: " + std::to_string(i));
-
-            // First we need to calculate the intersection of the bottom few layers below it
-            Paths belowIntersection;
-
-            for (std::size_t j = i - 1; j > std::max(i - 1 - tBCount, (std::size_t)0); j--)
-            {
-                Paths combinedIsles;
-
-                // Combine the outlines of the islands into one
-                for (LayerIsland &isle : layerComponents[j].islandList)
-                {
-                    clipper.Clear();
-                    clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
-                    clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
-                    clipper.Execute(ClipType::ctUnion, combinedIsles);
-                }
-
-                // Set the intial top if still unset
-                if (belowIntersection.size() < 1)
-                {
-                    belowIntersection = combinedIsles;
+                if (i < 1)
                     continue;
-                }
 
-                clipper.Clear();
-                clipper.AddPaths(belowIntersection, PolyType::ptSubject, true);
-                clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
-                clipper.Execute(ClipType::ctIntersection, belowIntersection);
-            }
+                SlicerLog("Bottom: " + std::to_string(i));
 
-            // Grow the intersection a bit just to get rid of noise when cutting from it
-            offset.Clear();
-            offset.AddPaths(belowIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
-            offset.Execute(belowIntersection, partNozzle);
+                // First we need to calculate the intersection of the bottom few layers below it
+                Paths belowIntersection;
 
-            for (LayerIsland &isle : layerComponents[i].islandList)
-            {
-                SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
-                clipper.Clear();
-                clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
-                clipper.AddPaths(belowIntersection, PolyType::ptClip, true);
-                clipper.Execute(ClipType::ctDifference, bottomSegment.outlinePaths);
-
-                if (bottomSegment.outlinePaths.size() > 0)
+                for (std::size_t j = i - 1; j > std::max(i - 1 - tBCount, (std::size_t)0); j--)
                 {
-                    // All non initial layer bottom segments are probably bridges
-                    // TODO: implement bridge speed
-                    bottomSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
-                    // Extrude more for a bridge
-                    bottomSegment.infillMultiplier = 2.0f;
+                    Paths combinedIsles;
+
+                    // Combine the outlines of the islands into one
+                    for (LayerIsland &isle : layerComponents[j].islandList)
+                    {
+                        clipper.Clear();
+                        clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
+                        clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
+                        clipper.Execute(ClipType::ctUnion, combinedIsles);
+                    }
+
+                    // Set the intial top if still unset
+                    if (belowIntersection.size() < 1)
+                    {
+                        belowIntersection = combinedIsles;
+                        continue;
+                    }
+
+                    clipper.Clear();
+                    clipper.AddPaths(belowIntersection, PolyType::ptSubject, true);
+                    clipper.AddPaths(combinedIsles, PolyType::ptClip, true);
+                    clipper.Execute(ClipType::ctIntersection, belowIntersection);
                 }
-                else
-                    isle.segments.pop_back();
+
+                // Grow the intersection a bit just to get rid of noise when cutting from it
+                offset.Clear();
+                offset.AddPaths(belowIntersection, JoinType::jtMiter, EndType::etClosedPolygon);
+                offset.Execute(belowIntersection, partNozzle);
+
+                for (LayerIsland &isle : layerComponents[i].islandList)
+                {
+                    SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
+                    clipper.Clear();
+                    clipper.AddPaths(isle.outlinePaths, PolyType::ptSubject, true);
+                    clipper.AddPaths(belowIntersection, PolyType::ptClip, true);
+                    clipper.Execute(ClipType::ctDifference, bottomSegment.outlinePaths);
+
+                    if (bottomSegment.outlinePaths.size() > 0)
+                    {
+                        // All non initial layer bottom segments are probably bridges
+                        // TODO: implement bridge speed
+                        bottomSegment.segmentSpeed = GlobalSettings::TravelSpeed.Get();
+                        // Extrude more for a bridge
+                        bottomSegment.infillMultiplier = 2.0f;
+                    }
+                    else
+                        isle.segments.pop_back();
+                }
             }
-        }
 
-        // Every island in the bottom layer is obviously a bottom segment
-        for (std::size_t i = 0; i < tBCount; i++)
-        {
-            SlicerLog("Bottom: " + std::to_string(i));
-
-            for (LayerIsland &isle : layerComponents[i].islandList)
+            // Every island in the bottom layer is obviously a bottom segment
+            for (std::size_t i = 0; i < tBCount; i++)
             {
-                SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
-                bottomSegment.outlinePaths = isle.outlinePaths;
-                // Initial bottom segments should not be bridges
-                bottomSegment.segmentSpeed = GlobalSettings::InfillSpeed.Get();
+                SlicerLog("Bottom: " + std::to_string(i));
+
+                for (LayerIsland &isle : layerComponents[i].islandList)
+                {
+                    SegmentWithInfill &bottomSegment = isle.segments.emplace<SegmentWithInfill>(SegmentType::BottomSegment);
+                    bottomSegment.outlinePaths = isle.outlinePaths;
+                    // Initial bottom segments should not be bridges
+                    bottomSegment.segmentSpeed = GlobalSettings::InfillSpeed.Get();
+                }
             }
         }
-    }
+    });
+
+    // Wait for the threads to finish
+    topThread.join();
+    bottomThread.join();
 }
 
 static void CalculateInfillSegmentsMF(std::size_t startIdx, std::size_t endIdx, bool* doneFlag)
